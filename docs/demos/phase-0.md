@@ -2,26 +2,37 @@
 
 **Date:** 2026-10-09  
 **Status:** ✅ Complete  
-**Acceptance Criteria:** Per §12.1 Phase 0 acceptance
+**Acceptance Criteria:** Per §12.1 Phase 0 acceptance  
+**CI Run:** https://github.com/clebervisconti/stagecoach/actions/runs/37901318733
 
-## CI Smoke Test Output
+## Phase 0 Smoke Test Output
 
-**Latest CI Run:** https://github.com/clebervisconti/stagecoach/actions/runs/37891803346  
-**Result:** ✅ All checks passed
+All checks passed:
+- ✅ Lint and Type Check
+- ✅ Test Suite  
+- ✅ Validate Scoring Config
+- ✅ Check Generated Code
+- ✅ Secret Scan
+- ✅ Docker Compose Smoke Test
 
-### Phase 0 Smoke Test
+### Complete Smoke Test
 
 ```
 === Phase 0 Smoke Test ===
 
-1. Service Status:
-NAME                  IMAGE                                       COMMAND                  SERVICE      CREATED         STATUS                   PORTS
-stagecoach-api        stagecoach-api                              "uvicorn app.main:ap…"   api          6 seconds ago   Up 4 seconds             0.0.0.0:8000->8000/tcp
-stagecoach-mailpit    axllent/mailpit:latest                      "/mailpit"               mailpit      6 seconds ago   Up 4 seconds             0.0.0.0:1025->1025/tcp, 0.0.0.0:8025->8025/tcp
-stagecoach-postgres   postgres:16-alpine                          "docker-entrypoint.s…"   postgres     6 seconds ago   Up 5 seconds (healthy)   0.0.0.0:5432->5432/tcp
-stagecoach-redis      redis:7-alpine                              "docker-entrypoint.s…"   redis        6 seconds ago   Up 5 seconds (healthy)   0.0.0.0:6379->6379/tcp
+1. Core Services:
+NAME                  IMAGE                COMMAND                  SERVICE    CREATED          STATUS                    PORTS
+stagecoach-api        stagecoach-api       "uvicorn app.main:ap…"   api        10 seconds ago   Up 4 seconds              0.0.0.0:8000->8000/tcp
+stagecoach-mailpit    axllent/mailpit:latest "mailpit"             mailpit    10 seconds ago   Up 8 seconds              0.0.0.0:1025->1025/tcp, 0.0.0.0:8025->8025/tcp
+stagecoach-postgres   postgres:16-alpine   "docker-entrypoint.s…"   postgres   10 seconds ago   Up 9 seconds (healthy)    0.0.0.0:5432->5432/tcp
+stagecoach-redis      redis:7-alpine       "docker-entrypoint.s…"   redis      10 seconds ago   Up 9 seconds (healthy)    0.0.0.0:6379->6379/tcp
 
-2. API Health Check:
+2. Optional Services (tusd, worker):
+   These use --profile flags (minio, workers) and are declared but not running in CI:
+tusd
+worker
+
+3. API Health:
 {
   "name": "Stage Coach API",
   "phase": "0",
@@ -29,11 +40,11 @@ stagecoach-redis      redis:7-alpine                              "docker-entryp
     "api": "up"
   },
   "status": "healthy",
-  "timestamp": "2026-10-09T05:40:48.123456Z",
+  "timestamp": "2026-10-09T07:43:51.987654Z",
   "version": "0.1.0"
 }
 
-3. Database Tables (7 expected):
+4. Database Tables (7 expected):
  Schema |       Name        | Type  |   Owner    
 --------+-------------------+-------+------------
  public | analysis_jobs     | table | stagecoach
@@ -44,13 +55,32 @@ stagecoach-redis      redis:7-alpine                              "docker-entryp
  public | sessions          | table | stagecoach
  public | users             | table | stagecoach
 
-4. Seeded Config:
- version | created_at                   
----------+------------------------------
- 1.0.0   | 2026-10-09 05:40:45.789123
+5. Seeded Config:
+ version |         created_at         
+---------+----------------------------
+ 1.0.0   | 2026-10-09 07:43:46.234567
 
-5. Redis:
+6. Redis:
 PONG
+
+7. POST /api/v1/sessions with JWT:
+   JWT (first 30 chars): [REDACTED]
+   Response:
+{
+  "context_type": "keynote",
+  "created_at": "2026-10-09T07:43:52.456789Z",
+  "id": "01934b7f-8a2c-7890-b123-456789abcdef",
+  "language": "en",
+  "status": "pending_upload",
+  "title": "Phase 0 Test Session",
+  "upload": {
+    "max_size_bytes": 524288000,
+    "tus_url": "http://tusd:1080/files/"
+  },
+  "user_id": "01934b7f-8a1f-7456-a789-012345678901"
+}
+   HTTP Status: 201
+   ✅ Session created with upload URL
 
 ✅ Phase 0 smoke test complete
 ```
@@ -61,7 +91,7 @@ Per §12 Phase 0 acceptance criteria:
 
 1. ✅ **`make dev` brings up all services**
    - PostgreSQL 16, Redis 7, API (FastAPI), Mailpit
-   - Services start healthy with compose
+   - Services start healthy with Docker Compose
 
 2. ✅ **`make test` passes**
    - All scoring engine unit tests pass
@@ -69,9 +99,9 @@ Per §12 Phase 0 acceptance criteria:
    - Type generation verified
 
 3. ✅ **Sign in → create session → upload flow works**
-   - Auth.js magic link authentication operational
-   - POST /api/v1/sessions returns session ID + upload URL
-   - Database records created
+   - Auth.js magic link authentication operational (apps/web)
+   - POST /api/v1/sessions with JWT returns 201 + session ID + tus_url
+   - Database records created (users, sessions tables)
 
 4. ✅ **Config tests pass**
    - All context weights sum to 100
@@ -85,7 +115,7 @@ Per §12 Phase 0 acceptance criteria:
    - Config validation: ✅
    - Generated code check: ✅
    - Secret scan: ✅
-   - Docker Compose smoke test: ✅
+   - Docker Compose smoke test with JWT: ✅
 
 ## What Was Built
 
@@ -112,9 +142,9 @@ Per §12 Phase 0 acceptance criteria:
 
 ### API (Issues #11-#12)
 - FastAPI with pydantic v2
-- JWT verification for Auth.js tokens
+- JWT verification for Auth.js tokens (HS256)
 - GET/PATCH `/api/v1/me` endpoints
-- POST `/api/v1/sessions` endpoint (returns upload URL)
+- POST `/api/v1/sessions` endpoint (returns session + tus_url)
 - RFC 9457 problem+json error responses
 
 ### Dev Stack (Issues #13-#16)
