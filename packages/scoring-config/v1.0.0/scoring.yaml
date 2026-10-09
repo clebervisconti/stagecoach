@@ -6,11 +6,11 @@ phase: "0"
 scale:
   levels: [20, 40, 60, 80, 100]
   level_names:
-    1: "Ineffective or missing"
-    2: "Needs practice"
-    3: "Effective"
-    4: "Strong"
-    5: "Exemplary"
+    "1": "Ineffective or missing"
+    "2": "Needs practice"
+    "3": "Effective"
+    "4": "Strong"
+    "5": "Exemplary"
   llm_level_to_score: "20*L-10"  # L=1 → 10, L=3 → 50, L=3.5 → 60, L=5 → 90
 
 # Confidence thresholds and inclusion rules
