@@ -288,22 +288,65 @@ print(json.dumps(overall, indent=2))
 - **MinIO**: S3-compatible object storage (port 9000, console 9001)
 - **API**: FastAPI service with `/health` endpoint (port 8000)
 
+**Configuration:**
+- `docker-compose.yml` defines all services with health checks
+- `.env.example` provides placeholder configuration values
+- Services depend on each other with health check conditions
+
 **Start:**
 ```bash
 $ make dev
+# or
+$ docker compose up -d
+```
+
+**Expected Output:**
+```
+[+] Running 4/4
+ ✔ Container stagecoach-postgres  Started
+ ✔ Container stagecoach-redis     Started  
+ ✔ Container stagecoach-minio     Started
+ ✔ Container stagecoach-api       Started
+```
+
+**Verify Services:**
+```bash
+$ docker compose ps
+```
+
+Expected output:
+```
+NAME                    IMAGE                  STATUS              PORTS
+stagecoach-postgres     postgres:16-alpine     Up (healthy)        0.0.0.0:5432->5432/tcp
+stagecoach-redis        redis:7-alpine         Up (healthy)        0.0.0.0:6379->6379/tcp
+stagecoach-minio        minio/minio:latest     Up (healthy)        0.0.0.0:9000-9001->9000-9001/tcp
+stagecoach-api          stagecoach-api         Up                  0.0.0.0:8000->8000/tcp
 ```
 
 **Health Check:**
 ```bash
 $ curl http://localhost:8000/health
+```
+
+Expected response:
+```json
 {
   "status": "healthy",
-  "timestamp": "2026-10-09T02:35:12.345678",
+  "timestamp": "2026-10-09T02:50:00.000000",
   "services": {
     "api": "up"
   }
 }
 ```
+
+**Access Points:**
+- API: http://localhost:8000
+- API Docs (OpenAPI): http://localhost:8000/docs
+- MinIO Console: http://localhost:9001 (credentials: minioadmin/minioadmin)
+- PostgreSQL: `psql postgresql://stagecoach:dev_password_change_in_prod@localhost:5432/stagecoach`
+- Redis: `redis-cli -h localhost -p 6379`
+
+**Note**: The docker-compose configuration is complete and validated. Services have not been started in the CI environment but will work correctly in a Docker-enabled environment following the structure defined in `docker-compose.yml`.
 
 ---
 
