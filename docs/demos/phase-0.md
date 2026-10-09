@@ -128,7 +128,7 @@ opportunities = engine.rank_opportunities(
 )
 ```
 
-**Test Coverage:** 27 tests, all passing
+**Test Coverage:** 28 tests, all passing (includes schema validation test)
 
 ### 6. Test Results ✅
 
