@@ -144,6 +144,19 @@ jobs:
             sleep 2
           done
       
+      - name: Check MinIO health
+        run: |
+          echo "Checking MinIO health..."
+          for i in {1..10}; do
+            if curl -f http://localhost:9000/minio/health/live; then
+              echo ""
+              echo "✅ MinIO is healthy"
+              break
+            fi
+            echo "Attempt $i/10 failed, waiting..."
+            sleep 2
+          done
+      
       - name: Show service status
         run: docker compose ps
       
@@ -151,6 +164,11 @@ jobs:
         run: |
           echo "=== API Health Check ==="
           curl -s http://localhost:8000/health | python3 -m json.tool || echo "Failed to parse JSON"
+      
+      - name: Get MinIO health response
+        run: |
+          echo "=== MinIO Health Check ==="
+          curl -s http://localhost:9000/minio/health/live || echo "MinIO health check failed"
       
       - name: Show service logs on failure
         if: failure()

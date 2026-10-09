@@ -29,25 +29,28 @@ services:
       timeout: 3s
       retries: 5
 
-  # MinIO (S3-compatible storage) - optional for local dev
-  # To enable: uncomment this service and the minio dependency in api service
-  # minio:
-  #   image: quay.io/minio/minio:latest
-  #   container_name: stagecoach-minio
-  #   command: server /data --console-address ":9001"
-  #   environment:
-  #     MINIO_ROOT_USER: minioadmin
-  #     MINIO_ROOT_PASSWORD: minioadmin
-  #   ports:
-  #     - "9000:9000"
-  #     - "9001:9001"
-  #   volumes:
-  #     - minio_data:/data
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+  minio:
+    # Note: Using quay.io registry as minio/minio on Docker Hub has access issues in GitHub CI
+    image: quay.io/minio/minio:RELEASE.2024-10-02T17-50-41Z
+    container_name: stagecoach-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    profiles:
+      - full
+      - ""  # Default profile (always runs)
 
   api:
     build:
@@ -67,8 +70,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      # minio:
-      #   condition: service_healthy
+      minio:
+        condition: service_healthy
     volumes:
       - ./services/api:/app
       - ./packages:/packages
