@@ -1,0 +1,189 @@
+# Stage Coach Drill Library (seed data)
+# Source: Appendix C of SPEC.md
+# Bilingual: en and pt-BR text required per spec
+
+drills:
+  - id: pause_instead_of_um
+    category: fluency
+    target_metrics:
+      - fl_filler_sounds_per_min
+    duration_min: 3
+    instructions:
+      en: "Answer 3 prompts for 60 s each. When you feel an 'um' coming, close your mouth and pause."
+      pt-BR: "Responda 3 perguntas por 60 s cada. Quando sentir que vai dizer 'éé', feche a boca e faça uma pausa."
+
+  - id: two_min_impromptu_count
+    category: fluency
+    target_metrics:
+      - fl_filler_sounds_per_min
+      - fl_filler_words_per_min
+    duration_min: 6
+    instructions:
+      en: "Record a 2-min answer, replay and count fillers, re-record aiming for half."
+      pt-BR: "Grave uma resposta de 2 min, assista e conte os vícios, grave novamente mirando na metade."
+    notes:
+      en: "Existing skill method"
+      pt-BR: "Método da skill existente"
+
+  - id: last20_checkpoints
+    category: pace_pausing
+    target_metrics:
+      - pp_rush_index
+    duration_min: 5
+    instructions:
+      en: "Rehearse the final 20% with timer checkpoints and marked [PAUSE]s."
+      pt-BR: "Ensaie os últimos 20% com checkpoints de tempo e [PAUSA]s marcadas."
+
+  - id: cut_list_rehearsal
+    category: time_management
+    target_metrics:
+      - tm_pct_of_slot
+    duration_min: null  # full talk
+    instructions:
+      en: "Apply the cut list; rehearse to 90% of the slot; practice the collapsible section."
+      pt-BR: "Aplique a lista de cortes; ensaie para 90% do tempo; pratique a seção colapsável."
+
+  - id: checkpoint_rehearsal
+    category: time_management
+    target_metrics:
+      - tm_section_variance
+    duration_min: null  # full talk
+    instructions:
+      en: "Rehearse with 2–3 live checkpoints ('slide 12 by 10:00')."
+      pt-BR: "Ensaie com 2-3 checkpoints ao vivo ('slide 12 em 10:00')."
+
+  - id: assertion_titles_rewrite
+    category: visual_aids
+    target_metrics:
+      - va_assertion_headline_ratio
+    duration_min: 10
+    instructions:
+      en: "Rewrite 5 slide titles as full-sentence takeaways."
+      pt-BR: "Reescreva 5 títulos de slides como frases completas de conclusão."
+
+  - id: five_word_cue_card
+    category: visual_aids
+    target_metrics:
+      - va_reading_ratio
+      - ec_audience_facing_ratio
+    duration_min: 5
+    instructions:
+      en: "Present 3 slides from a 5-word cue card, without reading."
+      pt-BR: "Apresente 3 slides usando um cartão com 5 palavras, sem ler."
+
+  - id: one_thought_one_person
+    category: eye_contact
+    target_metrics:
+      - ec_audience_facing_ratio
+    duration_min: 3
+    instructions:
+      en: "Deliver one thought per person (or lens), 3–5 s each."
+      pt-BR: "Entregue um pensamento por pessoa (ou lente), 3-5 s cada."
+
+  - id: lens_sticker
+    category: eye_contact
+    target_metrics:
+      - ec_audience_facing_ratio
+    duration_min: 2
+    instructions:
+      en: "Put a sticker next to the lens; record 2 min speaking to it."
+      pt-BR: "Cole um adesivo ao lado da lente; grave 2 min falando para ele."
+    notes:
+      en: "For to-camera presentations"
+      pt-BR: "Para apresentações à câmera"
+
+  - id: story_60s
+    category: storytelling
+    target_metrics:
+      - sto_story_quality
+    duration_min: 3
+    instructions:
+      en: "Tell your key story in 60 s: character, conflict, resolution, point; then in 30 s."
+      pt-BR: "Conte sua história principal em 60 s: personagem, conflito, resolução, moral; depois em 30 s."
+
+  - id: three_readings
+    category: vocal_variety
+    target_metrics:
+      - vv_pvq_median
+      - vv_monotone_windows_ratio
+    duration_min: 3
+    instructions:
+      en: "Read one paragraph flat, exaggerated, then natural with one stressed word per sentence."
+      pt-BR: "Leia um parágrafo monótono, exagerado, depois natural com uma palavra enfatizada por frase."
+
+  - id: stress_shift
+    category: vocal_variety
+    target_metrics:
+      - vv_emphasis_rate_per_min
+    duration_min: 2
+    instructions:
+      en: "Say one sentence 5 times, stressing a different word each time."
+      pt-BR: "Diga uma frase 5 vezes, enfatizando uma palavra diferente a cada vez."
+
+  - id: energy_ladder
+    category: energy_presence
+    target_metrics:
+      - ep_key_moment_lift
+    duration_min: 2
+    instructions:
+      en: "Deliver your CTA at energy 3, 6, and 9 out of 10, then settle at 7."
+      pt-BR: "Entregue seu CTA com energia 3, 6 e 9 de 10, depois estabilize em 7."
+
+  - id: wsn_answers
+    category: qa
+    target_metrics:
+      - qa_answer_first_ratio
+    duration_min: 6
+    instructions:
+      en: "Answer 5 likely questions in ≤ 60 s each: What? So what? Now what? [S9]"
+      pt-BR: "Responda 5 perguntas prováveis em ≤ 60 s cada: O quê? E daí? E agora? [S9]"
+    source: S9
+
+  - id: bluf_rewrite
+    category: clarity
+    target_metrics:
+      - cl_bluf
+    duration_min: 5
+    instructions:
+      en: "Rewrite your first 2 sentences as recommendation + why; record."
+      pt-BR: "Reescreva suas primeiras 2 frases como recomendação + por quê; grave."
+
+  - id: hook_x3
+    category: opening_close
+    target_metrics:
+      - oc_hook_quality
+    duration_min: 5
+    instructions:
+      en: "Record your opening three ways (story, question, fact); pick the best."
+      pt-BR: "Grave sua abertura de três formas (história, pergunta, fato); escolha a melhor."
+
+  - id: number_and_size
+    category: gestures_body
+    target_metrics:
+      - gb_gesture_space_ratio
+    duration_min: 3
+    instructions:
+      en: "Add counting and sizing gestures to 3 key lines."
+      pt-BR: "Adicione gestos de contagem e tamanho a 3 linhas-chave."
+
+  - id: planted_feet
+    category: gestures_body
+    target_metrics:
+      - gb_sway_index
+    duration_min: 2
+    instructions:
+      en: "Deliver 2 min with feet planted; move only at section transitions."
+      pt-BR: "Apresente 2 min com os pés fixos; mova-se apenas nas transições de seção."
+
+  - id: mirror_the_meaning
+    category: facial_affect
+    target_metrics:
+      - fa_expressivity_index
+    duration_min: 3
+    instructions:
+      en: "Re-record 3 key lines letting your face match the words."
+      pt-BR: "Re-grave 3 linhas-chave deixando seu rosto refletir as palavras."
+    opt_in: true
+    notes:
+      en: "Requires expression analysis consent"
+      pt-BR: "Requer consentimento para análise de expressões"
