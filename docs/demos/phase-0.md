@@ -6,7 +6,7 @@
 
 ## CI Smoke Test Output
 
-**Latest CI Run:** https://github.com/clebervisconti/stagecoach/actions/runs/37891247213  
+**Latest CI Run:** https://github.com/clebervisconti/stagecoach/actions/runs/37891803346  
 **Result:** ✅ All checks passed
 
 ### Phase 0 Smoke Test
