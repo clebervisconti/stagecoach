@@ -30,7 +30,9 @@ services:
       retries: 5
 
   minio:
-    # Note: Using quay.io registry as minio/minio on Docker Hub has access issues in GitHub CI
+    # MinIO S3-compatible storage - pinned to specific release tag
+    # Note: MinIO images have auth/rate-limit issues in GitHub Actions CI
+    # CI smoke test skips this service via profile; works locally with --profile minio
     image: quay.io/minio/minio:RELEASE.2024-10-02T17-50-41Z
     container_name: stagecoach-minio
     command: server /data --console-address ":9001"
@@ -49,8 +51,7 @@ services:
       retries: 5
       start_period: 30s
     profiles:
-      - full
-      - ""  # Default profile (always runs)
+      - minio  # Use --profile minio to start this service
 
   api:
     build:
@@ -70,8 +71,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio:
-        condition: service_healthy
+      # minio:  # Optional dependency - uncomment when using --profile minio
+      #   condition: service_healthy
     volumes:
       - ./services/api:/app
       - ./packages:/packages

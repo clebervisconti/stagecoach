@@ -152,10 +152,12 @@ jobs:
           echo "=== API Health Check ==="
           curl -s http://localhost:8000/health | python3 -m json.tool || echo "Failed to parse JSON"
       
-      - name: Get MinIO health response
+      - name: MinIO status
         run: |
-          echo "=== MinIO Health Check ==="
-          curl -s http://localhost:9000/minio/health/live || echo "MinIO health check failed"
+          echo "=== MinIO Status ==="
+          echo "MinIO service uses --profile minio and is skipped in CI smoke test"
+          echo "Reason: MinIO container images have auth/rate-limit issues in GitHub Actions"
+          echo "Local usage: docker compose --profile minio up -d"
       
       - name: Show service logs on failure
         if: failure()
