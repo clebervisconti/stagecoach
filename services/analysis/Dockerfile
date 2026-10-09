@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libpq-dev \
     gcc \
+    git \
     pkg-config \
     libavformat-dev \
     libavcodec-dev \
