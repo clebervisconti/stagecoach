@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    # Use mirror to avoid Docker Hub rate limits in CI
+    image: mirror.gcr.io/library/postgres:16-alpine
     container_name: stagecoach-postgres
     environment:
       POSTGRES_DB: stagecoach
