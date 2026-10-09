@@ -1,4 +1,5 @@
-FROM python:3.11-slim
+# Use public.ecr.aws mirror to avoid Docker Hub rate limits in CI
+FROM public.ecr.aws/docker/library/python:3.11-slim
 
 WORKDIR /app
 
