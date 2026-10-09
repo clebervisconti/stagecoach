@@ -1,0 +1,83 @@
+# Brazilian Portuguese lexicons for fluency and clarity metrics
+# Source: Appendix A of SPEC.md
+# Based on existing metrics.py, extended per specification
+
+# Filler sounds: clear non-lexical vocalizations
+# Note: 'é' (short form) is usually the verb 'to be'
+# Only elongated 'éé' or 'ééé' counts as a filler sound
+filler_sounds:
+  - éé
+  - ééé
+  - eh
+  - ehh
+  - ahn
+  - ãh
+  - ã
+  - hum
+  - hã
+  - uhm
+  - hmm
+
+# Filler word candidates: AMBIGUOUS - must be LLM-disambiguated in context
+# 'né' can be a tag question or filler; 'tipo' can be 'like/kind of'; 'então' can be a connective
+filler_words_candidates:
+  - é        # Only when used as hesitation, not as verb
+  - né
+  - tipo
+  - tipo assim
+  - então    # Often legitimate connective
+  - aí
+  - assim    # Often legitimate comparison/manner
+  - basicamente
+  - na verdade
+  - sabe
+  - entendeu
+  - beleza
+  - ok então
+
+# Hedges and uncertainty markers
+hedges:
+  - acho que
+  - talvez
+  - meio que
+  - de certa forma
+  - não sei se
+  - um pouquinho
+  - só
+
+# Unnecessary apologies
+apologies:
+  - desculpa
+  - desculpem
+  - me perdoem
+  - perdão
+  - sei que esse slide está carregado
+
+# Rush phrases (time management warning signs)
+rush_phrases:
+  - vou passar rapidinho
+  - vou correr aqui
+  - vou pular
+  - estamos sem tempo
+  - só pra fechar rapidinho
+
+# Vague quantifiers and weasel words
+vague:
+  - muita coisa
+  - várias coisas
+  - um monte de
+  - coisas
+  - tal
+  - etc
+
+# Signposts and transitions (positive signals)
+signposts:
+  - primeiro
+  - segundo
+  - terceiro
+  - por fim
+  - o que isso significa
+  - agora vamos
+  - resumindo
+  - em resumo
+  - o motivo é
