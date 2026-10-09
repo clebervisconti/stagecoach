@@ -2,29 +2,29 @@
 
 import json
 from pathlib import Path
+
 import jsonschema
+
 from scoring import ScoringEngine
 
 
 class TestSchemaValidation:
     """Test that scoring engine output validates against analysis_result schema."""
-    
+
     def test_synthetic_payload_validates_against_schema(self):
         """Scoring engine output for synthetic metrics validates against analysis_result.v1.json."""
         # Load the analysis_result schema
         # From tests/unit/test_schema.py -> packages/scoring/tests/unit/test_schema.py
         # Go up to packages/ then to schemas/
         schema_path = (
-            Path(__file__).parent.parent.parent.parent
-            / "schemas"
-            / "analysis_result.v1.json"
+            Path(__file__).parent.parent.parent.parent / "schemas" / "analysis_result.v1.json"
         )
         with open(schema_path) as f:
             schema = json.load(f)
-        
+
         # Create a synthetic analysis result using the scoring engine
         engine = ScoringEngine("1.0.0")
-        
+
         # Synthetic metrics for fluency category
         fluency_metrics = [
             {
@@ -42,10 +42,10 @@ class TestSchemaValidation:
                 "inclusion_factor": 1.0,
             },
         ]
-        
+
         # Score the category
         fluency_result = engine.score_category("fluency", fluency_metrics, "keynote")
-        
+
         # Build a minimal but complete analysis_result payload
         analysis_result = {
             "schema_version": "1.0.0",
@@ -111,7 +111,9 @@ class TestSchemaValidation:
                     "pillar": "voice",
                     "applicable": True,
                     "na_reason": None,
-                    "score": int(round(fluency_result["score"])) if fluency_result["score"] is not None else None,
+                    "score": int(round(fluency_result["score"]))
+                    if fluency_result["score"] is not None
+                    else None,
                     "level": fluency_result["level"],
                     "confidence": fluency_result["confidence"],
                     "confidence_label": fluency_result["confidence_label"],
@@ -161,7 +163,7 @@ class TestSchemaValidation:
             "series": {},
             "transcript_ref": "s3://bucket/session-id/transcript.json",
         }
-        
+
         # Validate against schema
         try:
             jsonschema.validate(instance=analysis_result, schema=schema)
@@ -169,6 +171,6 @@ class TestSchemaValidation:
             raise AssertionError(
                 f"Scoring engine output does not validate against schema: {e.message}"
             ) from e
-        
+
         # If we get here, validation passed
         assert True

@@ -20,30 +20,17 @@ from scoring import ScoringEngine
 engine = ScoringEngine(config_version="1.0.0")
 
 # Score a single metric
-score = engine.score_metric(
-    metric_id="fl_filler_sounds_per_min",
-    raw_value=7.2,
-    confidence=0.85
-)
+score = engine.score_metric(metric_id="fl_filler_sounds_per_min", raw_value=7.2, confidence=0.85)
 
 # Score a category from sub-metrics
-category_score = engine.score_category(
-    category_id="fluency",
-    metrics=[...],
-    context="keynote"
-)
+category_score = engine.score_category(category_id="fluency", metrics=[...], context="keynote")
 
 # Compute overall score
-overall = engine.score_overall(
-    categories=[...],
-    context="keynote"
-)
+overall = engine.score_overall(categories=[...], context="keynote")
 
 # Rank opportunities
 opportunities = engine.rank_opportunities(
-    categories=[...],
-    context="keynote",
-    focus_areas=["fluency", "pace_pausing"]
+    categories=[...], context="keynote", focus_areas=["fluency", "pace_pausing"]
 )
 ```
 
