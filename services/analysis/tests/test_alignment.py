@@ -30,6 +30,7 @@ def generate_test_fixture(output_path: Path):
 )
 def test_alignment_with_asr():
     """Test alignment stage with ASR transcript (smoke test only)."""
+    # Import inside test so it doesn't fail when whisperx not installed
     from pipeline.stages.asr import transcribe_audio
     from pipeline.stages.alignment import align_transcript
     
@@ -95,6 +96,7 @@ def test_alignment_with_asr():
 )
 def test_vad_detection():
     """Test Silero VAD detection."""
+    # Import inside test so it doesn't fail when silero not installed
     from pipeline.stages.alignment import load_silero_vad, run_vad
     
     with tempfile.TemporaryDirectory() as tmpdir:
