@@ -354,7 +354,12 @@ jobs:
       
       - name: Show service logs on failure
         if: failure()
-        run: docker compose logs
+        run: |
+          echo "=== Worker Logs ==="
+          docker compose logs worker
+          echo ""
+          echo "=== All Service Logs ==="
+          docker compose logs
       
       - name: Cleanup
         if: always()
