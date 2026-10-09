@@ -210,17 +210,7 @@ jobs:
           echo ""
           
           echo "7. POST /api/v1/sessions with JWT:"
-          TEST_JWT=$(python3 -c "
-import jwt
-from datetime import datetime, timedelta
-token = jwt.encode({
-    'email': 'test@example.com',
-    'sub': 'test-user',
-    'iat': datetime.utcnow(),
-    'exp': datetime.utcnow() + timedelta(hours=1)
-}, 'dev_secret_change_in_prod_use_openssl_rand_base64_32', algorithm='HS256')
-print(token)
-" 2>/dev/null)
+          TEST_JWT=$(python3 -c "import jwt; from datetime import datetime, timedelta; print(jwt.encode({'email': 'test@example.com', 'sub': 'test-user', 'iat': datetime.utcnow(), 'exp': datetime.utcnow() + timedelta(hours=1)}, 'dev_secret_change_in_prod_use_openssl_rand_base64_32', algorithm='HS256'))" 2>/dev/null)
           
           echo "   JWT (first 30 chars): ${TEST_JWT:0:30}..."
           
