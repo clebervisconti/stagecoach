@@ -567,7 +567,7 @@ categories:
           - [6, 25]
       
       cl_precision_llm:
-        weight: 0.10
+        weight: 0.15
         unit: "llm_level"
         basis:
           kind: llm_judgment

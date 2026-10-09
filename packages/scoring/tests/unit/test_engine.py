@@ -32,7 +32,7 @@ class TestScoringEngine:
         
         assert result["included"] is True
         assert result["inclusion_factor"] == 1.0  # c=0.85 >= 0.6
-        assert 30 < result["score"] < 40  # Between 8/min (35) and 5/min (55)
+        assert 35 < result["score"] < 45  # Between 8/min (35) and 5/min (55)
     
     def test_score_metric_llm_level(self):
         """Score an LLM-judged metric."""
