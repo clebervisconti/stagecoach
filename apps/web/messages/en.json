@@ -1,0 +1,42 @@
+{
+  "common": {
+    "appName": "Stage Coach",
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "loading": "Loading...",
+    "error": "Error",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close"
+  },
+  "nav": {
+    "home": "Home",
+    "sessions": "Sessions",
+    "trends": "Trends",
+    "settings": "Settings",
+    "prep": "Talk Prep"
+  },
+  "marketing": {
+    "tagline": "Evidence-based presentation coaching",
+    "description": "Upload or record a talk. Get a deep, research-backed report with actionable feedback.",
+    "getStarted": "Get Started",
+    "learnMore": "Learn More"
+  },
+  "auth": {
+    "signInTitle": "Sign in to Stage Coach",
+    "signInDescription": "Enter your email to receive a magic link",
+    "emailPlaceholder": "you@example.com",
+    "sendMagicLink": "Send Magic Link",
+    "checkEmail": "Check your email",
+    "magicLinkSent": "We've sent a magic link to {email}. Click the link to sign in.",
+    "invalidEmail": "Please enter a valid email address"
+  },
+  "dashboard": {
+    "welcome": "Welcome back",
+    "recentSessions": "Recent Sessions",
+    "noSessions": "No sessions yet",
+    "newSession": "New Session"
+  }
+}

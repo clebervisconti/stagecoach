@@ -79,6 +79,16 @@ services:
       - ./scripts:/scripts
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: stagecoach-mailpit
+    ports:
+      - "8025:8025"  # Web UI
+      - "1025:1025"  # SMTP
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
 volumes:
   postgres_data:
   redis_data:
