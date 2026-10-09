@@ -1,7 +1,6 @@
 """Piecewise-linear curve interpolation."""
 
 
-
 def validate_curve(curve: list[list[float]]) -> None:
     """Validate that a curve is well-formed.
 
