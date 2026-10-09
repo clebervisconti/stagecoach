@@ -154,13 +154,21 @@ jobs:
         run: |
           docker compose exec -T api bash -c "cd /app && alembic upgrade head"
       
+      - name: Run database migrations
+        run: |
+          echo "=== Running Database Migrations ==="
+          docker compose exec -T api alembic upgrade head
+          echo "✅ Migrations complete"
+      
       - name: Seed scoring config
         run: |
+          echo "=== Seeding Scoring Config ==="
           docker compose exec -T api python /scripts/seed_scoring_config.py
+          echo "✅ Scoring config seeded"
       
       - name: Wait for API health
         run: |
-          echo "Waiting for API to be healthy..."
+          echo "=== Checking API Health ==="
           for i in {1..30}; do
             if curl -f http://localhost:8000/health; then
               echo ""
@@ -171,13 +179,36 @@ jobs:
             sleep 2
           done
       
-      - name: Show service status
-        run: docker compose ps
-      
-      - name: Get API health response
+      - name: Test Phase 0 Exit Criteria
         run: |
-          echo "=== API Health Check ==="
-          curl -s http://localhost:8000/health | python3 -m json.tool || echo "Failed to parse JSON"
+          echo "=== Phase 0 Smoke Test ==="
+          echo ""
+          echo "1. Service Status:"
+          docker compose ps
+          echo ""
+          
+          echo "2. API Health Check:"
+          curl -s http://localhost:8000/health | python3 -m json.tool
+          echo ""
+          
+          echo "3. Test API Endpoints (no auth - expected to get 401s):"
+          echo "GET /api/v1/me (should return 401):"
+          curl -s -w "\nHTTP Status: %{http_code}\n" http://localhost:8000/api/v1/me || true
+          echo ""
+          
+          echo "GET /api/v1/sessions (should return 401):"
+          curl -s -w "\nHTTP Status: %{http_code}\n" http://localhost:8000/api/v1/sessions || true
+          echo ""
+          
+          echo "4. Check Database Connection:"
+          docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "\dt" | head -20
+          echo ""
+          
+          echo "5. Check Redis Connection:"
+          docker compose exec -T redis redis-cli ping
+          echo ""
+          
+          echo "✅ Phase 0 smoke test complete"
       
       - name: MinIO status
         run: |
