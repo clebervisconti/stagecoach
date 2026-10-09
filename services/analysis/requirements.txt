@@ -10,9 +10,15 @@ jsonschema==4.20.0
 faster-whisper==1.0.1
 torch==2.1.2
 torchaudio==2.1.2
+<<<<<<< HEAD
 aiohttp==3.9.1
 redis==5.0.1
 whisperx==3.1.1
 transformers==4.38.1
 ffmpeg-python==0.2.0
 pyannote.audio==3.1.1
+=======
+whisperx==3.1.1
+transformers==4.38.1
+ffmpeg-python==0.2.0
+>>>>>>> 80cf81c (feat(alignment): implement WhisperX forced alignment with VAD and gap detection)

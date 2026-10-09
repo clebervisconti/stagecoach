@@ -41,6 +41,7 @@ app.conf.update(
         "tasks.health_check": {"queue": "cpu"},
         "tasks.ingest": {"queue": "cpu"},
         "tasks.asr": {"queue": "cpu"},  # CPU-only per ADR-008
+        "tasks.alignment": {"queue": "cpu"},  # WhisperX alignment
         "tasks.audio_features": {"queue": "cpu"},
         "tasks.vision": {"queue": "cpu"},
         "tasks.slides": {"queue": "cpu"},
@@ -177,6 +178,13 @@ def asr_task(
         # Add transcript_path to output for verification
         output_dict["transcript_path"] = str(Path(output_dir) / "transcript.json")
         
+        # Add transcript path for chaining to alignment
+        transcript_path = Path(output_dir) / f"{session_id}_transcript.json"
+        with open(transcript_path, "w") as f:
+            json.dump(output_dict, f)
+        output_dict["transcript_path"] = str(transcript_path)
+        output_dict["audio_path"] = audio_path  # Pass through for alignment
+        
         if job_id:
             emit_progress(job_id, "asr", "succeeded", pct=100, message="Transcription completed")
         
@@ -187,5 +195,64 @@ def asr_task(
         logger.error(f"ASR failed for {session_id}: {exc}")
         if job_id:
             emit_progress(job_id, "asr", "failed", message=f"ASR failed: {str(exc)}")
+        # Retry with exponential backoff: 4s, 16s, 64s
+        raise self.retry(exc=exc, countdown=4 ** self.request.retries)
+
+
+@app.task(name="tasks.alignment", bind=True, max_retries=3)
+def alignment_task(
+    self,
+    asr_result: dict,
+    output_dir: str,
+    session_id: str,
+    job_id: Optional[str] = None,
+):
+    """Alignment stage: WhisperX forced alignment + VAD + gap detection.
+    
+    Args:
+        asr_result: Dict from ASR task with transcript_path and audio_path
+        output_dir: Directory for output artifacts
+        session_id: Session ID for tracking
+        job_id: Analysis job ID for progress tracking
+        
+    Returns:
+        Dict with alignment output
+    """
+    from pipeline.stages.alignment import align_transcript
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Starting alignment task for session {session_id}")
+    
+    audio_path = asr_result.get("audio_path")
+    transcript_path = asr_result.get("transcript_path")
+    language = asr_result.get("language", "en")
+    
+    if not audio_path or not transcript_path:
+        raise ValueError("Missing audio_path or transcript_path in ASR result")
+    
+    if job_id:
+        emit_progress(job_id, "alignment", "running", pct=0, message="Aligning words with WhisperX")
+    
+    try:
+        result = align_transcript(
+            audio_path=Path(audio_path),
+            transcript_path=Path(transcript_path),
+            output_dir=Path(output_dir),
+            session_id=session_id,
+            language=language,
+        )
+        
+        output_dict = result.to_dict()
+        
+        if job_id:
+            emit_progress(job_id, "alignment", "succeeded", pct=100, message="Word alignment completed")
+        
+        logger.info(f"Alignment completed for {session_id}")
+        return output_dict
+        
+    except Exception as exc:
+        logger.error(f"Alignment failed for {session_id}: {exc}")
+        if job_id:
+            emit_progress(job_id, "alignment", "failed", message=f"Alignment failed: {str(exc)}")
         # Retry with exponential backoff: 4s, 16s, 64s
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
