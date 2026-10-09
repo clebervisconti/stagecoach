@@ -17,13 +17,14 @@ aiohttp==3.11.11
 # Media processing
 ffmpeg-python==0.2.0
 
-# ML/AI
-torch==2.5.1
-torchaudio==2.5.1
-faster-whisper==1.1.0
-transformers==4.46.3
-pyannote.audio==3.3.2
-git+https://github.com/m-bain/whisperX.git@v3.1.5
+# ML/AI - Install torch CPU-only first
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.4.1+cpu
+torchaudio==2.4.1+cpu
+
+# ASR
+faster-whisper==1.0.3
+ctranslate2==4.4.0
 
 # xAI LLM client
 openai==1.54.5

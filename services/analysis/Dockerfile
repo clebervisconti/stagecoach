@@ -24,8 +24,13 @@ RUN apt-get update && apt-get install -y \
 # Upgrade pip first for better wheel support
 RUN pip install --upgrade pip
 
+# Install base dependencies (including CPU-only torch)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Install alignment dependencies (whisperx, pyannote)
+COPY requirements-alignment.txt .
+RUN pip install --no-cache-dir -r requirements-alignment.txt
 
 # Copy application code
 COPY . .

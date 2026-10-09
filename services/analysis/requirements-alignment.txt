@@ -1,0 +1,16 @@
+# Alignment stage dependencies (optional, kept separate to reduce base image size)
+# Install after base requirements.txt
+
+# WhisperX and its dependencies
+transformers==4.43.4
+tokenizers==0.19.1
+librosa==0.10.2
+soundfile==0.12.1
+numba==0.60.0
+jiwer==3.0.4
+
+# Install whisperx without deps since we specify them explicitly
+git+https://github.com/m-bain/whisperX.git@3c5d30c --no-deps
+
+# Diarization (pyannote) - optional, gated on HF_TOKEN
+pyannote.audio==3.3.1
