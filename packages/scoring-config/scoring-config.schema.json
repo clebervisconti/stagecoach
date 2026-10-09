@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stagecoach.example.com/schemas/scoring-config.schema.json",
+  "title": "ScoringConfig",
+  "description": "Versioned scoring configuration for Stage Coach evaluation categories",
+  "type": "object",
+  "required": ["version", "scale", "confidence", "overall", "contexts", "pillars", "weights", "categories"],
+  "additionalProperties": true,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version (major.minor.patch)"
+    },
+    "created": {
+      "type": "string",
+      "format": "date"
+    },
+    "phase": {
+      "type": "string"
+    },
+    "scale": {
+      "type": "object",
+      "required": ["levels", "level_names", "llm_level_to_score"],
+      "properties": {
+        "levels": {
+          "type": "array",
+          "items": {"type": "integer"},
+          "minItems": 5,
+          "maxItems": 5
+        },
+        "level_names": {
+          "type": "object",
+          "patternProperties": {
+            "^[1-5]$": {"type": "string"}
+          }
+        },
+        "llm_level_to_score": {
+          "type": "string"
+        }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "required": ["include_full", "include_partial_from", "category_min_for_overall", "labels"],
+      "properties": {
+        "include_full": {"type": "number", "minimum": 0, "maximum": 1},
+        "include_partial_from": {"type": "number", "minimum": 0, "maximum": 1},
+        "include_none_below": {"type": "number", "minimum": 0, "maximum": 1},
+        "category_min_for_overall": {"type": "number", "minimum": 0, "maximum": 1},
+        "labels": {
+          "type": "object",
+          "properties": {
+            "high": {"type": "number"},
+            "medium": {"type": "number"}
+          }
+        }
+      }
+    },
+    "overall": {
+      "type": "object",
+      "required": ["partial_if_coverage_below", "display_band_factor"],
+      "properties": {
+        "partial_if_coverage_below": {"type": "number"},
+        "display_band_factor": {"type": "integer"}
+      }
+    },
+    "contexts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["keynote", "breakout", "exec_briefing", "sales_pitch", "virtual_meeting", "class_academic", "other"]
+      },
+      "minItems": 1
+    },
+    "pillars": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-z_]+$": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "weights": {
+      "type": "object",
+      "description": "Category weights per context. Each context must sum to 100.",
+      "patternProperties": {
+        "^[a-z_]+$": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z_]+$": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        }
+      }
+    },
+    "categories": {
+      "type": "object",
+      "description": "Category definitions with sub-metrics",
+      "patternProperties": {
+        "^[a-z_]+$": {
+          "type": "object",
+          "required": ["sources", "tractability", "metrics"],
+          "properties": {
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^(S\\d+|H|[A-Z]\\d+_[A-Z]\\d+)$"
+              }
+            },
+            "min_evidence": {
+              "type": "object"
+            },
+            "tractability": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "opt_in": {
+              "type": "boolean"
+            },
+            "context_bands": {
+              "type": "object"
+            },
+            "context_targets": {
+              "type": "object"
+            },
+            "context_dependent_weights": {
+              "type": "object"
+            },
+            "metrics": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-z_0-9]+$": {
+                  "type": "object",
+                  "required": ["weight", "unit", "basis"],
+                  "properties": {
+                    "weight": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "unit": {
+                      "type": "string"
+                    },
+                    "basis": {
+                      "type": "object",
+                      "required": ["kind", "source"],
+                      "properties": {
+                        "kind": {
+                          "enum": ["research", "heuristic", "llm_judgment"]
+                        },
+                        "source": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "llm_level": {
+                      "type": "boolean"
+                    },
+                    "curve": {
+                      "type": "array",
+                      "items": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": {"type": "number"}
+                      }
+                    },
+                    "context_curves": {
+                      "type": "object"
+                    },
+                    "mapping": {
+                      "type": "object"
+                    },
+                    "gate": {
+                      "type": "object",
+                      "properties": {
+                        "condition": {"type": "string"},
+                        "cap_level": {"type": "integer"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "opportunities": {
+      "type": "object",
+      "properties": {
+        "target_lift": {"type": "integer"},
+        "tractability_boost": {"type": "number"},
+        "min_impact_to_show": {"type": "integer"}
+      }
+    }
+  }
+}
