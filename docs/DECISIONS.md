@@ -745,4 +745,79 @@ Per SPEC §6.2 and issue #17.
 - **2026-10-09**: ADR-001 through ADR-006 (Phase 0 foundations)
 - **2026-10-09**: ADR-007 through ADR-010 (Phase 1: owner decisions D2, D3, D4, D5/D6)
 - **2026-10-09**: ADR-011 (Phase 1: ingest stage implementation)
+- **2026-10-09**: ADR-012 (Phase 1: DAG orchestration and SSE progress #18, #19)
+
+---
+
+## ADR-012: Celery DAG Orchestration with Job Steps Tracking
+
+**Date:** 2026-10-09  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Issues #18 and #19 require a robust pipeline orchestration system with:
+- Individual stage tracking and re-runnability
+- Progress streaming to the browser during analysis
+- Idempotency for safe retries
+- Graceful handling of partial failures
+
+The existing worker had standalone tasks for ingest and ASR but no coordination layer.
+
+### Decision
+
+**Orchestration:** PipelineOrchestrator class manages DAG execution via Celery chains
+**Job tracking:** job_steps table records (job_id, stage, status, input_hash, stage_version, output_uris, metrics, timing, error)
+**Status values:** 
+- JobStep: pending → running → succeeded | failed | skipped
+- AnalysisJob: pending → running → succeeded | failed | partial
+- Session: created → uploaded → processing → ready | partial | failed
+
+**Idempotency:** Hash of (session_id, stage, inputs, stage_version) prevents duplicate processing
+**Progress streaming:** Tasks emit events to Redis pub/sub channel `progress:{job_id}` with {stage, status, pct, eta_s, message, timestamp}
+**SSE endpoint:** `GET /sessions/{id}/events` streams progress via Server-Sent Events with reconnect support
+
+**Task chaining:** Ingest result passes `audio_path` to ASR via Celery chain signature:
+```python
+chain(
+    ingest_task.s(input_path, output_dir, session_id, job_id),
+    asr_task.s(output_dir, session_id, language, model_name, job_id)
+)
+```
+
+**Retries:** Celery task decorators handle exponential backoff (4s, 16s, 64s) for 3 attempts
+**Partial status:** Non-critical stage failures (e.g., diarization when HF_TOKEN absent) mark job as "partial" and continue
+
+### Alternatives Considered
+
+1. **Task polling instead of Redis pub/sub**  
+   - ❌ Higher latency, more API load  
+   - ❌ No live streaming
+
+2. **WebSocket instead of SSE**  
+   - ✅ Bidirectional (not needed here)  
+   - ❌ More complex client code  
+   - ❌ Harder to deploy through proxies
+
+3. **Store all progress in DB**  
+   - ❌ High write load for fine-grained updates  
+   - ✅ SSE reads from ephemeral Redis pub/sub, final state in DB
+
+4. **Temporal Workflow instead of Celery**  
+   - ✅ Better observability and retry logic  
+   - ❌ More infrastructure complexity for MVP  
+   - 📅 Consider for v2
+
+### Consequences
+
+- ✅ Each stage is independently re-runnable via POST /sessions/{id}/reanalyze?from_stage=X
+- ✅ Browser shows live progress with ETA during 10+ minute analysis
+- ✅ Idempotency prevents wasted computation on retries
+- ✅ Job history visible in job_steps for debugging
+- ⚠️ Redis pub/sub is ephemeral: if client disconnects and misses events, it must reconnect (SSE handles this)
+- ⚠️ Progress percentages and ETAs are estimates; tasks emit them when possible
+- 📌 Document progress event schema in API README
+- 📌 Add smoke test: start job, verify SSE receives "succeeded" events
+
 

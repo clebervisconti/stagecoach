@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 
-from app.routers import users, sessions
+from app.routers import users, sessions, progress
 
 app = FastAPI(
     title="Stage Coach API",
@@ -24,6 +24,7 @@ app.add_middleware(
 # Include routers
 app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(sessions.router, prefix="/api/v1", tags=["sessions"])
+app.include_router(progress.router, prefix="/api/v1", tags=["progress"])
 
 
 @app.get("/")
@@ -32,7 +33,7 @@ async def root():
     return {
         "name": "Stage Coach API",
         "version": "0.1.0",
-        "phase": "0",
+        "phase": "1",
     }
 
 
