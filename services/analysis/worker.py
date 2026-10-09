@@ -174,6 +174,8 @@ def asr_task(
         )
         
         output_dict = result.to_dict()
+        # Add transcript_path to output for verification
+        output_dict["transcript_path"] = str(Path(output_dir) / "transcript.json")
         
         if job_id:
             emit_progress(job_id, "asr", "succeeded", pct=100, message="Transcription completed")
