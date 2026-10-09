@@ -229,27 +229,45 @@ jobs:
           echo "=== Testing Ingest Stage ==="
           docker compose exec -T worker python << 'EOF'
           import tempfile
+          import subprocess
           from pathlib import Path
           from worker import app
-          from celery import group
           
-          # Test health check
-          result = app.send_task("tasks.health_check")
-          health = result.get(timeout=10)
-          print(f"Health check: {health}")
-          assert health["status"] == "healthy"
-          
-          # Test ingest with fixture
-          fixture_path = "/app/tests/fixtures/smoke_test.mp3"
-          
+          # Generate fixture in temp location
           with tempfile.TemporaryDirectory() as tmpdir:
+              fixture_path = Path(tmpdir) / "test.mp3"
+              
+              # Generate test audio
+              cmd = [
+                  "ffmpeg",
+                  "-f", "lavfi",
+                  "-i", "sine=frequency=440:duration=2",
+                  "-ar", "16000",
+                  "-ac", "1",
+                  "-y",
+                  str(fixture_path),
+              ]
+              subprocess.run(cmd, check=True, capture_output=True)
+              
+              print(f"Generated test fixture: {fixture_path}")
+              
+              # Test health check
+              result = app.send_task("tasks.health_check")
+              health = result.get(timeout=10)
+              print(f"Health check: {health}")
+              assert health["status"] == "healthy"
+              
+              # Test ingest
+              output_dir = Path(tmpdir) / "output"
+              output_dir.mkdir()
+              
               result = app.send_task(
                   "tasks.ingest",
-                  args=[fixture_path, tmpdir, "smoke-test"],
+                  args=[str(fixture_path), str(output_dir), "smoke-test"],
               )
               
-              output = result.get(timeout=60)
-              print(f"Ingest output: {output}")
+              output = result.get(timeout=120)
+              print(f"Ingest output keys: {list(output.keys())}")
               
               assert "media_info" in output
               assert "modality" in output
