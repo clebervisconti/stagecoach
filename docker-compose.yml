@@ -18,7 +18,8 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    # Use mirror to avoid Docker Hub rate limits in CI
+    image: mirror.gcr.io/library/redis:7-alpine
     container_name: stagecoach-redis
     ports:
       - "6379:6379"
@@ -82,7 +83,8 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   mailpit:
-    image: axllent/mailpit:latest
+    # Use ghcr.io mirror to avoid Docker Hub rate limits in CI
+    image: ghcr.io/axllent/mailpit:latest
     container_name: stagecoach-mailpit
     ports:
       - "8025:8025"  # Web UI
