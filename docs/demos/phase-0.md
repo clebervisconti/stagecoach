@@ -285,68 +285,49 @@ print(json.dumps(overall, indent=2))
 **Services:**
 - **Postgres 16**: Database (port 5432)
 - **Redis 7**: Job queue and cache (port 6379)
-- **MinIO**: S3-compatible object storage (port 9000, console 9001)
 - **API**: FastAPI service with `/health` endpoint (port 8000)
+- **MinIO** (optional): S3-compatible object storage — commented out in CI due to image pull issues, uncomment for local dev
 
 **Configuration:**
 - `docker-compose.yml` defines all services with health checks
 - `.env.example` provides placeholder configuration values
-- Services depend on each other with health check conditions
+- Core services (Postgres, Redis, API) verified in CI
 
 **Start:**
 ```bash
 $ make dev
 # or
-$ docker compose up -d
+$ docker compose up -d --wait
 ```
 
-**Expected Output:**
-```
-[+] Running 4/4
- ✔ Container stagecoach-postgres  Started
- ✔ Container stagecoach-redis     Started  
- ✔ Container stagecoach-minio     Started
- ✔ Container stagecoach-api       Started
-```
+**Verified in CI** ([Run #37879391801](https://github.com/clebervisconti/stagecoach/actions/runs/37879391801)):
 
-**Verify Services:**
-```bash
-$ docker compose ps
-```
+The `compose-smoke` CI job successfully started all core services and verified the API health endpoint.
 
-Expected output:
-```
-NAME                    IMAGE                  STATUS              PORTS
-stagecoach-postgres     postgres:16-alpine     Up (healthy)        0.0.0.0:5432->5432/tcp
-stagecoach-redis        redis:7-alpine         Up (healthy)        0.0.0.0:6379->6379/tcp
-stagecoach-minio        minio/minio:latest     Up (healthy)        0.0.0.0:9000-9001->9000-9001/tcp
-stagecoach-api          stagecoach-api         Up                  0.0.0.0:8000->8000/tcp
-```
-
-**Health Check:**
-```bash
-$ curl http://localhost:8000/health
-```
-
-Expected response:
+**API Health Check Response:**
 ```json
 {
-  "status": "healthy",
-  "timestamp": "2026-10-09T02:50:00.000000",
-  "services": {
-    "api": "up"
-  }
+    "status": "healthy",
+    "timestamp": "2026-10-09T03:28:48.449710",
+    "services": {
+        "api": "up"
+    }
 }
 ```
+
+**Services Running:**
+- `stagecoach-postgres` (postgres:16-alpine) - healthy
+- `stagecoach-redis` (redis:7-alpine) - healthy  
+- `stagecoach-api` (built from `services/api`) - running
 
 **Access Points:**
 - API: http://localhost:8000
 - API Docs (OpenAPI): http://localhost:8000/docs
-- MinIO Console: http://localhost:9001 (credentials: minioadmin/minioadmin)
 - PostgreSQL: `psql postgresql://stagecoach:dev_password_change_in_prod@localhost:5432/stagecoach`
 - Redis: `redis-cli -h localhost -p 6379`
+- MinIO Console (when enabled): http://localhost:9001
 
-**Note**: The docker-compose configuration is complete and validated. Services have not been started in the CI environment but will work correctly in a Docker-enabled environment following the structure defined in `docker-compose.yml`.
+**Note**: MinIO is commented out in `docker-compose.yml` due to Docker Hub image pull issues in GitHub Actions CI. To use MinIO locally, uncomment the `minio` service and its dependency in the `api` service configuration.
 
 ---
 
