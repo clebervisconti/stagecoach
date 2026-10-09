@@ -1,10 +1,14 @@
 import type { NextAuthConfig } from "next-auth";
-import Resend from "next-auth/providers/resend";
+import Nodemailer from "next-auth/providers/nodemailer";
 
 export const authConfig = {
   providers: [
-    Resend({
-      apiKey: process.env.RESEND_API_KEY || "fake-key-for-dev",
+    Nodemailer({
+      server: process.env.EMAIL_SERVER || {
+        host: "localhost",
+        port: 1025,
+        auth: null,
+      },
       from: process.env.EMAIL_FROM || "noreply@stagecoach.example.com",
     }),
   ],
