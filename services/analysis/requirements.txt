@@ -23,7 +23,7 @@ torchaudio==2.5.1
 faster-whisper==1.1.0
 transformers==4.46.3
 pyannote.audio==3.3.2
-whisperx @ git+https://github.com/m-bain/whisperX.git@v3.1.6
+git+https://github.com/m-bain/whisperX.git@v3.1.5
 
 # xAI LLM client
 openai==1.54.5
