@@ -34,7 +34,8 @@ $DATAMODEL_CODEGEN \
   --use-annotated \
   --field-constraints \
   --snake-case-field \
-  --target-python-version 3.11
+  --target-python-version 3.11 \
+  --disable-timestamp
 
 echo "✓ Generated Python types"
 
