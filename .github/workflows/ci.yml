@@ -163,7 +163,11 @@ jobs:
       - name: Seed scoring config
         run: |
           echo "=== Seeding Scoring Config ==="
-          docker compose exec -T api python /scripts/seed_scoring_config.py
+          docker compose exec -T -w /app api python -c "
+import sys
+sys.path.insert(0, '/scripts')
+exec(open('/scripts/seed_scoring_config.py').read())
+"
           echo "✅ Scoring config seeded"
       
       - name: Wait for API health
