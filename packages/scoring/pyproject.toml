@@ -21,6 +21,7 @@ dev = [
     "ruff>=0.1",
     "mypy>=1.7",
     "jsonschema>=4.20",
+    "types-PyYAML>=6.0",
 ]
 
 [tool.ruff]
