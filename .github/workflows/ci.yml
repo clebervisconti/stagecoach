@@ -289,14 +289,10 @@ jobs:
               assert audio16k_path.exists(), f"audio16k.wav not found at {audio16k_path}"
               print(f"✅ Ingest passed: {audio16k_path}")
               
-              # Test ASR (explicitly route to cpu queue)
-              asr_output_dir = Path(tmpdir) / "asr_output"
-              asr_output_dir.mkdir()
-              
+              # Test ASR with ingest result (chained)
               result = app.send_task(
                   "tasks.asr",
-                  args=[str(audio16k_path), str(asr_output_dir), "smoke-test-asr"],
-                  kwargs={"language": "en", "model_name": "tiny"},
+                  args=[ingest_output, str(output_dir), "smoke-test", None, None, None],
                   queue="cpu",
               )
               
@@ -306,9 +302,10 @@ jobs:
               assert "language" in asr_output
               assert "segments" in asr_output
               assert "word_count" in asr_output
+              assert "transcript_path" in asr_output
               
               # Verify transcript.json artifact
-              transcript_path = asr_output_dir / "transcript.json"
+              transcript_path = Path(asr_output["transcript_path"])
               assert transcript_path.exists(), f"transcript.json not found at {transcript_path}"
               print(f"✅ ASR passed: {transcript_path}")
               
