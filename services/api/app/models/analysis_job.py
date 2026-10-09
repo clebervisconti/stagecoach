@@ -23,7 +23,7 @@ class AnalysisJob(Base):
         String(20),
         nullable=False,
         default="pending",
-        comment="pending, running, completed, failed"
+        comment="pending, running, succeeded, failed, partial"
     )
     started_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)

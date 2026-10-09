@@ -1,15 +1,17 @@
 """Celery worker for Stage Coach analysis pipeline.
 
-Phase 1: Ingest and ASR stages.
+Phase 1: Ingest, ASR, alignment, diarization with DAG orchestration and progress tracking.
 """
 
 import json
 import logging
 import os
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import redis
 from celery import Celery
 
 logging.basicConfig(
@@ -49,6 +51,29 @@ app.conf.update(
 )
 
 
+def emit_progress(
+    job_id: str,
+    stage: str,
+    status: str,
+    pct: Optional[float] = None,
+    eta_s: Optional[int] = None,
+    message: Optional[str] = None,
+):
+    """Emit progress event to Redis for SSE streaming (issue #19)."""
+    r = redis.from_url(REDIS_URL)
+    event = {
+        "stage": stage,
+        "status": status,
+        "pct": pct,
+        "eta_s": eta_s,
+        "message": message,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+    channel = f"progress:{job_id}"
+    r.publish(channel, json.dumps(event))
+    logging.info(f"Progress published to {channel}: {status}")
+
+
 @app.task(name="tasks.health_check")
 def health_check():
     """Health check task for worker verification."""
@@ -56,21 +81,26 @@ def health_check():
 
 
 @app.task(name="tasks.ingest", bind=True, max_retries=3)
-def ingest_task(self, input_path: str, output_dir: str, session_id: str):
+def ingest_task(self, input_path: str, output_dir: str, session_id: str, job_id: Optional[str] = None):
     """Ingest stage: validation, transcoding, modality detection.
     
     Args:
         input_path: Path to uploaded media file
         output_dir: Directory for output artifacts
         session_id: Session ID for tracking
+        job_id: Analysis job ID for progress tracking
         
     Returns:
         Dict with ingest output (media_info, modality, artifacts, sha256)
+        and audio_path for chaining to ASR
     """
     from pipeline.stages.ingest import ingest
     
     logger = logging.getLogger(__name__)
     logger.info(f"Starting ingest task for session {session_id}")
+    
+    if job_id:
+        emit_progress(job_id, "ingest", "running", pct=0, message="Validating and transcoding media")
     
     try:
         result = ingest(
@@ -79,10 +109,22 @@ def ingest_task(self, input_path: str, output_dir: str, session_id: str):
             session_id=session_id,
         )
         
-        return result.to_dict()
+        output_dict = result.to_dict()
+        
+        # Extract audio path for chaining
+        audio_path = str(result.artifacts.get("audio16k"))
+        output_dict["audio_path"] = audio_path
+        
+        if job_id:
+            emit_progress(job_id, "ingest", "succeeded", pct=100, message="Media ingested successfully")
+        
+        logger.info(f"Ingest completed for {session_id}")
+        return output_dict
         
     except Exception as exc:
         logger.error(f"Ingest failed for {session_id}: {exc}")
+        if job_id:
+            emit_progress(job_id, "ingest", "failed", message=f"Ingest failed: {str(exc)}")
         # Retry with exponential backoff: 4s, 16s, 64s
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
 
@@ -90,20 +132,22 @@ def ingest_task(self, input_path: str, output_dir: str, session_id: str):
 @app.task(name="tasks.asr", bind=True, max_retries=3)
 def asr_task(
     self,
-    audio_path: str,
+    ingest_result: dict,
     output_dir: str,
     session_id: str,
     language: Optional[str] = None,
     model_name: Optional[str] = None,
+    job_id: Optional[str] = None,
 ):
     """ASR stage: Speech-to-text with faster-whisper.
     
     Args:
-        audio_path: Path to audio16k.wav from ingest
+        ingest_result: Dict from ingest task with audio_path
         output_dir: Directory for output artifacts
         session_id: Session ID for tracking
         language: Language code (en, pt, auto) or None for auto-detect
         model_name: Model name override (tiny, small, medium, large-v3)
+        job_id: Analysis job ID for progress tracking
         
     Returns:
         Dict with transcript output
@@ -112,6 +156,13 @@ def asr_task(
     
     logger = logging.getLogger(__name__)
     logger.info(f"Starting ASR task for session {session_id}")
+    
+    audio_path = ingest_result.get("audio_path")
+    if not audio_path:
+        raise ValueError("No audio_path in ingest result")
+    
+    if job_id:
+        emit_progress(job_id, "asr", "running", pct=0, message="Transcribing audio")
     
     try:
         result = transcribe_audio(
@@ -122,9 +173,17 @@ def asr_task(
             model_name=model_name,
         )
         
-        return result.to_dict()
+        output_dict = result.to_dict()
+        
+        if job_id:
+            emit_progress(job_id, "asr", "succeeded", pct=100, message="Transcription completed")
+        
+        logger.info(f"ASR completed for {session_id}")
+        return output_dict
         
     except Exception as exc:
         logger.error(f"ASR failed for {session_id}: {exc}")
+        if job_id:
+            emit_progress(job_id, "asr", "failed", message=f"ASR failed: {str(exc)}")
         # Retry with exponential backoff: 4s, 16s, 64s
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)

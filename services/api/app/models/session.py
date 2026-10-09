@@ -37,8 +37,8 @@ class Session(Base):
     status = Column(
         String(20),
         nullable=False,
-        default="uploaded",
-        comment="uploaded, processing, ready, partial, failed"
+        default="created",
+        comment="created, uploaded, processing, ready, partial, failed"
     )
     primary_speaker_label = Column(String(50), nullable=True, comment="For diarization")
     focus_areas = Column(ARRAY(String), nullable=True, comment="Up to 3 focus category IDs")

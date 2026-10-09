@@ -28,7 +28,7 @@ class JobStep(Base):
         String(20),
         nullable=False,
         default="pending",
-        comment="pending, running, completed, partial, failed"
+        comment="pending, running, succeeded, failed, skipped"
     )
     attempt = Column(Integer, nullable=False, default=1)
     input_hash = Column(String(64), nullable=True, comment="Hash of inputs for idempotency")
