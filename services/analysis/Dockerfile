@@ -4,10 +4,18 @@ FROM public.ecr.aws/docker/library/python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies including ffmpeg for media processing
+# Plus pkg-config and ffmpeg dev libraries for building PyAV (faster-whisper dep)
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libpq-dev \
     gcc \
+    pkg-config \
+    libavformat-dev \
+    libavcodec-dev \
+    libavdevice-dev \
+    libavutil-dev \
+    libswscale-dev \
+    libswresample-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
