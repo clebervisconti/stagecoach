@@ -345,6 +345,53 @@ What we chose and key details.
 
 ---
 
+## ADR-006: Type generation from JSON Schemas
+
+**Date:** 2026-10-09  
+**Status:** Accepted  
+**Phase:** 0
+
+### Context
+
+The API and web frontend need to share TypeScript and Python types derived from our JSON Schema definitions (`analysis_result.v1.json`, future `talk_plan`, etc.). We need a strategy that:
+- Generates pydantic v2 models for FastAPI request/response validation
+- Generates TypeScript types for the Next.js frontend
+- Stays in sync with schema changes
+- Fails CI if generated code is stale
+
+### Decision
+
+1. **JSON Schemas** in `packages/schemas/` are the **single source of truth**
+2. **Python pydantic v2 models** generated via `datamodel-code-generator` into `services/api/app/schemas/`
+3. **TypeScript types** generated via `openapi-typescript` from FastAPI's OpenAPI spec (Phase 1+)
+4. **CI check** (`scripts/check_generated.sh`) fails if `make generate-types` hasn't been run after schema changes
+5. Generated files are **committed** to git (not gitignored) to enable quick builds without regeneration
+
+### Alternatives Considered
+
+1. **Manual types** (hand-write pydantic and TS)  
+   - ❌ Schema drift inevitable  
+   - ❌ No guarantee API matches frontend types
+
+2. **Protocol Buffers / gRPC**  
+   - ✅ Strong type generation  
+   - ❌ Overkill for REST API  
+   - ❌ Worse browser support than JSON
+
+3. **Zod schemas shared via TS**  
+   - ✅ Single TS schema definition  
+   - ❌ Python can't consume Zod directly  
+   - ❌ JSON Schema is more standard for documentation
+
+### Consequences
+
+- ✅ Type safety from JSON Schema → pydantic → OpenAPI → TypeScript  
+- ✅ CI enforces sync via `make check-generated`  
+- ⚠️ Developers must run `make generate-types` after schema changes  
+- 📌 Add pre-commit hook to auto-generate (nice-to-have)
+
+---
+
 ## Change Log
 
-- **2026-10-09**: ADR-001 through ADR-005 (Phase 0 foundations)
+- **2026-10-09**: ADR-001 through ADR-006 (Phase 0 foundations)

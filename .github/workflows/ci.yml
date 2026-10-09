@@ -104,6 +104,25 @@ jobs:
               raise
           EOF
 
+  check-generated:
+    name: Check Generated Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install "datamodel-code-generator[http]==0.25.1"
+      
+      - name: Check generated types are up to date
+        run: |
+          bash scripts/check_generated.sh
+
   secret-scan:
     name: Secret Scan
     runs-on: ubuntu-latest
@@ -131,9 +150,25 @@ jobs:
         run: docker compose up -d --wait
         timeout-minutes: 5
       
+      - name: Run migrations
+        run: |
+          docker compose exec -T api bash -c "cd /app && alembic upgrade head"
+      
+      - name: Run database migrations
+        run: |
+          echo "=== Running Database Migrations ==="
+          docker compose exec -T api alembic upgrade head
+          echo "✅ Migrations complete"
+      
+      - name: Seed scoring config
+        run: |
+          echo "=== Seeding Scoring Config ==="
+          docker compose exec -T api python -m app.seed.scoring_config
+          echo "✅ Scoring config seeded"
+      
       - name: Wait for API health
         run: |
-          echo "Waiting for API to be healthy..."
+          echo "=== Checking API Health ==="
           for i in {1..30}; do
             if curl -f http://localhost:8000/health; then
               echo ""
@@ -144,13 +179,32 @@ jobs:
             sleep 2
           done
       
-      - name: Show service status
-        run: docker compose ps
-      
-      - name: Get API health response
+      - name: Verify Phase 0 Acceptance (PR #84 scope)
         run: |
-          echo "=== API Health Check ==="
-          curl -s http://localhost:8000/health | python3 -m json.tool || echo "Failed to parse JSON"
+          echo "=== PR #84 Smoke Test: Database, Migrations, Seeding ==="
+          echo ""
+          
+          echo "1. Service Status:"
+          docker compose ps
+          echo ""
+          
+          echo "2. API Health Check (should return 200):"
+          curl -f -s http://localhost:8000/health | python3 -m json.tool
+          echo ""
+          
+          echo "3. Database Tables (7 tables expected):"
+          docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "\dt" | grep -E "table|users|consents|sessions|media_assets|analysis_jobs|job_steps|scoring_configs"
+          echo ""
+          
+          echo "4. Verify Seeded Config Row:"
+          docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "SELECT version, created_at FROM scoring_configs LIMIT 1;"
+          echo ""
+          
+          echo "5. Redis Ping:"
+          docker compose exec -T redis redis-cli ping
+          echo ""
+          
+          echo "✅ PR #84 smoke test complete"
       
       - name: MinIO status
         run: |

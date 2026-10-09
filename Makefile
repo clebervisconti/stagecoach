@@ -1,16 +1,19 @@
-.PHONY: help install dev down logs test lint type clean
+.PHONY: help install dev down logs test lint type clean migrate generate-types check-generated
 
 help:
 	@echo "Stage Coach Development Commands"
 	@echo ""
-	@echo "  make install  - Install all dependencies"
-	@echo "  make dev      - Start development environment (docker compose)"
-	@echo "  make down     - Stop all services"
-	@echo "  make logs     - View service logs"
-	@echo "  make test     - Run all tests"
-	@echo "  make lint     - Run linters"
-	@echo "  make type     - Run type checkers"
-	@echo "  make clean    - Clean build artifacts"
+	@echo "  make install         - Install all dependencies"
+	@echo "  make dev             - Start development environment (docker compose)"
+	@echo "  make down            - Stop all services"
+	@echo "  make logs            - View service logs"
+	@echo "  make migrate         - Run database migrations"
+	@echo "  make generate-types  - Generate types from JSON schemas"
+	@echo "  make check-generated - Check if generated code is up to date (CI)"
+	@echo "  make test            - Run all tests"
+	@echo "  make lint            - Run linters"
+	@echo "  make type            - Run type checkers"
+	@echo "  make clean           - Clean build artifacts"
 
 install:
 	@echo "Installing Python dependencies..."
@@ -50,6 +53,18 @@ type:
 	@echo "Running mypy type checker..."
 	cd packages/scoring && mypy scoring/
 	@echo "Type checks passed!"
+
+migrate:
+	@echo "Running database migrations..."
+	bash scripts/migrate.sh
+
+generate-types:
+	@echo "Generating types from JSON schemas..."
+	bash scripts/generate_types.sh
+
+check-generated:
+	@echo "Checking generated code..."
+	bash scripts/check_generated.sh
 
 clean:
 	@echo "Cleaning build artifacts..."
