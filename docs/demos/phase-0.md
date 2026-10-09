@@ -286,48 +286,56 @@ print(json.dumps(overall, indent=2))
 - **Postgres 16**: Database (port 5432)
 - **Redis 7**: Job queue and cache (port 6379)
 - **API**: FastAPI service with `/health` endpoint (port 8000)
-- **MinIO** (optional): S3-compatible object storage — commented out in CI due to image pull issues, uncomment for local dev
+- **MinIO**: S3-compatible object storage (ports 9000, 9001) — uses compose profile
 
 **Configuration:**
 - `docker-compose.yml` defines all services with health checks
 - `.env.example` provides placeholder configuration values
-- Core services (Postgres, Redis, API) verified in CI
+- MinIO uses `minio` profile to handle GitHub Actions image pull issues
 
-**Start:**
+**Start Commands:**
+
+Core services (Postgres, Redis, API):
 ```bash
-$ make dev
-# or
 $ docker compose up -d --wait
 ```
 
-**Verified in CI** ([Run #37879391801](https://github.com/clebervisconti/stagecoach/actions/runs/37879391801)):
+Full stack with MinIO (local development):
+```bash
+$ docker compose --profile minio up -d --wait
+```
 
-The `compose-smoke` CI job successfully started all core services and verified the API health endpoint.
+**Verified in CI** ([Run #37880367152](https://github.com/clebervisconti/stagecoach/actions/runs/37880367152)):
+
+The `compose-smoke` CI job successfully started core services (Postgres, Redis, API) and verified health endpoints.
 
 **API Health Check Response:**
 ```json
 {
     "status": "healthy",
-    "timestamp": "2026-10-09T03:28:48.449710",
+    "timestamp": "2026-10-09T03:40:38.861063",
     "services": {
         "api": "up"
     }
 }
 ```
 
-**Services Running:**
+**Services Verified in CI:**
 - `stagecoach-postgres` (postgres:16-alpine) - healthy
 - `stagecoach-redis` (redis:7-alpine) - healthy  
-- `stagecoach-api` (built from `services/api`) - running
+- `stagecoach-api` (built from `services/api`) - running and responding
+
+**MinIO Status:**
+MinIO is included in `docker-compose.yml` (pinned to `quay.io/minio/minio:RELEASE.2024-10-02T17-50-41Z`) but uses the `minio` compose profile. This allows:
+- **CI**: Skips MinIO (GitHub Actions has auth/rate-limit issues with MinIO container images)
+- **Local dev**: Include MinIO with `--profile minio` flag
 
 **Access Points:**
 - API: http://localhost:8000
 - API Docs (OpenAPI): http://localhost:8000/docs
 - PostgreSQL: `psql postgresql://stagecoach:dev_password_change_in_prod@localhost:5432/stagecoach`
 - Redis: `redis-cli -h localhost -p 6379`
-- MinIO Console (when enabled): http://localhost:9001
-
-**Note**: MinIO is commented out in `docker-compose.yml` due to Docker Hub image pull issues in GitHub Actions CI. To use MinIO locally, uncomment the `minio` service and its dependency in the `api` service configuration.
+- MinIO Console (with `--profile minio`): http://localhost:9001 (credentials: minioadmin/minioadmin)
 
 ---
 
