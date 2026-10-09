@@ -169,8 +169,9 @@ tests/unit/test_engine.py::TestScoringEngine::test_score_metric_low_confidence_e
 tests/unit/test_engine.py::TestScoringEngine::test_score_category PASSED
 tests/unit/test_engine.py::TestScoringEngine::test_score_overall PASSED
 tests/unit/test_engine.py::TestScoringEngine::test_rank_opportunities PASSED
+tests/unit/test_schema.py::TestSchemaValidation::test_synthetic_payload_validates_against_schema PASSED [100%]
 
-============================== 27 passed in 0.90s ===============================
+============================== 28 passed in 1.04s ===============================
 ```
 
 ### 7. Sample Scored Payload

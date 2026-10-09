@@ -97,7 +97,10 @@ jobs:
               jsonschema.validate(instance=config, schema=schema)
               print("✅ Scoring config is valid against schema")
           except jsonschema.ValidationError as e:
-              print(f"❌ Validation error: {e.message}")
+              print(f"❌ Validation error: {str(e.message)}")
+              raise
+          except Exception as e:
+              print(f"❌ Error during validation: {str(e)}")
               raise
           EOF
 
