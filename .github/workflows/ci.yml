@@ -127,7 +127,7 @@ jobs:
       - name: Copy env example
         run: cp .env.example .env
       
-      - name: Start services
+      - name: Start services (without MinIO profile)
         run: docker compose up -d --wait
         timeout-minutes: 5
       
@@ -141,19 +141,6 @@ jobs:
               break
             fi
             echo "Attempt $i/30 failed, waiting..."
-            sleep 2
-          done
-      
-      - name: Check MinIO health
-        run: |
-          echo "Checking MinIO health..."
-          for i in {1..10}; do
-            if curl -f http://localhost:9000/minio/health/live; then
-              echo ""
-              echo "✅ MinIO is healthy"
-              break
-            fi
-            echo "Attempt $i/10 failed, waiting..."
             sleep 2
           done
       
