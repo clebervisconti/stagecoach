@@ -1,0 +1,152 @@
+{
+  "language": "en",
+  "language_prob": 0.98,
+  "duration": 180.0,
+  "segments": [
+    {
+      "id": 0,
+      "start": 0.0,
+      "end": 5.2,
+      "text": "Good morning, everyone. Thank you for having me today."
+    },
+    {
+      "id": 1,
+      "start": 5.2,
+      "end": 12.8,
+      "text": "I'm here to talk about how we can transform our customer experience through simplicity."
+    },
+    {
+      "id": 2,
+      "start": 12.8,
+      "end": 20.5,
+      "text": "Last year, our team spent over 4,000 hours responding to customer support tickets."
+    },
+    {
+      "id": 3,
+      "start": 20.5,
+      "end": 28.2,
+      "text": "That's because our product had become too complex. Too many features, too many clicks, too many options."
+    },
+    {
+      "id": 4,
+      "start": 28.2,
+      "end": 35.0,
+      "text": "So we asked ourselves: What if we focused on doing one thing really well?"
+    },
+    {
+      "id": 5,
+      "start": 35.0,
+      "end": 42.5,
+      "text": "First, we identified the core use case. The one thing 80% of our customers needed."
+    },
+    {
+      "id": 6,
+      "start": 42.5,
+      "end": 50.2,
+      "text": "Second, we stripped away everything that didn't serve that core need."
+    },
+    {
+      "id": 7,
+      "start": 50.2,
+      "end": 58.0,
+      "text": "And finally, we tested the new design with real customers every single week."
+    },
+    {
+      "id": 8,
+      "start": 58.0,
+      "end": 65.8,
+      "text": "Let me tell you a quick story. One of our enterprise customers, Sarah, had been struggling for months."
+    },
+    {
+      "id": 9,
+      "start": 65.8,
+      "end": 73.5,
+      "text": "She told us: I used to spend 20 minutes setting up each campaign. Now it takes 2 minutes."
+    },
+    {
+      "id": 10,
+      "start": 73.5,
+      "end": 81.0,
+      "text": "That's the power of simplicity. When you remove friction, you create value."
+    },
+    {
+      "id": 11,
+      "start": 81.0,
+      "end": 88.5,
+      "text": "The results speak for themselves. Support tickets dropped by 60%."
+    },
+    {
+      "id": 12,
+      "start": 88.5,
+      "end": 96.0,
+      "text": "Customer satisfaction scores jumped from 3.2 to 4.7 out of 5."
+    },
+    {
+      "id": 13,
+      "start": 96.0,
+      "end": 103.2,
+      "text": "And our net promoter score went from 12 to 52 in just six months."
+    },
+    {
+      "id": 14,
+      "start": 103.2,
+      "end": 110.5,
+      "text": "Now, you might be thinking: But what about power users? Won't they miss those advanced features?"
+    },
+    {
+      "id": 15,
+      "start": 110.5,
+      "end": 118.0,
+      "text": "Great question. We found that 95% of power users were only using 3 advanced features."
+    },
+    {
+      "id": 16,
+      "start": 118.0,
+      "end": 125.5,
+      "text": "So we kept those three and tucked them under an Advanced menu. Problem solved."
+    },
+    {
+      "id": 17,
+      "start": 125.5,
+      "end": 133.0,
+      "text": "So to summarize: Focus on the core need. Remove everything else. Test relentlessly."
+    },
+    {
+      "id": 18,
+      "start": 133.0,
+      "end": 140.2,
+      "text": "Simplicity isn't about doing less. It's about doing what matters."
+    },
+    {
+      "id": 19,
+      "start": 140.2,
+      "end": 148.0,
+      "text": "I challenge each of you: Go back to your teams and ask, what can we remove?"
+    },
+    {
+      "id": 20,
+      "start": 148.0,
+      "end": 155.5,
+      "text": "Start with one feature, one workflow, one screen. Simplify it. Measure the impact."
+    },
+    {
+      "id": 21,
+      "start": 155.5,
+      "end": 163.0,
+      "text": "If you do that, I promise you'll see the same results we did."
+    },
+    {
+      "id": 22,
+      "start": 163.0,
+      "end": 170.5,
+      "text": "Thank you. I'm happy to take any questions."
+    },
+    {
+      "id": 23,
+      "start": 170.5,
+      "end": 180.0,
+      "text": "Yes, let me repeat the question. How do we decide which features to cut?"
+    }
+  ],
+  "mean_word_prob": 0.92
+}

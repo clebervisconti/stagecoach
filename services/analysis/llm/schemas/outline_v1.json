@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stagecoach.local/schemas/llm/outline_v1.json",
+  "title": "OutlineV1",
+  "description": "Outline extraction for structure and signposting analysis",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sections", "main_points", "signposts", "recap_seg", "insufficient_evidence"],
+  "properties": {
+    "sections": {
+      "type": "array",
+      "description": "Hierarchical outline with timestamps",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "start_seg", "end_seg", "purpose"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Section heading (3-8 words)",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "start_seg": {
+            "type": "string",
+            "description": "Starting segment ID (e.g., S0001)",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "end_seg": {
+            "type": "string",
+            "description": "Ending segment ID (e.g., S0042)",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "purpose": {
+            "type": "string",
+            "description": "Section purpose (inform, persuade, transition, etc.)",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "main_points": {
+      "type": "integer",
+      "description": "Count of top-level body points (excluding intro/close)",
+      "minimum": 0,
+      "maximum": 20
+    },
+    "signposts": {
+      "type": "array",
+      "description": "Explicit transition or preview phrases",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["seg_id", "quote", "type"],
+        "properties": {
+          "seg_id": {
+            "type": "string",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "quote": {
+            "type": "string",
+            "description": "Verbatim signpost phrase",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "type": {
+            "type": "string",
+            "enum": ["preview", "transition", "recap"]
+          }
+        }
+      }
+    },
+    "recap_seg": {
+      "type": ["string", "null"],
+      "description": "Segment ID of recap/summary before close, or null if absent",
+      "pattern": "^S[0-9]{4}$"
+    },
+    "outline_clarity_level": {
+      "type": "number",
+      "description": "How easy to reconstruct outline (1-5, half-steps allowed)",
+      "minimum": 1.0,
+      "maximum": 5.0
+    },
+    "rationale": {
+      "type": "string",
+      "description": "Brief explanation of outline clarity level (≤60 words)",
+      "maxLength": 400
+    },
+    "insufficient_evidence": {
+      "type": "boolean",
+      "description": "True if transcript too short or disorganized to extract outline"
+    }
+  }
+}

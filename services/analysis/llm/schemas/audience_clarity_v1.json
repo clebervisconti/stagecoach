@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stagecoach.local/schemas/llm/audience_clarity_v1.json",
+  "title": "AudienceClarityV1",
+  "description": "Audience adaptation and clarity analysis",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["jargon", "speaker_centric_phrases", "claims", "redundancy_spans", "vagueness", "audience_fit_level", "clarity_level", "rationale", "insufficient_evidence"],
+  "properties": {
+    "jargon": {
+      "type": "array",
+      "description": "Technical terms and whether defined",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["term", "first_seg", "defined"],
+        "properties": {
+          "term": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "first_seg": {
+            "type": "string",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "defined": {
+            "type": "boolean",
+            "description": "Was it explained or contextualized?"
+          }
+        }
+      }
+    },
+    "speaker_centric_phrases": {
+      "type": "array",
+      "description": "Examples of I/we-focused rather than you/audience-focused language",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["seg_id", "quote"],
+        "properties": {
+          "seg_id": {
+            "type": "string",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "claims": {
+      "type": "array",
+      "description": "Claims and their support",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["seg_id", "claim", "support_type"],
+        "properties": {
+          "seg_id": {
+            "type": "string",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "claim": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "support_type": {
+            "type": "string",
+            "enum": ["data", "example", "source", "anecdote", "none"]
+          }
+        }
+      }
+    },
+    "redundancy_spans": {
+      "type": "array",
+      "description": "Segments where ideas repeat without adding value",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["seg_ids", "issue"],
+        "properties": {
+          "seg_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^S[0-9]{4}$"
+            },
+            "minItems": 2
+          },
+          "issue": {
+            "type": "string",
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "vagueness": {
+      "type": "array",
+      "description": "Vague or weasel-word examples",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["seg_id", "quote"],
+        "properties": {
+          "seg_id": {
+            "type": "string",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "audience_fit_level": {
+      "type": "number",
+      "description": "How well content fits stated audience (1-5)",
+      "minimum": 1.0,
+      "maximum": 5.0
+    },
+    "clarity_level": {
+      "type": "number",
+      "description": "Overall clarity and concision (1-5)",
+      "minimum": 1.0,
+      "maximum": 5.0
+    },
+    "rationale": {
+      "type": "string",
+      "description": "Brief explanation of levels (≤60 words)",
+      "maxLength": 400
+    },
+    "insufficient_evidence": {
+      "type": "boolean"
+    }
+  }
+}
