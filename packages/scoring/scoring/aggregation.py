@@ -30,9 +30,9 @@ def aggregate_category(
     metric_defs = category_def.get("metrics", {})
 
     # Check if category is applicable
-    min_evidence = category_def.get("min_evidence", {})
     # In a real implementation, check min_evidence against actual data
     # For now, assume applicable if we have metrics
+    # min_evidence = category_def.get("min_evidence", {})
     applicable = len(metrics) > 0
     na_reason = None if applicable else "No metrics provided"
 
