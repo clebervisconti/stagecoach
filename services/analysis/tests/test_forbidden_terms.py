@@ -6,7 +6,13 @@ in LLM output text fields (rationale, explanations, etc.).
 
 import pytest
 
-from services.analysis.llm.verification import check_for_emotion_inference
+import sys
+from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from llm.verification import check_for_emotion_inference
 
 
 class TestForbiddenTermsEnglish:

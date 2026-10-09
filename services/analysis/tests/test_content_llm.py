@@ -10,8 +10,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from services.analysis.llm import LLMClient, LLMResponse, UsageStats
-from services.analysis.pipeline.stages.content_llm import (
+import sys
+from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from llm import LLMClient, LLMResponse, UsageStats
+from pipeline.stages.content_llm import (
     format_timestamp,
     format_transcript_for_prompt,
     load_segments_from_transcript,
@@ -248,7 +254,7 @@ class TestContentLLMStageWithMockAPI:
         self, synthetic_transcript_path, output_dir, mock_llm_client
     ):
         """Test full content_llm stage with mocked API"""
-        from services.analysis.pipeline.stages.content_llm import content_llm_stage
+        from pipeline.stages.content_llm import content_llm_stage
 
         result = content_llm_stage(
             transcript_path=synthetic_transcript_path,
@@ -301,7 +307,7 @@ class TestContentLLMLiveAPI:
 
     def test_live_outline_call(self, synthetic_transcript_path):
         """Test live API call for outline prompt (uses cassettes)"""
-        from services.analysis.pipeline.stages.content_llm import (
+        from pipeline.stages.content_llm import (
             format_transcript_for_prompt,
             load_segments_from_transcript,
         )

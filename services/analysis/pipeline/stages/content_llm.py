@@ -11,8 +11,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from services.analysis.llm import LLMClient
-from services.analysis.llm.verification import (
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports when running as module
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from llm import LLMClient
+from llm.verification import (
     check_for_emotion_inference,
     check_self_consistency,
     pull_extreme_level_toward_center,

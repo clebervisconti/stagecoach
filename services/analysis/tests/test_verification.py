@@ -11,7 +11,13 @@ Tests:
 
 import pytest
 
-from services.analysis.llm.verification import (
+import sys
+from pathlib import Path
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from llm.verification import (
     check_for_emotion_inference,
     check_self_consistency,
     fuzzy_match,
