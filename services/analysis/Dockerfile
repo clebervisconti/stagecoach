@@ -1,5 +1,6 @@
 # Use ECR mirror for base image to avoid Docker Hub rate limits
-FROM public.ecr.aws/docker/library/python:3.11-slim
+# Use Bookworm (Debian 12) for ffmpeg compatibility with av==11.*
+FROM public.ecr.aws/docker/library/python:3.11-slim-bookworm
 
 WORKDIR /app
 
