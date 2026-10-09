@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
-from ..client import LLMResponse, UsageStats
+from ..types import LLMResponse, UsageStats
 
 
 class BaseLLMProvider(ABC):
