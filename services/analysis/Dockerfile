@@ -30,7 +30,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Install alignment dependencies (whisperx, pyannote)
 COPY requirements-alignment.txt .
-RUN pip install --no-cache-dir -r requirements-alignment.txt
+RUN pip install --no-cache-dir -r requirements-alignment.txt && \
+    pip install --no-cache-dir --no-deps git+https://github.com/m-bain/whisperX.git@3c5d30c
 
 # Copy application code
 COPY . .

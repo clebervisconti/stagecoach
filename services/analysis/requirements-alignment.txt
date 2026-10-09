@@ -9,8 +9,5 @@ soundfile==0.12.1
 numba==0.60.0
 jiwer==3.0.4
 
-# Install whisperx without deps since we specify them explicitly
-git+https://github.com/m-bain/whisperX.git@3c5d30c --no-deps
-
 # Diarization (pyannote) - optional, gated on HF_TOKEN
 pyannote.audio==3.3.1
