@@ -156,7 +156,7 @@ jobs:
       
       - name: Seed scoring config
         run: |
-          docker compose exec -T api python /workspace/scripts/seed_scoring_config.py
+          docker compose exec -T api python /scripts/seed_scoring_config.py
       
       - name: Wait for API health
         run: |
