@@ -392,6 +392,271 @@ The API and web frontend need to share TypeScript and Python types derived from 
 
 ---
 
+## ADR-007: LLM Provider and Client Architecture
+
+**Date:** 2026-10-09  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Text analysis in Stage Coach requires an LLM for:
+- Core message and structure extraction (categories 1, 2, 5, 6)
+- Story and impact analysis (categories 3, 4, 7)
+- Fluency disambiguation (category 11)
+- Q&A quality (category 17)
+
+Requirements:
+- Structured outputs (strict JSON schema conformance) for reliable parsing
+- Provider flexibility (no vendor lock-in)
+- Per-token cost tracking and ceiling enforcement
+- Deterministic testing without live API calls
+- No raw video sent to the LLM (privacy constraint)
+
+### Decision
+
+**Provider:** xAI (Grok) API  
+**Architecture:** Provider-neutral LLM client with pluggable adapters
+
+**Implementation details:**
+- `LLMClient.generate_structured(prompt_id, inputs, schema)` interface
+- Provider, model, and per-token prices configured in `services/analysis/config/llm.yaml`, never hard-coded
+- xAI adapter implements strict JSON-schema structured outputs
+- Interface designed for easy addition of other providers (OpenAI, Anthropic, etc.)
+- API key read from `LLM_API_KEY` environment variable
+- VCR-style cassettes for deterministic CI tests
+- Skip live LLM tests when `LLM_API_KEY` is absent
+- Token usage and cost logged per call; analysis_jobs.cost tracks total
+- Never send raw video frames or biometric data to the LLM
+
+### Alternatives Considered
+
+1. **OpenAI GPT-4**  
+   - ✅ Excellent structured output support  
+   - ✅ Well-documented, stable API  
+   - ❌ Higher cost per token  
+   - ❌ Not chosen by owner
+
+2. **Anthropic Claude**  
+   - ✅ Strong reasoning, good for analysis  
+   - ✅ Structured outputs via tools  
+   - ❌ Higher cost  
+   - ❌ Not chosen by owner
+
+3. **Open-source models (Llama, Mixtral)**  
+   - ✅ No per-token cost  
+   - ✅ Self-hostable  
+   - ❌ GPU required for acceptable latency  
+   - ❌ Contradicts CPU-only decision (D3)  
+   - ❌ Structured output quality less reliable
+
+### Consequences
+
+- ✅ xAI Grok selected by owner, provides good structured output support
+- ✅ Provider-neutral interface enables switching providers later
+- ✅ Config-driven provider/model selection
+- ✅ Cost tracking and ceiling enforcement built in
+- ✅ Cassettes enable fast, deterministic CI without API keys
+- ⚠️ Live API key required for production and integration testing
+- 📌 Document LLM data flow in PRIVACY.md (no PII in prompts)
+- 📌 Monitor cost per analysis; set alerts for anomalies
+
+---
+
+## ADR-008: CPU-Only Compute and ASR Model Selection
+
+**Date:** 2026-10-09  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Production deployment target: Mac with OrbStack containers, which have no GPU access. Analysis pipeline must run on CPU and meet performance target: ≤1.5× media duration for 10-minute talks (≤15 minutes processing time).
+
+Key compute-intensive stages:
+- Automatic Speech Recognition (ASR)
+- Audio feature extraction (F0, syllable nuclei)
+- Video analysis (Phase 2: MediaPipe pose/hands/face)
+
+### Decision
+
+**Compute:** CPU only  
+**ASR:** faster-whisper with small or medium model, int8 quantization  
+**Target performance:** P50 ≤ 1.5× media duration
+
+**ASR specifics:**
+- faster-whisper (CTranslate2 backend) provides good CPU performance
+- Models: small.en / small / medium (configurable, default small for dev)
+- int8 quantization for faster inference
+- BatchedInferencePipeline for efficiency
+- Filler-preserving initial prompts (per-language)
+- word_timestamps=True for precise alignment
+- condition_on_previous_text=False to avoid hallucination drift
+
+**Audio features:**
+- Praat (parselmouth) for F0 extraction (two-pass with adaptive floor/ceiling)
+- Syllable nuclei detection per de Jong & Wempe (Python port)
+- All audio processing CPU-friendly
+
+### Alternatives Considered
+
+1. **CrisperWhisper** (filler-preserving Whisper variant)  
+   - ✅ Better filler preservation  
+   - ❌ CC-BY-NC-4.0 license (non-commercial restriction)  
+   - ❌ Owner decision D5: keep it off
+
+2. **WhisperX large-v3 model**  
+   - ✅ Better accuracy  
+   - ❌ Too slow on CPU (would exceed 1.5× target)
+
+3. **GPU acceleration**  
+   - ✅ 5-10× faster ASR  
+   - ❌ Production environment (OrbStack on Mac) has no GPU  
+   - ❌ Adds infrastructure complexity
+
+4. **Cloud ASR APIs** (Google Speech-to-Text, AWS Transcribe, Deepgram)  
+   - ✅ Fast, accurate, filler-preserving options available  
+   - ❌ Per-minute cost  
+   - ❌ Privacy: audio sent to third party  
+   - ❌ Vendor lock-in
+
+### Consequences
+
+- ✅ Works in production environment (CPU-only containers)
+- ✅ faster-whisper + int8 meets 1.5× performance target on modern CPUs
+- ✅ No additional GPU infrastructure or cost
+- ✅ Audio stays on-premise (privacy benefit)
+- ⚠️ Filler preservation quality lower than CrisperWhisper (mitigated with filler prompts and LLM disambiguation)
+- ⚠️ Performance degrades on older/slower CPUs (document minimum requirements)
+- 📌 Benchmark on target Mac hardware before production
+- 📌 Add performance regression tests: fail CI if 10-min fixture exceeds 20 min (1.5× + margin)
+
+---
+
+## ADR-009: Speaker Diarization Feature Flag
+
+**Date:** 2026-10-09  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Category 17 (Q&A Handling) requires distinguishing the primary speaker from questioners. Speaker diarization solves this, but:
+
+1. **Model availability:** Best open-source option is pyannote.audio's `speaker-diarization-community-1` pipeline
+2. **License gate:** The model is gated on Hugging Face and requires accepting terms
+3. **CI constraint:** Cannot download gated models in CI without credentials
+4. **Fallback needed:** System must work without diarization for development and when the token is unavailable
+
+### Decision
+
+**Diarization:** pyannote `speaker-diarization-community-1` behind a feature flag  
+**Feature flag:** Enabled only when `HF_TOKEN` environment variable is present  
+**Fallback:** When disabled, use LLM-based heuristic from spec (detect "repeat the question" phrases, low confidence)
+
+**Implementation:**
+- Diarization stage checks for `HF_TOKEN` at runtime
+- If absent: skip diarization, set `diarization_available=false` in pipeline metadata
+- If present: authenticate with Hugging Face, download/cache model, run diarization
+- Category 17 (Q&A) scoring:
+  - With diarization: full confidence, speaker-change boundaries
+  - Without diarization: fallback to LLM-based Q&A detection, confidence capped at 0.6 (H)
+- CI: no `HF_TOKEN` → diarization tests skipped, fallback path tested
+- Production: `HF_TOKEN` provided → full diarization enabled
+
+**Gated model compliance:**
+- Document that `HF_TOKEN` requires accepting pyannote model terms
+- Never download gated models in CI or without explicit token
+- README and PRIVACY.md note this optional dependency
+
+### Alternatives Considered
+
+1. **Require diarization always**  
+   - ❌ Breaks CI without HF token  
+   - ❌ Blocks development for contributors without token
+
+2. **Use a non-gated diarization model**  
+   - ❌ pyannote is state-of-the-art; alternatives (e.g., resemblyzer + spectral clustering) have worse accuracy  
+   - ❌ Building custom diarization is out of scope for MVP
+
+3. **Cloud diarization APIs** (AWS Transcribe, Google, Deepgram)  
+   - ❌ Per-minute cost  
+   - ❌ Privacy: audio sent to third party  
+   - ❌ Vendor lock-in
+
+4. **LLM-only Q&A detection (no diarization)**  
+   - ✅ Works without extra models  
+   - ❌ Lower accuracy, especially for short or overlapping questions  
+   - ✅ Used as fallback
+
+### Consequences
+
+- ✅ Best-in-class diarization when `HF_TOKEN` is available
+- ✅ System works (with degraded Q&A scoring) when token is absent
+- ✅ CI passes without gated model download
+- ✅ Contributors can develop without HF account
+- ⚠️ Two code paths to test (with/without diarization)
+- ⚠️ Production deployment must provide `HF_TOKEN` for full Q&A analysis
+- 📌 Document in README: "Optional: Set HF_TOKEN for speaker diarization (improves Q&A analysis)"
+- 📌 Add note in category 17 report card when diarization was unavailable
+
+---
+
+## ADR-010: Excluded Models and Licenses
+
+**Date:** 2026-10-09  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Owner decisions specify models and libraries to exclude due to license restrictions, ethical concerns, or scope constraints.
+
+### Decision
+
+**Excluded:**
+- **CrisperWhisper:** CC-BY-NC-4.0 license (non-commercial) – keep off (D5)
+- **openSMILE:** License restrictions for commercial use – not used (D5)
+- **OpenFace:** Emotion inference models – not used (D5)
+- **Speech Emotion Recognition (SER) models:** Emotion inference out of scope (D5)
+- **Any emotion inference models:** See §5 and §10.4 of SPEC – ethical constraint
+
+**Allowed (verified licenses):**
+- **librosa:** ISC License (permissive) – used for audio I/O and basic features
+- **parselmouth:** GPL-3.0 (OK for server-side use; ADR records this) – used for F0 extraction
+- **MediaPipe:** Apache-2.0 – used for pose/hands/face landmarks (Phase 2)
+
+**Emotion analysis constraint:**
+- No models that claim to infer emotions from expressions or voice
+- Facial expression analysis (category 14) is opt-in and **descriptive only**: "smile detected", "brow raised", never "happy" or "anxious"
+- Report text must use "expression signals" or "affect signals", never "emotion"
+
+### Alternatives Considered
+
+1. **Use openSMILE for voice quality features**  
+   - ❌ License unclear for commercial use
+
+2. **Use CrisperWhisper for better filler preservation**  
+   - ❌ Non-commercial license
+
+3. **Infer emotions from expressions**  
+   - ❌ Ethical risk: expressions ≠ emotions (see §5)  
+   - ❌ Violates §10.4 fairness principles  
+   - ❌ Owner explicitly ruled out
+
+### Consequences
+
+- ✅ All dependencies are commercially licensed or open-source permissive
+- ✅ parselmouth (GPL-3.0) is server-side only (no distribution to end users) – acceptable use
+- ✅ No pseudo-scientific emotion inference
+- ✅ Responsible affect analysis: describe observations, never infer internal states
+- ⚠️ Filler preservation slightly worse without CrisperWhisper (mitigated with prompts + LLM disambiguation)
+- 📌 Maintain LICENSES.txt with all dependencies and their licenses
+- 📌 Add CI check: fail if forbidden terms ("happy", "sad", "angry", "anxious", "fearful") appear in category 14 code or report text (en and pt-BR)
+
+---
+
 ## Change Log
 
 - **2026-10-09**: ADR-001 through ADR-006 (Phase 0 foundations)
+- **2026-10-09**: ADR-007 through ADR-010 (Phase 1: owner decisions D2, D3, D4, D5/D6)
