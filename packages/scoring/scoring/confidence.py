@@ -26,7 +26,8 @@ def compute_inclusion_factor(confidence: float, config: dict[str, Any]) -> float
         return 1.0
     elif confidence >= include_partial_from:
         # Linear ramp from 0 to 1
-        return (confidence - include_partial_from) / (include_full - include_partial_from)
+        result: float = (confidence - include_partial_from) / (include_full - include_partial_from)
+        return result
     else:
         return 0.0
 
