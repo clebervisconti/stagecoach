@@ -1,67 +1,66 @@
-# Lexicons
+# Lexicons Package
 
-Language-specific word lists for filler detection, hedge detection, and text analysis.
+Language-specific lexicons for fluency and clarity metrics in Stage Coach.
 
-## Structure
+## Contents
 
-```
-en.yaml               - English lexicons
-pt-BR.yaml            - Brazilian Portuguese lexicons
-```
+- `en.yaml` — English lexicons
+- `pt-BR.yaml` — Brazilian Portuguese lexicons
 
-## Format
+## Categories
 
-```yaml
-filler_sounds:        # Always fillers (um, uh, ...)
-  - um
-  - uh
-  - er
+### Filler Sounds
+Non-lexical vocalizations (um, uh, er, hmm, etc.) that are always counted as fillers without disambiguation.
 
-filler_words_candidates:  # Ambiguous; require LLM disambiguation
-  - like
-  - "you know"
-  - basically
+### Filler Word Candidates
+**Ambiguous words** that may be fillers or legitimate language use depending on context (like, so, basically, né, tipo, então).
 
-hedges:
-  - "i think maybe"
-  - "sort of"
-  - maybe
+**Important:** Every filler word candidate MUST be LLM-disambiguated in context before counting it as a filler. Do not count these automatically.
 
-apologies:
-  - sorry
-  - "i apologize"
+### Hedges
+Uncertainty markers and qualifiers that weaken statements (I think maybe, sort of, acho que, talvez).
 
-vague:
-  - "a lot"
-  - various
-  - stuff
+### Apologies
+Unnecessary apologies and self-deprecating phrases.
 
-signposts:
-  - first
-  - second
-  - "in summary"
-```
+### Rush Phrases
+Time-pressure indicators that suggest poor time management.
+
+### Vague Quantifiers
+Weasel words and imprecise language (a lot, various, muita coisa, várias coisas).
+
+### Signposts
+Positive signals: transitions and structural markers that help the audience follow along.
 
 ## Usage
 
+Lexicons are loaded by fluency and clarity metric functions and LLM prompts.
+
 ```python
-from lexicons import load_lexicon
+import yaml
 
-lex = load_lexicon("en")
-filler_sounds = lex["filler_sounds"]
+with open('packages/lexicons/en.yaml') as f:
+    en_lexicon = yaml.safe_load(f)
+
+filler_sounds = en_lexicon['filler_sounds']
 ```
-
-## Disambiguation
-
-Words in `filler_words_candidates` are context-dependent:
-- "like" as a filler: "It was, like, really hard"
-- "like" as a verb: "I like this approach"
-
-The LLM disambiguates these in context during fluency analysis.
 
 ## Sources
 
-Lexicons are compiled from:
-- Existing Stage Coach metrics.py
-- Laske & DiGennaro Reed (2024) [S12]
-- Native speaker consultation (pt-BR)
+- Appendix A of docs/SPEC.md
+- Existing `scripts/metrics.py` (carried forward and extended)
+- Research basis: Laske & DiGennaro Reed (2024) [S12] on filler impact
+
+## Language Notes
+
+### English
+- "like" and "so" are often legitimate connectives or comparisons
+- Distinguish between filled pauses and discourse markers by context
+
+### Brazilian Portuguese
+- **'é'** (short) is usually the verb 'to be'; only elongated **'éé'/'ééé'** is a filler sound
+- **'então'** and **'assim'** are often legitimate connectives or manner expressions
+- **'né'** (from "não é?") can be a tag question or a filler
+- **'tipo'** can mean "like/kind of" as a comparison or as a filler
+
+All ambiguous cases require LLM disambiguation per the SPEC fluency metrics (§4.4.11).
