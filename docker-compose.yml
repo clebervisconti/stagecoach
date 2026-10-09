@@ -82,6 +82,27 @@ services:
       - ./scripts:/scripts
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  worker:
+    build:
+      context: ./services/analysis
+      dockerfile: Dockerfile
+    container_name: stagecoach-worker
+    environment:
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://stagecoach:dev_password_change_in_prod@postgres:5432/stagecoach
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/analysis:/app
+      - ./packages:/packages
+      - worker_temp:/tmp/stagecoach
+    command: celery -A worker.app worker -Q cpu --loglevel=info --concurrency=2
+    profiles:
+      - workers  # Use --profile workers to start this service
+
   mailpit:
     # Use ghcr.io mirror to avoid Docker Hub rate limits in CI
     image: ghcr.io/axllent/mailpit:latest
@@ -121,3 +142,4 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  worker_temp:

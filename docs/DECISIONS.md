@@ -658,5 +658,91 @@ Owner decisions specify models and libraries to exclude due to license restricti
 
 ## Change Log
 
+---
+
+## ADR-011: Ingest Stage Implementation
+
+**Date:** 2026-10-09  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+The ingest stage is the pipeline's entry point and must:
+- Validate media files safely (no arbitrary code execution)
+- Enforce size and duration limits
+- Produce optimized transcodes for downstream stages
+- Detect modality for stage applicability (N/A rules)
+
+Per SPEC §6.2 and issue #17.
+
+### Decision
+
+**Validation**: ffprobe with subprocess parameterization (no shell strings)  
+**Transcoding**: ffmpeg with three outputs:
+- ASR audio: 16kHz mono WAV with loudness normalization (EBU R128 I=-16:TP=-1.5:LRA=11)
+- Analysis video: ≤720p, 15fps H.264, no audio (efficient for CV processing)
+- Playback video: H.264+AAC, faststart flag (web-optimized streaming)
+
+**Sprite thumbnails**: Every 5 seconds at 160px width for timeline hover previews
+
+**Modality detection**:
+- Audio-only: Check for video stream presence
+- Screen recording vs person video: Frame variance heuristic (improved with MediaPipe in Phase 2)
+- Person detection confidence score (0-1)
+
+**Limits** (heuristic, from SPEC §6.2):
+- Max file size: 2 GB
+- Max duration: 90 minutes
+
+**Safety**:
+- Parameterized subprocess calls (no shell=True, no string interpolation)
+- Timeout on all ffmpeg/ffprobe operations
+- Temp directory isolation for artifacts
+
+**Supported formats**:
+- Video containers: mov, mp4, webm, mkv, avi
+- Audio containers: mp3, m4a, wav, ogg, flac
+- Video codecs: h264, hevc, vp8, vp9, av1
+- Audio codecs: aac, mp3, opus, vorbis, flac, pcm_s16le
+
+### Alternatives Considered
+
+1. **MediaInfo library instead of ffprobe**
+   - ❌ Less detailed codec information than ffprobe
+   - ❌ ffmpeg is already required for transcoding
+
+2. **Cloud transcoding service** (AWS MediaConvert, Cloudflare Stream)
+   - ❌ Per-minute cost
+   - ❌ Privacy: media uploaded to third party
+   - ❌ Vendor lock-in
+
+3. **Single transcode for both analysis and playback**
+   - ❌ 15fps is too choppy for user-facing playback
+   - ❌ Analysis video doesn't need audio track (wastes storage)
+
+4. **MediaPipe for person detection in ingest**
+   - ✅ More accurate than frame variance
+   - ❌ Adds significant processing time to ingest (deferred to Phase 2 vision stage)
+   - ✅ Frame variance is good enough for modality flagging
+
+### Consequences
+
+- ✅ Parameterized subprocess calls prevent shell injection attacks
+- ✅ Three transcodes optimize for different consumers (ASR, CV, web playback)
+- ✅ Loudness normalization only on ASR copy preserves dynamics for prosody analysis
+- ✅ Clear validation errors with limits guide users to supported formats
+- ✅ SHA256 hash provides content verification and idempotency key component
+- ⚠️ ffmpeg transcoding is CPU-intensive (mitigated: runs async in Celery worker queue)
+- ⚠️ Person detection heuristic has false positives (acceptable; improved in Phase 2)
+- 📌 Benchmark transcoding time on target hardware (target: ≤ 0.3× media duration for ingest)
+- 📌 Monitor storage usage of three transcodes (mitigated by retention policies §10.3)
+
+---
+
+## Change Log
+
 - **2026-10-09**: ADR-001 through ADR-006 (Phase 0 foundations)
 - **2026-10-09**: ADR-007 through ADR-010 (Phase 1: owner decisions D2, D3, D4, D5/D6)
+- **2026-10-09**: ADR-011 (Phase 1: ingest stage implementation)
+

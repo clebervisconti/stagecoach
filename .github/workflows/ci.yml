@@ -59,6 +59,32 @@ jobs:
           cd packages/scoring
           pytest -v --tb=short
 
+  test-worker:
+    name: Worker Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      
+      - name: Install Python dependencies
+        run: |
+          cd services/analysis
+          pip install -r requirements.txt
+      
+      - name: Run worker tests
+        run: |
+          cd services/analysis
+          pytest -v --tb=short
+
   validate-config:
     name: Validate Scoring Config
     runs-on: ubuntu-latest
@@ -146,8 +172,8 @@ jobs:
       - name: Copy env example
         run: cp .env.example .env
       
-      - name: Start services (without MinIO profile)
-        run: docker compose up -d --wait
+      - name: Start services (core + worker)
+        run: docker compose --profile workers up -d --wait
         timeout-minutes: 5
       
       - name: Run migrations
@@ -179,6 +205,60 @@ jobs:
             sleep 2
           done
       
+      - name: Wait for worker health
+        run: |
+          echo "=== Checking Worker Health ==="
+          for i in {1..30}; do
+            RESULT=$(docker compose exec -T worker celery -A worker.app inspect ping 2>&1 || true)
+            if echo "$RESULT" | grep -q "pong"; then
+              echo "✅ Worker is healthy"
+              break
+            fi
+            echo "Attempt $i/30: waiting for worker..."
+            sleep 2
+          done
+      
+      - name: Generate test fixture
+        run: |
+          echo "=== Generating Test Fixture ==="
+          docker compose exec -T worker python tests/generate_fixture.py
+          echo "✅ Fixture generated"
+      
+      - name: Test ingest pipeline
+        run: |
+          echo "=== Testing Ingest Stage ==="
+          docker compose exec -T worker python << 'EOF'
+          import tempfile
+          from pathlib import Path
+          from worker import app
+          from celery import group
+          
+          # Test health check
+          result = app.send_task("tasks.health_check")
+          health = result.get(timeout=10)
+          print(f"Health check: {health}")
+          assert health["status"] == "healthy"
+          
+          # Test ingest with fixture
+          fixture_path = "/app/tests/fixtures/smoke_test.mp3"
+          
+          with tempfile.TemporaryDirectory() as tmpdir:
+              result = app.send_task(
+                  "tasks.ingest",
+                  args=[fixture_path, tmpdir, "smoke-test"],
+              )
+              
+              output = result.get(timeout=60)
+              print(f"Ingest output: {output}")
+              
+              assert "media_info" in output
+              assert "modality" in output
+              assert "artifacts" in output
+              assert output["modality"]["is_audio_only"]
+              
+          print("✅ Ingest pipeline test passed")
+          EOF
+      
       - name: Verify Phase 0 Acceptance Criteria
         run: |
           echo "=== Phase 0 Smoke Test ==="
@@ -188,9 +268,8 @@ jobs:
           docker compose ps
           echo ""
           
-          echo "2. Optional Services (tusd, worker):"
-          echo "   These use --profile flags (minio, workers) and are declared but not running in CI:"
-          docker compose config --services | grep -E "tusd|worker" || echo "   Services declared in compose file"
+          echo "2. Worker Service:"
+          docker compose ps worker
           echo ""
           
           echo "3. API Health:"
@@ -240,7 +319,12 @@ jobs:
           fi
           
           echo ""
-          echo "✅ Phase 0 smoke test complete"
+          echo "✅ Phase 0 + Phase 1 smoke test complete"
+          echo ""
+          echo "Phase 1 additions:"
+          echo "  - Celery worker running and healthy"
+          echo "  - Ingest stage processes test fixture"
+          echo "  - Pipeline produces artifacts and metadata"
       
       - name: MinIO status
         run: |
