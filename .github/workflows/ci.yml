@@ -251,19 +251,20 @@ jobs:
               
               print(f"Generated test fixture: {fixture_path}")
               
-              # Test health check
-              result = app.send_task("tasks.health_check")
+              # Test health check (explicitly route to cpu queue)
+              result = app.send_task("tasks.health_check", queue="cpu")
               health = result.get(timeout=10)
               print(f"Health check: {health}")
               assert health["status"] == "healthy"
               
-              # Test ingest
+              # Test ingest (explicitly route to cpu queue)
               output_dir = Path(tmpdir) / "output"
               output_dir.mkdir()
               
               result = app.send_task(
                   "tasks.ingest",
                   args=[str(fixture_path), str(output_dir), "smoke-test"],
+                  queue="cpu",
               )
               
               output = result.get(timeout=120)
