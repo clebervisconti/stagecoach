@@ -139,9 +139,8 @@ $ make test
 ```
 ============================= test session starts ==============================
 platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
-rootdir: /workspace/packages/scoring
 testpaths: tests
-collected 27 items
+collected 28 items
 
 tests/unit/test_config.py::TestConfigValidation::test_config_loads PASSED
 tests/unit/test_config.py::TestConfigValidation::test_all_context_weights_sum_to_100 PASSED
