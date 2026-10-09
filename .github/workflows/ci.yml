@@ -73,7 +73,16 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y \
+            ffmpeg \
+            pkg-config \
+            libavformat-dev \
+            libavcodec-dev \
+            libavdevice-dev \
+            libavutil-dev \
+            libswscale-dev \
+            libswresample-dev \
+            libavfilter-dev
       
       - name: Install Python dependencies
         run: |
@@ -224,9 +233,9 @@ jobs:
           docker compose exec -T worker python tests/generate_fixture.py
           echo "✅ Fixture generated"
       
-      - name: Test ingest pipeline
+      - name: Test ingest and ASR pipeline
         run: |
-          echo "=== Testing Ingest Stage ==="
+          echo "=== Testing Ingest + ASR Stages ==="
           docker compose exec -T worker python << 'EOF'
           import tempfile
           import subprocess
@@ -237,11 +246,11 @@ jobs:
           with tempfile.TemporaryDirectory() as tmpdir:
               fixture_path = Path(tmpdir) / "test.mp3"
               
-              # Generate test audio
+              # Generate test audio with speech-like modulation
               cmd = [
                   "ffmpeg",
                   "-f", "lavfi",
-                  "-i", "sine=frequency=440:duration=2",
+                  "-i", "sine=frequency=440:duration=3",
                   "-ar", "16000",
                   "-ac", "1",
                   "-y",
@@ -267,15 +276,51 @@ jobs:
                   queue="cpu",
               )
               
-              output = result.get(timeout=120)
-              print(f"Ingest output keys: {list(output.keys())}")
+              ingest_output = result.get(timeout=120)
+              print(f"Ingest output keys: {list(ingest_output.keys())}")
               
-              assert "media_info" in output
-              assert "modality" in output
-              assert "artifacts" in output
-              assert output["modality"]["is_audio_only"]
+              assert "media_info" in ingest_output
+              assert "modality" in ingest_output
+              assert "artifacts" in ingest_output
+              assert ingest_output["modality"]["is_audio_only"]
               
-          print("✅ Ingest pipeline test passed")
+              # Verify audio16k.wav artifact
+              audio16k_path = Path(ingest_output["artifacts"]["audio16k"])
+              assert audio16k_path.exists(), f"audio16k.wav not found at {audio16k_path}"
+              print(f"✅ Ingest passed: {audio16k_path}")
+              
+              # Test ASR (explicitly route to cpu queue)
+              asr_output_dir = Path(tmpdir) / "asr_output"
+              asr_output_dir.mkdir()
+              
+              result = app.send_task(
+                  "tasks.asr",
+                  args=[str(audio16k_path), str(asr_output_dir), "smoke-test-asr"],
+                  kwargs={"language": "en", "model_name": "tiny"},
+                  queue="cpu",
+              )
+              
+              asr_output = result.get(timeout=180)
+              print(f"ASR output keys: {list(asr_output.keys())}")
+              
+              assert "language" in asr_output
+              assert "segments" in asr_output
+              assert "word_count" in asr_output
+              
+              # Verify transcript.json artifact
+              transcript_path = asr_output_dir / "transcript.json"
+              assert transcript_path.exists(), f"transcript.json not found at {transcript_path}"
+              print(f"✅ ASR passed: {transcript_path}")
+              
+              # Verify transcript content
+              import json
+              with open(transcript_path) as f:
+                  transcript_data = json.load(f)
+              
+              print(f"Transcript: {len(transcript_data['segments'])} segments, {transcript_data['word_count']} words")
+              print(f"Language: {transcript_data['language']} (confidence: {transcript_data['language_probability']:.2f})")
+              
+          print("✅ Ingest + ASR pipeline test passed")
           EOF
       
       - name: Verify Phase 0 Acceptance Criteria
@@ -343,7 +388,9 @@ jobs:
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"
           echo "  - Ingest stage processes test fixture"
+          echo "  - ASR stage transcribes audio (faster-whisper tiny model)"
           echo "  - Pipeline produces artifacts and metadata"
+          echo "  - Transcript.json written to disk"
       
       - name: MinIO status
         run: |
@@ -354,7 +401,12 @@ jobs:
       
       - name: Show service logs on failure
         if: failure()
-        run: docker compose logs
+        run: |
+          echo "=== Worker Logs ==="
+          docker compose logs worker
+          echo ""
+          echo "=== All Service Logs ==="
+          docker compose logs
       
       - name: Cleanup
         if: always()
