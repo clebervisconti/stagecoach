@@ -4,11 +4,11 @@ An evidence-based presentation coaching platform that analyzes recorded presenta
 
 ## Project Status
 
-🚧 **Phase 0 (Foundations)** in progress
+🚧 **Phase 1 (Audio + Text MVP)** in progress
 
-- Repository bootstrap complete
-- Implementing scoring configuration and engine
-- Building foundation for audio + text MVP
+- Phase 0 foundations complete
+- Ingest stage implemented (issue #17)
+- Building ASR and orchestration stages
 
 ## Quick Links
 
