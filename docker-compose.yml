@@ -79,6 +79,40 @@ services:
       - ./scripts:/scripts
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: stagecoach-mailpit
+    ports:
+      - "8025:8025"  # Web UI
+      - "1025:1025"  # SMTP
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: stagecoach-web
+    ports:
+      - "3000:3000"
+    environment:
+      AUTH_SECRET: dev_secret_change_in_prod_use_openssl_rand_base64_32
+      NEXTAUTH_URL: http://localhost:3000
+      EMAIL_SERVER: smtp://mailpit:1025
+      EMAIL_FROM: noreply@stagecoach.example.com
+      NEXT_PUBLIC_API_URL: http://api:8000
+    depends_on:
+      - api
+      - mailpit
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+    profiles:
+      - web  # Optional in Phase 0 until fully functional
+
 volumes:
   postgres_data:
   redis_data:

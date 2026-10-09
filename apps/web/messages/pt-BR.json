@@ -1,0 +1,42 @@
+{
+  "common": {
+    "appName": "Stage Coach",
+    "signIn": "Entrar",
+    "signOut": "Sair",
+    "loading": "Carregando...",
+    "error": "Erro",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "close": "Fechar"
+  },
+  "nav": {
+    "home": "Início",
+    "sessions": "Sessões",
+    "trends": "Progresso",
+    "settings": "Configurações",
+    "prep": "Preparação"
+  },
+  "marketing": {
+    "tagline": "Coaching de apresentações baseado em evidências",
+    "description": "Faça upload ou grave sua apresentação. Receba um relatório detalhado e baseado em pesquisas com feedback acionável.",
+    "getStarted": "Começar",
+    "learnMore": "Saiba Mais"
+  },
+  "auth": {
+    "signInTitle": "Entrar no Stage Coach",
+    "signInDescription": "Digite seu email para receber um link mágico",
+    "emailPlaceholder": "voce@exemplo.com",
+    "sendMagicLink": "Enviar Link Mágico",
+    "checkEmail": "Verifique seu email",
+    "magicLinkSent": "Enviamos um link mágico para {email}. Clique no link para entrar.",
+    "invalidEmail": "Por favor, insira um endereço de email válido"
+  },
+  "dashboard": {
+    "welcome": "Bem-vindo de volta",
+    "recentSessions": "Sessões Recentes",
+    "noSessions": "Nenhuma sessão ainda",
+    "newSession": "Nova Sessão"
+  }
+}
