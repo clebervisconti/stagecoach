@@ -6,6 +6,8 @@ Per issues #18 and #19:
 - Verifies Celery chain (ingest → ASR) executes successfully
 - Verifies job_steps are created and tracked
 - Verifies SSE progress events are emitted
+
+NOTE: These tests require Redis and should run in Docker Compose environment only.
 """
 
 import asyncio
@@ -16,8 +18,21 @@ import tempfile
 import time
 from pathlib import Path
 
-import aiohttp
+import pytest
 import redis
+
+# Skip all tests in this module if Redis is not available
+try:
+    r = redis.from_url("redis://localhost:6379", socket_connect_timeout=1)
+    r.ping()
+    REDIS_AVAILABLE = True
+except (redis.ConnectionError, redis.TimeoutError):
+    REDIS_AVAILABLE = False
+
+pytestmark = pytest.mark.skipif(
+    not REDIS_AVAILABLE,
+    reason="Redis not available - these tests run in Docker Compose Smoke Test only"
+)
 
 
 def generate_test_fixture(tmpdir: Path) -> Path:
@@ -173,8 +188,11 @@ def test_progress_events():
         print(f"   Succeeded: {len(succeeded)}")
 
 
+@pytest.mark.asyncio
 async def test_sse_endpoint():
     """Test the SSE endpoint (requires API to be running)."""
+    import aiohttp
+    
     print("\nTesting SSE endpoint...")
     
     # Note: This test requires the API to be running and a valid session
