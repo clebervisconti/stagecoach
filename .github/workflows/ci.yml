@@ -163,7 +163,7 @@ jobs:
       - name: Seed scoring config
         run: |
           echo "=== Seeding Scoring Config ==="
-          docker compose exec -T -e PYTHONPATH=/app api python /app/app/seed_scoring_config.py
+          docker compose exec -T api python -m app.seed.scoring_config
           echo "✅ Scoring config seeded"
       
       - name: Wait for API health
@@ -179,36 +179,32 @@ jobs:
             sleep 2
           done
       
-      - name: Test Phase 0 Exit Criteria
+      - name: Verify Phase 0 Acceptance (PR #84 scope)
         run: |
-          echo "=== Phase 0 Smoke Test ==="
+          echo "=== PR #84 Smoke Test: Database, Migrations, Seeding ==="
           echo ""
+          
           echo "1. Service Status:"
           docker compose ps
           echo ""
           
-          echo "2. API Health Check:"
-          curl -s http://localhost:8000/health | python3 -m json.tool
+          echo "2. API Health Check (should return 200):"
+          curl -f -s http://localhost:8000/health | python3 -m json.tool
           echo ""
           
-          echo "3. Test API Endpoints (no auth - expected to get 401s):"
-          echo "GET /api/v1/me (should return 401):"
-          curl -s -w "\nHTTP Status: %{http_code}\n" http://localhost:8000/api/v1/me || true
+          echo "3. Database Tables (7 tables expected):"
+          docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "\dt" | grep -E "table|users|consents|sessions|media_assets|analysis_jobs|job_steps|scoring_configs"
           echo ""
           
-          echo "GET /api/v1/sessions (should return 401):"
-          curl -s -w "\nHTTP Status: %{http_code}\n" http://localhost:8000/api/v1/sessions || true
+          echo "4. Verify Seeded Config Row:"
+          docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "SELECT version, created_at FROM scoring_configs LIMIT 1;"
           echo ""
           
-          echo "4. Check Database Connection:"
-          docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "\dt" | head -20
-          echo ""
-          
-          echo "5. Check Redis Connection:"
+          echo "5. Redis Ping:"
           docker compose exec -T redis redis-cli ping
           echo ""
           
-          echo "✅ Phase 0 smoke test complete"
+          echo "✅ PR #84 smoke test complete"
       
       - name: MinIO status
         run: |

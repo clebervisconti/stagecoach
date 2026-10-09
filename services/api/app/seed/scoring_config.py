@@ -74,5 +74,9 @@ def seed_scoring_config():
         session.close()
 
 
-if __name__ == "__main__":
+def main():
+    """Entry point for python -m app.seed.scoring_config"""
     seed_scoring_config()
+
+if __name__ == "__main__":
+    main()
