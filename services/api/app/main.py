@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 from app.routers import users, sessions
 
+from app.routers import users
+
 app = FastAPI(
     title="Stage Coach API",
     description="Evidence-based presentation coaching platform",
@@ -20,9 +22,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+<<<<<<< HEAD
 # Register routers
 app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(sessions.router, prefix="/api/v1", tags=["sessions"])
+=======
+# Include routers
+app.include_router(users.router, prefix="/api/v1")
+>>>>>>> origin/main
 
 
 @app.get("/")
@@ -47,21 +54,6 @@ async def health():
         "timestamp": datetime.utcnow().isoformat(),
         "services": {
             "api": "up",
-            # Phase 0: no DB/Redis checks yet
+            # Phase 0: DB check would go here
         },
-    }
-
-
-@app.get("/me")
-async def get_me():
-    """Get current user info (placeholder).
-    
-    Phase 0: returns mock data.
-    Phase 1+: requires authentication.
-    """
-    return {
-        "id": "00000000-0000-0000-0000-000000000000",
-        "email": "dev@example.com",
-        "name": "Development User",
-        "locale": "en",
     }
