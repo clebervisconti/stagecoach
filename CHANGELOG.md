@@ -59,10 +59,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Marketing landing page
 - Strict Content Security Policy per §10.7
 
+##### Added - Full Dev Stack (#13, #14)
+- Celery worker skeleton with cpu/gpu/llm queue declarations
+- TUS server for resumable uploads (tusd)
+- Session creation API endpoints
+- Database seed scripts (demo user, scoring config)
+- Updated `make dev` workflow
+
+##### Added - Privacy Baseline (#15)
+- docs/PRIVACY.md stub per §10
+- Gitleaks secret scanning in CI
+- Structured logging (no PII/media)
+
 ## Version History
 
-- **0.1.0** - Phase 0 Foundations (In Progress)
-  - Issues #1-#16: Monorepo, scoring engine, database, type generation, web app skeleton
+- **0.1.0** - Phase 0 Foundations (Complete)
+  - Issues #1-#16: Monorepo, scoring engine, database, type generation, web app, auth, dev stack
   
 ---
 
