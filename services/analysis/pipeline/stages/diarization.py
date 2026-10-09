@@ -85,7 +85,7 @@ def run_pyannote_diarization(audio_path: Path) -> List[SpeakerSegment]:
     
     # Load pipeline with HF token
     pipeline = Pipeline.from_pretrained(
-        "pyannote/speaker-diarization-3.1",
+        "pyannote/speaker-diarization-community-1",
         use_auth_token=HF_TOKEN
     )
     

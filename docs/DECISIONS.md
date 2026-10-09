@@ -760,13 +760,13 @@ Per SPEC §6.2 and issue #17.
 ### Context
 
 Category 17 (Q&A Handling) requires distinguishing the primary speaker from questioners. Speaker diarization solves this, but:
-- Best open-source model is pyannote/speaker-diarization-3.1 (gated on Hugging Face)
+- Best open-source model is pyannote/speaker-diarization-community-1 (gated on Hugging Face)
 - CI cannot download gated models without credentials
 - System must work without diarization for development
 
 ### Decision
 
-**Diarization:** pyannote/speaker-diarization-3.1 behind HF_TOKEN feature flag  
+**Diarization:** pyannote/speaker-diarization-community-1 behind HF_TOKEN feature flag  
 **License:** CC-BY-4.0 (permissive, requires attribution)  
 **Feature gate:** `HF_TOKEN` environment variable  
 **Fallback:** When disabled, use LLM-based Q&A detection per SPEC §6.3
@@ -787,7 +787,7 @@ Category 17 (Q&A Handling) requires distinguishing the primary speaker from ques
 
 **Production:**
 - Set `HF_TOKEN` via Cursor Dashboard (Cloud Agents > Secrets) or env config
-- Token requires accepting pyannote/speaker-diarization-3.1 terms on Hugging Face
+- Token requires accepting pyannote/speaker-diarization-community-1 terms on Hugging Face
 
 **Attribution:**
 - CC-BY-4.0 requires attribution
