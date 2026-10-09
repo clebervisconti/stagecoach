@@ -1,0 +1,71 @@
+# LLM Configuration
+# Per ADR-007: Provider-neutral configuration with xAI as the first provider
+# All providers, models, and prices configured here (never hard-coded)
+
+# Default provider (can be overridden via LLM_PROVIDER env var)
+default_provider: xai
+
+# Provider configurations
+providers:
+  xai:
+    name: xAI
+    base_url: https://api.x.ai/v1
+    models:
+      grok-beta:
+        display_name: Grok Beta
+        supports_structured_output: true
+        max_tokens: 131072
+        # Per-token prices in USD (update these based on xAI pricing)
+        price_per_input_token: 0.000005   # $5 per 1M input tokens (estimate)
+        price_per_output_token: 0.000015  # $15 per 1M output tokens (estimate)
+        temperature_default: 0.4
+        temperature_range: [0.0, 2.0]
+      
+      grok-2-1212:
+        display_name: Grok 2 (December 2024)
+        supports_structured_output: true
+        max_tokens: 131072
+        price_per_input_token: 0.000002   # $2 per 1M input tokens (estimate)
+        price_per_output_token: 0.000010  # $10 per 1M output tokens (estimate)
+        temperature_default: 0.4
+        temperature_range: [0.0, 2.0]
+
+# Model selection per prompt type (can be overridden)
+model_assignments:
+  default: grok-beta
+  # Future: specific models for specific prompt types
+  # outline_v1: grok-2-1212
+  # message_v1: grok-beta
+
+# Cost ceiling per analysis (USD)
+# Analysis will fail if estimated cost exceeds this
+cost_ceiling_per_analysis: 0.50  # $0.50 per analysis
+
+# Timeout settings (seconds)
+timeout:
+  default: 60
+  long_form: 120  # For longer prompts like outline extraction
+
+# Retry settings
+retry:
+  max_attempts: 3
+  backoff_factor: 2  # Exponential backoff: 1s, 2s, 4s
+
+# Cassette settings for deterministic testing
+cassettes:
+  enabled: true  # Automatically use cassettes in tests
+  directory: tests/fixtures/llm_cassettes
+  record_mode: once  # once, new_episodes, none, all
+  match_on:
+    - method
+    - uri
+    - body
+
+# Logging
+logging:
+  # Never log prompts with personal content in production
+  log_prompts: false  # Set to true only in dev/test
+  log_responses: false  # Set to true only in dev/test
+  # Always log token usage and costs
+  log_usage: true
+  log_costs: true
