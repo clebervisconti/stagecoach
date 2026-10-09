@@ -51,18 +51,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI: lint, type check, tests, config validation, secret scan, compose smoke test
 - Architecture Decision Records (ADR-001 through ADR-006)
 
-##### Added - Next.js Web Application (Partial)
+##### Added - Next.js Web Application
 - Next.js 14 with App Router and TypeScript strict mode
 - Tailwind CSS with shadcn/ui theming
 - next-intl for bilingual support (en, pt-BR)
 - Auth.js v5 with Nodemailer SMTP provider
-- Marketing landing page
+- Marketing landing page + app shell (sessions/trends/prep/settings pages)
 - Strict Content Security Policy per §10.7
+
+##### Added - FastAPI Backend
+- FastAPI with pydantic v2
+- JWT verification for Auth.js tokens (HS256)
+- GET/PATCH `/api/v1/me` endpoints
+- POST `/api/v1/sessions` endpoint (returns session + tus_url)
+- RFC 9457 problem+json error responses
+
+##### Added - Full Dev Stack
+- Celery worker skeleton with cpu/gpu/llm queue declarations
+- TUS server for resumable uploads (tusd)
+- Database seed scripts (demo user, scoring config)
+- Updated `make dev` workflow
+
+##### Added - Privacy Baseline
+- docs/PRIVACY.md stub per §10
+- Gitleaks secret scanning in CI
+- Structured logging (no PII/media)
 
 ## Version History
 
-- **0.1.0** - Phase 0 Foundations (In Progress)
-  - Issues #1-#16: Monorepo, scoring engine, database, type generation, web app skeleton
+- **0.1.0** - Phase 0 Foundations (Complete)
+  - Issues #1-#16: Monorepo, scoring engine, database, type generation, web app, auth, dev stack
   
 ---
 

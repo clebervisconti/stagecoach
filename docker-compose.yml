@@ -66,6 +66,7 @@ services:
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
+      AUTH_SECRET: dev_secret_change_in_prod_use_openssl_rand_base64_32
     depends_on:
       postgres:
         condition: service_healthy

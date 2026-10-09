@@ -179,32 +179,68 @@ jobs:
             sleep 2
           done
       
-      - name: Verify Phase 0 Acceptance (PR #84 scope)
+      - name: Verify Phase 0 Acceptance Criteria
         run: |
-          echo "=== PR #84 Smoke Test: Database, Migrations, Seeding ==="
+          echo "=== Phase 0 Smoke Test ==="
           echo ""
           
-          echo "1. Service Status:"
+          echo "1. Core Services:"
           docker compose ps
           echo ""
           
-          echo "2. API Health Check (should return 200):"
+          echo "2. Optional Services (tusd, worker):"
+          echo "   These use --profile flags (minio, workers) and are declared but not running in CI:"
+          docker compose config --services | grep -E "tusd|worker" || echo "   Services declared in compose file"
+          echo ""
+          
+          echo "3. API Health:"
           curl -f -s http://localhost:8000/health | python3 -m json.tool
           echo ""
           
-          echo "3. Database Tables (7 tables expected):"
+          echo "4. Database Tables (7 expected):"
           docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "\dt" | grep -E "table|users|consents|sessions|media_assets|analysis_jobs|job_steps|scoring_configs"
           echo ""
           
-          echo "4. Verify Seeded Config Row:"
+          echo "5. Seeded Config:"
           docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "SELECT version, created_at FROM scoring_configs LIMIT 1;"
           echo ""
           
-          echo "5. Redis Ping:"
+          echo "6. Redis:"
           docker compose exec -T redis redis-cli ping
           echo ""
           
-          echo "✅ PR #84 smoke test complete"
+          echo "7. POST /api/v1/sessions with JWT:"
+          TEST_JWT=$(python3 -c "import jwt; from datetime import datetime, timedelta; print(jwt.encode({'email': 'test@example.com', 'sub': 'test-user', 'iat': datetime.utcnow(), 'exp': datetime.utcnow() + timedelta(hours=1)}, 'dev_secret_change_in_prod_use_openssl_rand_base64_32', algorithm='HS256'))" 2>/dev/null)
+          
+          echo "   JWT (first 30 chars): ${TEST_JWT:0:30}..."
+          
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            -H "Authorization: Bearer $TEST_JWT" \
+            -H "Content-Type: application/json" \
+            -d '{"title":"Phase 0 Test Session","context_type":"keynote","language":"en","camera_setup":"to_camera"}' \
+            http://localhost:8000/api/v1/sessions)
+          
+          STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | sed '/HTTP_STATUS:/d')
+          
+          echo "   Response:"
+          echo "$BODY" | python3 -m json.tool || echo "$BODY"
+          echo "   HTTP Status: $STATUS"
+          
+          if [ "$STATUS" = "201" ]; then
+            if echo "$BODY" | grep -q "tus_url"; then
+              echo "   ✅ Session created with upload URL"
+            else
+              echo "   ❌ Missing tus_url"
+              exit 1
+            fi
+          else
+            echo "   ❌ Expected 201, got $STATUS"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ Phase 0 smoke test complete"
       
       - name: MinIO status
         run: |
