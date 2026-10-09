@@ -1,0 +1,395 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stagecoach.example.com/schemas/analysis_result.v1.json",
+  "title": "AnalysisResult",
+  "description": "Complete analysis output for a presentation recording",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "session",
+    "provenance",
+    "media",
+    "quality",
+    "overall",
+    "pillars",
+    "categories",
+    "metrics",
+    "evidence",
+    "insights",
+    "series",
+    "transcript_ref"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "context_type",
+        "language",
+        "slot_min",
+        "qa_in_slot",
+        "camera_setup"
+      ],
+      "properties": {
+        "id": {"type": "string", "format": "uuid"},
+        "context_type": {
+          "enum": [
+            "keynote",
+            "breakout",
+            "exec_briefing",
+            "sales_pitch",
+            "virtual_meeting",
+            "class_academic",
+            "other"
+          ]
+        },
+        "language": {"enum": ["en", "pt-BR"]},
+        "slot_min": {"type": ["number", "null"]},
+        "qa_in_slot": {"type": "boolean"},
+        "camera_setup": {
+          "enum": ["stage", "to_camera", "screen_recording", "audio_only", "unknown"]
+        },
+        "talk_plan_id": {"type": ["string", "null"]}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pipeline_version",
+        "scoring_config_version",
+        "stages",
+        "models",
+        "prompts",
+        "generated_at"
+      ],
+      "properties": {
+        "pipeline_version": {"type": "string"},
+        "scoring_config_version": {"type": "string"},
+        "stages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "version", "duration_s", "status"],
+            "properties": {
+              "name": {"type": "string"},
+              "version": {"type": "string"},
+              "duration_s": {"type": "number"},
+              "status": {"enum": ["ok", "partial", "skipped", "failed"]}
+            }
+          }
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["component", "name", "version"],
+            "properties": {
+              "component": {"type": "string"},
+              "name": {"type": "string"},
+              "version": {"type": "string"}
+            }
+          }
+        },
+        "prompts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "version"],
+            "properties": {
+              "id": {"type": "string"},
+              "version": {"type": "string"}
+            }
+          }
+        },
+        "generated_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "media": {
+      "type": "object",
+      "required": ["duration_s", "has_video", "has_audio", "speech_span_s", "fps_analyzed"],
+      "properties": {
+        "duration_s": {"type": "number"},
+        "has_video": {"type": "boolean"},
+        "has_audio": {"type": "boolean"},
+        "speech_span_s": {"type": "number"},
+        "fps_analyzed": {"type": ["number", "null"]}
+      }
+    },
+    "quality": {
+      "type": "object",
+      "description": "Data quality indicators",
+      "required": [
+        "asr_mean_word_prob",
+        "snr_db",
+        "face_visible_ratio",
+        "person_visible_ratio",
+        "hands_visible_ratio",
+        "face_px_median",
+        "warnings"
+      ],
+      "properties": {
+        "asr_mean_word_prob": {"type": "number"},
+        "snr_db": {"type": ["number", "null"]},
+        "face_visible_ratio": {"type": ["number", "null"]},
+        "person_visible_ratio": {"type": ["number", "null"]},
+        "hands_visible_ratio": {"type": ["number", "null"]},
+        "face_px_median": {"type": ["number", "null"]},
+        "warnings": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "overall": {
+      "type": "object",
+      "required": ["score", "level", "coverage", "confidence", "display_band", "partial"],
+      "properties": {
+        "score": {"type": ["integer", "null"], "minimum": 0, "maximum": 100},
+        "level": {"type": ["integer", "null"], "minimum": 1, "maximum": 5},
+        "coverage": {"type": "number"},
+        "confidence": {"type": "number"},
+        "display_band": {"type": "integer"},
+        "partial": {"type": "boolean"}
+      }
+    },
+    "pillars": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "score", "confidence", "categories"],
+        "properties": {
+          "id": {
+            "enum": ["message", "story_impact", "visuals", "voice", "body", "presence_time"]
+          },
+          "score": {"type": ["integer", "null"]},
+          "confidence": {"type": ["number", "null"]},
+          "categories": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        }
+      }
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "pillar",
+          "applicable",
+          "na_reason",
+          "score",
+          "level",
+          "confidence",
+          "confidence_label",
+          "weight_used",
+          "top_contributors",
+          "evidence_ids",
+          "sources",
+          "counterfactual"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "core_message",
+              "structure",
+              "storytelling",
+              "audience_adaptation",
+              "opening_close",
+              "clarity",
+              "impact",
+              "visual_aids",
+              "pace_pausing",
+              "vocal_variety",
+              "fluency",
+              "gestures_body",
+              "eye_contact",
+              "facial_affect",
+              "energy_presence",
+              "time_management",
+              "qa"
+            ]
+          },
+          "pillar": {"type": "string"},
+          "applicable": {"type": "boolean"},
+          "na_reason": {"type": ["string", "null"]},
+          "score": {"type": ["integer", "null"]},
+          "level": {"type": ["integer", "null"]},
+          "confidence": {"type": ["number", "null"]},
+          "confidence_label": {"enum": ["high", "medium", "low", null]},
+          "weight_used": {"type": "number"},
+          "capped_by_gate": {"type": ["string", "null"]},
+          "top_contributors": {
+            "type": "array",
+            "items": {"type": "string"},
+            "maxItems": 2
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^(S\\d+|heuristic)$"
+            }
+          },
+          "counterfactual": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "category_id",
+          "raw_value",
+          "unit",
+          "score",
+          "weight",
+          "confidence",
+          "included",
+          "basis"
+        ],
+        "properties": {
+          "id": {"type": "string"},
+          "category_id": {"type": "string"},
+          "raw_value": {"type": ["number", "string", "boolean", "null"]},
+          "unit": {"type": "string"},
+          "score": {"type": ["number", "null"]},
+          "weight": {"type": "number"},
+          "confidence": {"type": "number"},
+          "included": {"type": "boolean"},
+          "basis": {
+            "type": "object",
+            "required": ["kind", "source"],
+            "properties": {
+              "kind": {"enum": ["research", "heuristic", "llm_judgment"]},
+              "source": {"type": "string"}
+            }
+          },
+          "target_band": {"type": ["string", "null"]},
+          "details": {"type": "object"}
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "category_id",
+          "t_start",
+          "t_end",
+          "modality",
+          "kind",
+          "text",
+          "confidence"
+        ],
+        "properties": {
+          "id": {"type": "string"},
+          "category_id": {"type": "string"},
+          "metric_id": {"type": ["string", "null"]},
+          "t_start": {"type": "number", "minimum": 0},
+          "t_end": {"type": "number", "minimum": 0},
+          "modality": {"enum": ["audio", "text", "video", "slides", "fusion"]},
+          "kind": {"enum": ["strength", "issue", "observation"]},
+          "text": {"type": "string", "maxLength": 400},
+          "quote": {"type": ["string", "null"]},
+          "seg_ids": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "measurement": {"type": ["object", "null"]},
+          "confidence": {"type": "number"},
+          "user_disputed": {"type": "boolean", "default": false}
+        }
+      }
+    },
+    "insights": {
+      "type": "object",
+      "required": ["summary", "strengths", "weaknesses", "opportunities"],
+      "properties": {
+        "summary": {"type": "string", "maxLength": 1200},
+        "strengths": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["category_id", "title", "body", "fix", "drill_ids", "evidence_ids"],
+            "properties": {
+              "category_id": {"type": "string"},
+              "title": {"type": "string", "maxLength": 120},
+              "body": {"type": "string", "maxLength": 800},
+              "fix": {"type": ["string", "null"], "maxLength": 600},
+              "drill_ids": {
+                "type": "array",
+                "items": {"type": "string"}
+              },
+              "evidence_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "minItems": 1
+              },
+              "impact_estimate": {"type": ["number", "null"]}
+            }
+          }
+        },
+        "weaknesses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/properties/insights/properties/strengths/items"
+          }
+        },
+        "opportunities": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/properties/insights/properties/strengths/items"
+          }
+        }
+      }
+    },
+    "series": {
+      "type": "object",
+      "description": "URIs of 1-s resolution time series",
+      "additionalProperties": {"type": "string"}
+    },
+    "transcript_ref": {
+      "type": "string"
+    },
+    "objectives": {
+      "type": "array",
+      "description": "Optional: scores against talk-plan objectives",
+      "items": {
+        "type": "object",
+        "required": ["objective_id", "text", "status", "score", "evidence_ids"],
+        "properties": {
+          "objective_id": {"type": "string"},
+          "text": {"type": "string"},
+          "status": {"enum": ["met", "partial", "not_met", "na"]},
+          "score": {"type": ["integer", "null"]},
+          "evidence_ids": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        }
+      }
+    }
+  }
+}
