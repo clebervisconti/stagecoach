@@ -104,6 +104,25 @@ jobs:
               raise
           EOF
 
+  check-generated:
+    name: Check Generated Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install "datamodel-code-generator[http]==0.25.1"
+      
+      - name: Check generated types are up to date
+        run: |
+          bash scripts/check_generated.sh
+
   secret-scan:
     name: Secret Scan
     runs-on: ubuntu-latest
@@ -130,6 +149,14 @@ jobs:
       - name: Start services (without MinIO profile)
         run: docker compose up -d --wait
         timeout-minutes: 5
+      
+      - name: Run migrations
+        run: |
+          docker compose exec -T api bash -c "cd /app && alembic upgrade head"
+      
+      - name: Seed scoring config
+        run: |
+          docker compose exec -T api python /workspace/scripts/seed_scoring_config.py
       
       - name: Wait for API health
         run: |
