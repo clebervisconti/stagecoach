@@ -853,7 +853,7 @@ Issue #21 requires precise word boundaries and recovery of fillers that Whisper 
 - en: `facebook/wav2vec2-large-960h-lv60-self` (Apache-2.0)
 - pt: `jonatasgrosman/wav2vec2-large-xlsr-53-portuguese` (Apache-2.0)
 - VAD: Silero VAD (MIT)
-- WhisperX: BSD-4-Clause
+- WhisperX: BSD-2-Clause
 
 **Pipeline flow:**
 ```
@@ -900,7 +900,7 @@ audio16k.wav + transcript.json
 - ✅ Precise word boundaries enable accurate fluency and pacing metrics
 - ✅ Gap detection recovers some dropped fillers (acoustic fallback)
 - ✅ VAD segments can be used for silence/pause analysis
-- ✅ All dependencies are permissively licensed (Apache-2.0, MIT, BSD-4)
+- ✅ All dependencies are permissively licensed (Apache-2.0, MIT, BSD-2)
 - ⚠️ WhisperX alignment adds ~30s overhead for 10-min talks on CPU
 - ⚠️ Acoustic fallback has low confidence (0.3); LLM disambiguation needed downstream
 - 📌 Phase 2: implement gap-detector re-decoding with Whisper beam search
