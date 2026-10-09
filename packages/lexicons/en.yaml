@@ -1,0 +1,84 @@
+# English lexicons for fluency and clarity metrics
+# Source: Appendix A of SPEC.md
+# Based on existing metrics.py, extended per specification
+
+# Filler sounds: clear non-lexical vocalizations
+# These are always counted as fillers (no disambiguation needed)
+filler_sounds:
+  - um
+  - umm
+  - uh
+  - uhh
+  - er
+  - erm
+  - ah
+  - hmm
+  - mm
+
+# Filler word candidates: AMBIGUOUS - must be LLM-disambiguated in context
+# "like" can be a comparison or a filler; "so" can be a connective; etc.
+filler_words_candidates:
+  - like
+  - you know
+  - basically
+  - actually
+  - literally
+  - i mean
+  - sort of
+  - kind of
+  - so yeah
+  - right?
+  - okay so
+  - so
+
+# Hedges and uncertainty markers
+hedges:
+  - i think maybe
+  - i guess
+  - sort of
+  - kind of
+  - maybe
+  - probably
+  - just
+  - a little bit
+  - i'm not sure but
+
+# Unnecessary apologies
+apologies:
+  - sorry
+  - i apologize
+  - excuse the
+  - bear with me
+  - i know this slide is busy
+
+# Rush phrases (time management warning signs)
+rush_phrases:
+  - i'll go quickly
+  - quickly go through
+  - i'll skip
+  - we're running out of time
+  - just to wrap up quickly
+
+# Vague quantifiers and weasel words
+vague:
+  - a lot
+  - lots of
+  - various
+  - stuff
+  - things
+  - pretty much
+  - some kind of
+  - etc
+
+# Signposts and transitions (positive signals)
+signposts:
+  - first
+  - second
+  - third
+  - finally
+  - so what does this mean
+  - let's turn to
+  - the next
+  - to summarize
+  - in short
+  - here's why
