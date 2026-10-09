@@ -117,3 +117,45 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  compose-smoke:
+    name: Docker Compose Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Copy env example
+        run: cp .env.example .env
+      
+      - name: Start services
+        run: docker compose up -d --wait
+        timeout-minutes: 5
+      
+      - name: Wait for API health
+        run: |
+          echo "Waiting for API to be healthy..."
+          for i in {1..30}; do
+            if curl -f http://localhost:8000/health; then
+              echo ""
+              echo "✅ API is healthy"
+              break
+            fi
+            echo "Attempt $i/30 failed, waiting..."
+            sleep 2
+          done
+      
+      - name: Show service status
+        run: docker compose ps
+      
+      - name: Get API health response
+        run: |
+          echo "=== API Health Check ==="
+          curl -s http://localhost:8000/health | python3 -m json.tool || echo "Failed to parse JSON"
+      
+      - name: Show service logs on failure
+        if: failure()
+        run: docker compose logs
+      
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
