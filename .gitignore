@@ -80,3 +80,4 @@ dist/
 temp/
 tmp/
 .cache/
+tests/fixtures/llm_cassettes/*.json
