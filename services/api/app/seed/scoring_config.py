@@ -14,12 +14,16 @@ from app.models.scoring_config import ScoringConfig
 
 
 def seed_scoring_config():
-    """Load v1.0.0 scoring config and insert into database."""
-    # Read the YAML file
-    config_path = Path(__file__).parent.parent / "packages" / "scoring-config" / "v1.0.0" / "scoring.yaml"
+    """Load v1.0.0 scoring config and insert into database.
+    
+    Idempotent: skips if config already exists.
+    """
+    # Path to scoring config YAML (mounted in container at /packages)
+    config_path = Path("/packages/scoring-config/v1.0.0/scoring.yaml")
     
     if not config_path.exists():
         print(f"Error: Config file not found at {config_path}")
+        print(f"Ensure packages/ is mounted in the container")
         sys.exit(1)
     
     with open(config_path, "r", encoding="utf-8") as f:
