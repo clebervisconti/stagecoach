@@ -13,9 +13,10 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U stagecoach"]
-      interval: 5s
+      interval: 2s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
 
   redis:
     # Use mirror to avoid Docker Hub rate limits in CI
@@ -27,9 +28,10 @@ services:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 2s
       timeout: 3s
-      retries: 5
+      retries: 10
+      start_period: 5s
 
   minio:
     # MinIO S3-compatible storage - pinned to specific release tag
