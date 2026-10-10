@@ -75,7 +75,7 @@ class TestContentLLMStageWithMockAPI:
     @pytest.fixture
     def mock_llm_client(self):
         """Mock LLM client that returns valid schema-compliant responses"""
-        with patch("services.analysis.pipeline.stages.content_llm.LLMClient") as MockClient:
+        with patch("pipeline.stages.content_llm.LLMClient") as MockClient:
             client_instance = MockClient.return_value
 
             # Mock reset_cost_tracking

@@ -366,6 +366,10 @@ def check_for_emotion_inference(text: str, language: str) -> Tuple[bool, List[st
 
     Per SPEC §5.3: "The app describes observable expressions and vocal signals.
     It does not read minds."
+    
+    Special handling for context-dependent terms:
+    - "animado/animated" in phrases like "gestos animados"/"animated gestures" is OK
+    - "animado/excited" describing the speaker's state is forbidden
 
     Args:
         text: Text to check (e.g., LLM rationale)
@@ -377,6 +381,22 @@ def check_for_emotion_inference(text: str, language: str) -> Tuple[bool, List[st
     forbidden = load_forbidden_terms(language)
     text_lower = text.lower()
 
-    found = [term for term in forbidden if term in text_lower]
+    found = []
+    for term in forbidden:
+        if term in text_lower:
+            # Context-aware filtering for ambiguous terms
+            if term in ["animado", "animated", "excited"]:
+                # Check if used in acceptable phrases describing delivery
+                acceptable_contexts = [
+                    "gestos animados", "gestos animated",  # animated gestures
+                    "voz animada", "animated voice",  # animated voice
+                    "ritmo animado", "animated pace",  # animated pace
+                    "entrega animada", "animated delivery",  # animated delivery
+                ]
+                # If any acceptable phrase is present, skip this term
+                if any(ctx in text_lower for ctx in acceptable_contexts):
+                    continue
+            
+            found.append(term)
 
     return len(found) > 0, found

@@ -73,16 +73,32 @@ class TestForbiddenTermsEnglish:
         """Test language that describes observable behavior, not emotions"""
         acceptable_texts = [
             "The speaker uses clear language",
-            "Strong vocal variety and animated gestures",
+            "Strong vocal variety and animated gestures",  # "animated gestures" is OK
             "Maintains steady eye contact",
             "The pace is conversational",
             "Expression signals include smiles and raised eyebrows",
             "Vocal energy is high",
+            "Animated voice with strong emphasis",  # "animated voice" is OK
+            "Animated delivery throughout",  # "animated delivery" is OK
         ]
 
         for text in acceptable_texts:
             has_forbidden, terms = check_for_emotion_inference(text, "en")
             assert not has_forbidden, f"False positive for: {text} (terms: {terms})"
+    
+    def test_forbidden_excited_context(self):
+        """Test that 'excited' is forbidden when describing emotional state"""
+        # These describe the speaker's emotional state, not delivery
+        forbidden_texts = [
+            "The speaker seemed excited and energetic",  # "seemed excited"
+            "You appeared very excited today",  # "appeared excited"
+            "He was excited about the results",  # "was excited"
+        ]
+        
+        for text in forbidden_texts:
+            has_forbidden, terms = check_for_emotion_inference(text, "en")
+            assert has_forbidden, f"Should flag emotional state: {text}"
+            assert "excited" in terms
 
 
 class TestForbiddenTermsPortuguese:
@@ -123,15 +139,31 @@ class TestForbiddenTermsPortuguese:
         """Test acceptable Portuguese language"""
         acceptable_texts = [
             "O palestrante usa linguagem clara",
-            "Variedade vocal forte e gestos animados",
+            "Variedade vocal forte e gestos animados",  # "animated gestures" is OK
             "Mantém contato visual constante",
             "O ritmo é conversacional",
             "Sinais de expressão incluem sorrisos",
+            "Voz animada e entrega energética",  # "animated voice" is OK
+            "Ritmo animado durante a apresentação",  # "animated pace" is OK
         ]
 
         for text in acceptable_texts:
             has_forbidden, terms = check_for_emotion_inference(text, "pt-BR")
             assert not has_forbidden, f"False positive for: {text} (terms: {terms})"
+    
+    def test_forbidden_animado_context(self):
+        """Test that 'animado' is forbidden when describing emotional state"""
+        # These describe the speaker's emotional state, not delivery
+        forbidden_texts = [
+            "O palestrante parecia animado e empolgado",  # "seemed excited"
+            "Você estava muito animado hoje",  # "you were very excited"
+            "Ele ficou animado com os resultados",  # "he got excited"
+        ]
+        
+        for text in forbidden_texts:
+            has_forbidden, terms = check_for_emotion_inference(text, "pt-BR")
+            assert has_forbidden, f"Should flag emotional state: {text}"
+            assert "animado" in terms
 
 
 class TestEdgeCases:
