@@ -1,18 +1,39 @@
-celery[redis]==5.4.0
-sqlalchemy==2.0.25
+# Core
+fastapi==0.112.2
+uvicorn[standard]==0.30.6
+pydantic==2.8.2
+pydantic-settings==2.4.0
+
+# Database
 psycopg2-binary==2.9.9
-pyyaml==6.0.1
-pydantic==2.5.3
+alembic==1.13.2
+asyncpg==0.29.0
+
+# Task queue
+celery==5.4.0
+redis==5.2.1
+aiohttp==3.11.11
+
+# Media processing
+ffmpeg-python==0.2.0
+
+# ML/AI - Install torch CPU-only first
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.4.1+cpu
+torchaudio==2.4.1+cpu
+
+# ASR
+faster-whisper==1.0.3
+ctranslate2==4.4.0
+
+# xAI LLM client
+openai==1.54.5
+
+# Observability
+opentelemetry-api==1.28.2
+opentelemetry-sdk==1.28.2
+opentelemetry-instrumentation==0.49b2
+
+# Dev/Test
 pytest==7.4.3
 pytest-asyncio==0.21.1
-requests==2.31.0
-jsonschema==4.20.0
-faster-whisper==1.0.1
-torch==2.1.2
-torchaudio==2.1.2
-aiohttp==3.9.1
-redis==5.0.1
-whisperx==3.1.1
-transformers==4.38.1
-ffmpeg-python==0.2.0
-pyannote.audio==3.1.1
