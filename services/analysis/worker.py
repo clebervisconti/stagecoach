@@ -42,6 +42,7 @@ app.conf.update(
         "tasks.ingest": {"queue": "cpu"},
         "tasks.asr": {"queue": "cpu"},  # CPU-only per ADR-008
         "tasks.alignment": {"queue": "cpu"},  # WhisperX alignment
+        "tasks.diarization": {"queue": "cpu"},  # pyannote diarization
         "tasks.audio_features": {"queue": "cpu"},
         "tasks.vision": {"queue": "cpu"},
         "tasks.slides": {"queue": "cpu"},
@@ -216,7 +217,7 @@ def alignment_task(
         job_id: Analysis job ID for progress tracking
         
     Returns:
-        Dict with alignment output
+        Dict with alignment output plus audio_path for diarization
     """
     from pipeline.stages.alignment import align_transcript
     
@@ -243,6 +244,7 @@ def alignment_task(
         )
         
         output_dict = result.to_dict()
+        output_dict["audio_path"] = audio_path  # Pass through for diarization
         
         if job_id:
             emit_progress(job_id, "alignment", "succeeded", pct=100, message="Word alignment completed")
@@ -254,5 +256,71 @@ def alignment_task(
         logger.error(f"Alignment failed for {session_id}: {exc}")
         if job_id:
             emit_progress(job_id, "alignment", "failed", message=f"Alignment failed: {str(exc)}")
+        # Retry with exponential backoff: 4s, 16s, 64s
+        raise self.retry(exc=exc, countdown=4 ** self.request.retries)
+
+
+@app.task(name="tasks.diarization", bind=True, max_retries=3)
+def diarization_task(
+    self,
+    alignment_result: dict,
+    output_dir: str,
+    session_id: str,
+    job_id: Optional[str] = None,
+):
+    """Diarization stage: pyannote speaker diarization (gated on HF_TOKEN).
+    
+    Args:
+        alignment_result: Dict from alignment task with audio_path
+        output_dir: Directory for output artifacts
+        session_id: Session ID for tracking
+        job_id: Analysis job ID for progress tracking
+        
+    Returns:
+        Dict with diarization output
+    """
+    from pipeline.stages.diarization import diarize_audio, DIARIZATION_ENABLED
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Starting diarization task for session {session_id}")
+    
+    audio_path = alignment_result.get("audio_path")
+    if not audio_path:
+        raise ValueError("Missing audio_path in alignment result")
+    
+    # Check if diarization is enabled
+    if not DIARIZATION_ENABLED:
+        if job_id:
+            emit_progress(job_id, "diarization", "skipped", pct=100, 
+                         message="Diarization skipped (no HF_TOKEN), using LLM fallback")
+        logger.info("Diarization skipped: HF_TOKEN not set")
+    else:
+        if job_id:
+            emit_progress(job_id, "diarization", "running", pct=0, message="Running speaker diarization")
+    
+    try:
+        result = diarize_audio(
+            audio_path=Path(audio_path),
+            output_dir=Path(output_dir),
+            session_id=session_id,
+        )
+        
+        output_dict = result.to_dict()
+        
+        # Mark as skipped if fallback mode
+        status = "skipped" if result.fallback_mode else "succeeded"
+        
+        if job_id:
+            emit_progress(job_id, "diarization", status, pct=100,
+                         message="Speaker diarization completed" if not result.fallback_mode 
+                                else "Using LLM fallback for Q&A detection")
+        
+        logger.info(f"Diarization task completed for {session_id}")
+        return output_dict
+        
+    except Exception as exc:
+        logger.error(f"Diarization failed for {session_id}: {exc}")
+        if job_id:
+            emit_progress(job_id, "diarization", "failed", message=f"Diarization failed: {str(exc)}")
         # Retry with exponential backoff: 4s, 16s, 64s
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
