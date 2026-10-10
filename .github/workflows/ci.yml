@@ -2,9 +2,15 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches:
+      - main
   pull_request:
     branches: ['**']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint-and-type-check:
@@ -181,9 +187,44 @@ jobs:
       - name: Copy env example
         run: cp .env.example .env
       
+      - name: Pre-pull images with retries
+        run: |
+          set -e
+          
+          IMAGES=(
+            "mirror.gcr.io/library/postgres:16-alpine"
+            "mirror.gcr.io/library/redis:7-alpine"
+            "ghcr.io/axllent/mailpit:latest"
+          )
+          
+          for IMAGE in "${IMAGES[@]}"; do
+            echo "Pulling $IMAGE..."
+            ATTEMPT=0
+            MAX_ATTEMPTS=3
+            
+            while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+              if docker pull "$IMAGE"; then
+                echo "✅ Successfully pulled $IMAGE"
+                break
+              fi
+              
+              ATTEMPT=$((ATTEMPT + 1))
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                WAIT=$((4 * 2**ATTEMPT))
+                echo "⚠️  Pull failed, retrying in ${WAIT}s (attempt $ATTEMPT/$MAX_ATTEMPTS)..."
+                sleep $WAIT
+              else
+                echo "❌ Failed to pull $IMAGE after $MAX_ATTEMPTS attempts"
+                exit 1
+              fi
+            done
+          done
+          
+          echo "✅ All images pre-pulled successfully"
+      
       - name: Start services (core + worker)
         run: docker compose --profile workers up -d --wait
-        timeout-minutes: 5
+        timeout-minutes: 8
       
       - name: Run migrations
         run: |
@@ -402,8 +443,20 @@ jobs:
       - name: Show service logs on failure
         if: failure()
         run: |
+          echo "=== Container Status ==="
+          docker compose ps -a
+          echo ""
           echo "=== Worker Logs ==="
-          docker compose logs worker
+          docker compose logs worker || echo "(worker container not found or failed to start)"
+          echo ""
+          echo "=== API Logs ==="
+          docker compose logs api || echo "(api container not found or failed to start)"
+          echo ""
+          echo "=== Postgres Logs ==="
+          docker compose logs postgres
+          echo ""
+          echo "=== Redis Logs ==="
+          docker compose logs redis
           echo ""
           echo "=== All Service Logs ==="
           docker compose logs
