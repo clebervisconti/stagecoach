@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stagecoach.local/schemas/llm/fluency_disambig_v1.json",
+  "title": "FluencyDisambigV1",
+  "description": "Disambiguate ambiguous filler word candidates in context",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["disambiguations"],
+  "properties": {
+    "disambiguations": {
+      "type": "array",
+      "description": "Per-hit filler judgment",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["hit_id", "is_filler", "confidence"],
+        "properties": {
+          "hit_id": {
+            "type": "string",
+            "description": "Unique ID for this candidate hit (from input)"
+          },
+          "is_filler": {
+            "type": "boolean",
+            "description": "True if used as a filler/hesitation, false if lexical"
+          },
+          "confidence": {
+            "type": "number",
+            "description": "Confidence in judgment (0.0-1.0)",
+            "minimum": 0.0,
+            "maximum": 1.0
+          }
+        }
+      }
+    }
+  }
+}

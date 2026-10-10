@@ -199,6 +199,7 @@ def asr_task(
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
 
 
+<<<<<<< HEAD
 @app.task(name="tasks.alignment", bind=True, max_retries=3)
 def alignment_task(
     self,
@@ -254,5 +255,54 @@ def alignment_task(
         logger.error(f"Alignment failed for {session_id}: {exc}")
         if job_id:
             emit_progress(job_id, "alignment", "failed", message=f"Alignment failed: {str(exc)}")
+=======
+@app.task(name="tasks.content_llm", bind=True, max_retries=3)
+def content_llm_task(
+    self,
+    transcript_path: str,
+    output_dir: str,
+    session_id: str,
+    context_type: str = "keynote",
+    language: str = "en",
+    audience_desc: Optional[str] = None,
+    max_duration_s: float = 5400.0,
+):
+    """Content LLM stage: structured text analysis per §6.7.
+    
+    Issues #27, #28, #29.
+    
+    Args:
+        transcript_path: Path to transcript.json from ASR
+        output_dir: Directory for output artifacts
+        session_id: Session ID
+        context_type: Context type (keynote, exec_briefing, etc.)
+        language: Language code (en or pt-BR)
+        audience_desc: Optional audience description
+        max_duration_s: Media duration for validation
+        
+    Returns:
+        Dict with content LLM output
+    """
+    from pipeline.stages.content_llm import content_llm_stage
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Starting content_llm task for session {session_id}")
+    
+    try:
+        result = content_llm_stage(
+            transcript_path=Path(transcript_path),
+            output_dir=Path(output_dir),
+            session_id=session_id,
+            context_type=context_type,
+            language=language,
+            audience_desc=audience_desc,
+            max_duration_s=max_duration_s,
+        )
+        
+        return result.to_dict()
+        
+    except Exception as exc:
+        logger.error(f"content_llm failed for {session_id}: {exc}")
+>>>>>>> origin/main
         # Retry with exponential backoff: 4s, 16s, 64s
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)

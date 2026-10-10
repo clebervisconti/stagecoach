@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stagecoach.local/schemas/llm/qa_v1.json",
+  "title": "QAV1",
+  "description": "Q&A pair analysis for category 17",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pairs", "insufficient_evidence"],
+  "properties": {
+    "pairs": {
+      "type": "array",
+      "description": "Question-answer pairs with quality judgments",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["q_seg", "a_segs", "answer_first", "structure_level", "bridge_back", "composure_level", "rationale"],
+        "properties": {
+          "q_seg": {
+            "type": "string",
+            "description": "Segment containing the question",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "a_segs": {
+            "type": "array",
+            "description": "Segments containing the answer",
+            "items": {
+              "type": "string",
+              "pattern": "^S[0-9]{4}$"
+            },
+            "minItems": 1
+          },
+          "answer_first": {
+            "type": "boolean",
+            "description": "Does speaker answer directly before elaborating?"
+          },
+          "structure_level": {
+            "type": "number",
+            "description": "Answer structure quality (1-5)",
+            "minimum": 1.0,
+            "maximum": 5.0
+          },
+          "bridge_back": {
+            "type": "boolean",
+            "description": "Does answer connect back to core message?"
+          },
+          "composure_level": {
+            "type": "number",
+            "description": "Composure and fluency in response (1-5)",
+            "minimum": 1.0,
+            "maximum": 5.0
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Brief explanation (≤60 words)",
+            "maxLength": 400
+          }
+        }
+      }
+    },
+    "insufficient_evidence": {
+      "type": "boolean",
+      "description": "True if no clear Q&A detected"
+    }
+  }
+}
