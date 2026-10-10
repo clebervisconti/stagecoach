@@ -199,7 +199,6 @@ def asr_task(
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
 
 
-<<<<<<< HEAD
 @app.task(name="tasks.alignment", bind=True, max_retries=3)
 def alignment_task(
     self,
@@ -255,7 +254,10 @@ def alignment_task(
         logger.error(f"Alignment failed for {session_id}: {exc}")
         if job_id:
             emit_progress(job_id, "alignment", "failed", message=f"Alignment failed: {str(exc)}")
-=======
+        # Retry with exponential backoff: 4s, 16s, 64s
+        raise self.retry(exc=exc, countdown=4 ** self.request.retries)
+
+
 @app.task(name="tasks.content_llm", bind=True, max_retries=3)
 def content_llm_task(
     self,
@@ -303,6 +305,6 @@ def content_llm_task(
         
     except Exception as exc:
         logger.error(f"content_llm failed for {session_id}: {exc}")
->>>>>>> origin/main
         # Retry with exponential backoff: 4s, 16s, 64s
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
+
