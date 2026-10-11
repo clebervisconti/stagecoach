@@ -191,6 +191,60 @@ def asr_task(
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
 
 
+@app.task(name="tasks.audio_features", bind=True, max_retries=3)
+def audio_features_task(
+    self,
+    asr_result: dict,
+    output_dir: str,
+    session_id: str,
+    job_id: Optional[str] = None,
+):
+    """Audio-features stage: F0, PVQ, intensity, syllables, pauses, SNR.
+
+    Issue #24, SPEC §6.4. Runs on un-normalized audio16k.wav.
+    """
+    from pipeline.stages.audio_features import extract_audio_features
+
+    logger = logging.getLogger(__name__)
+    logger.info(f"Starting audio_features task for session {session_id}")
+
+    audio_path = Path(output_dir) / "audio16k.wav"
+    if not audio_path.exists() and isinstance(asr_result, dict):
+        maybe = asr_result.get("audio_path")
+        if maybe:
+            audio_path = Path(maybe)
+
+    transcript_path = None
+    if isinstance(asr_result, dict) and asr_result.get("transcript_path"):
+        transcript_path = Path(asr_result["transcript_path"])
+
+    if job_id:
+        emit_progress(job_id, "audio_features", "running", pct=0, message="Extracting prosody")
+
+    try:
+        result = extract_audio_features(
+            audio_path=audio_path,
+            output_dir=Path(output_dir),
+            session_id=session_id,
+            transcript_path=transcript_path,
+        )
+        if job_id:
+            emit_progress(
+                job_id,
+                "audio_features",
+                "succeeded",
+                pct=100,
+                message="Prosody features extracted",
+            )
+        logger.info(f"audio_features completed for {session_id}")
+        return result.to_dict()
+    except Exception as exc:
+        logger.error(f"audio_features failed for {session_id}: {exc}")
+        if job_id:
+            emit_progress(job_id, "audio_features", "failed", message=f"audio_features failed: {str(exc)}")
+        raise self.retry(exc=exc, countdown=4 ** self.request.retries)
+
+
 @app.task(name="tasks.content_llm", bind=True, max_retries=3)
 def content_llm_task(
     self,
