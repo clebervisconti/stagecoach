@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-10
+
+### Added
+- Private-beta upload → background analysis → partial report → delete flow
+- Production Compose stack on LION (`127.0.0.1:3107`) behind Cloudflare Access
+- Health endpoint `GET /api/health` for the web BFF
+
 ### Phase 1: Audio + text MVP report (In Progress)
 
 ##### Added - Audio-features stage

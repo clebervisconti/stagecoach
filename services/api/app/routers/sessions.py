@@ -1,15 +1,23 @@
-"""Session endpoints - Phase 0 implementation."""
+"""Session, upload, report, playback, and deletion endpoints."""
 
 import hashlib
+import json
 import os
+import shutil
+import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from celery import Celery
 
 from app.auth import get_current_user
 from app.database import get_db
+from app.models.analysis_job import AnalysisJob
+from app.models.job_step import JobStep
 from app.models.user import User
 from app.models.session import Session as SessionModel
 from app.models.media_asset import MediaAsset
@@ -17,9 +25,35 @@ from app.models.media_asset import MediaAsset
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 # Configuration
-TUS_ENDPOINT = os.getenv("TUS_ENDPOINT", "http://localhost:1080/files/")
-MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2 GB
+MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", "/data/stagecoach")).resolve()
+MAX_FILE_SIZE = int(os.getenv("MAX_UPLOAD_BYTES", str(500 * 1024 * 1024)))
 DEFAULT_RETENTION_DAYS = 90
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+ALLOWED_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv", ".m4a", ".mp3", ".wav", ".ogg", ".flac"}
+ALLOWED_CONTENT_TYPES = {
+    "video/mp4",
+    "video/quicktime",
+    "video/webm",
+    "video/x-matroska",
+    "audio/mp4",
+    "audio/mpeg",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/ogg",
+    "audio/flac",
+    "application/octet-stream",
+}
+MEDIA_TYPES = {
+    ".mp4": "video/mp4",
+    ".mov": "video/quicktime",
+    ".webm": "video/webm",
+    ".mkv": "video/x-matroska",
+    ".m4a": "audio/mp4",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".ogg": "audio/ogg",
+    ".flac": "audio/flac",
+}
 
 
 class SessionCreate(BaseModel):
@@ -47,13 +81,33 @@ class SessionResponse(BaseModel):
     upload: dict
 
 
+def _owned_session(session_id: str, user: User, db: Session) -> SessionModel:
+    session = (
+        db.query(SessionModel)
+        .filter(SessionModel.id == session_id, SessionModel.user_id == user.id)
+        .first()
+    )
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    return session
+
+
+def _safe_artifact_path(raw_path: str) -> Path:
+    candidate = Path(raw_path).resolve()
+    if not candidate.is_relative_to(MEDIA_ROOT):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artifact not found")
+    if not candidate.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artifact not found")
+    return candidate
+
+
 @router.post("", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
 async def create_session(
     session_data: SessionCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create session and return tus upload URL (Phase 0)."""
+    """Create a private-beta session and return the authenticated upload route."""
     session = SessionModel(
         user_id=current_user.id,
         title=session_data.title,
@@ -70,15 +124,14 @@ async def create_session(
     db.commit()
     db.refresh(session)
     
-    tus_url = f"{TUS_ENDPOINT}{session.id}"
-    
     return SessionResponse(
         id=str(session.id),
         title=session.title,
         status=session.status,
         upload={
-            "tus_url": tus_url,
+            "url": f"/api/v1/sessions/{session.id}/upload",
             "max_size_bytes": MAX_FILE_SIZE,
+            "resumable": False,
         }
     )
 
@@ -98,7 +151,233 @@ async def list_sessions(
             "id": str(s.id),
             "title": s.title,
             "status": s.status,
+            "context_type": s.context_type,
+            "language": s.language,
+            "slot_min": s.slot_min,
             "created_at": s.created_at.isoformat(),
+            "updated_at": s.updated_at.isoformat(),
         }
         for s in sessions
     ]}
+
+
+@router.get("/{session_id}")
+async def get_session(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    session = _owned_session(session_id, current_user, db)
+    job = (
+        db.query(AnalysisJob)
+        .filter(AnalysisJob.session_id == session.id)
+        .order_by(AnalysisJob.created_at.desc())
+        .first()
+    )
+    steps = []
+    if job:
+        steps = (
+            db.query(JobStep)
+            .filter(JobStep.job_id == job.id)
+            .order_by(JobStep.created_at.asc())
+            .all()
+        )
+    return {
+        "id": str(session.id),
+        "title": session.title,
+        "status": session.status,
+        "context_type": session.context_type,
+        "language": session.language,
+        "slot_min": session.slot_min,
+        "qa_in_slot": session.qa_in_slot,
+        "camera_setup": session.camera_setup,
+        "created_at": session.created_at.isoformat(),
+        "job": (
+            {
+                "id": str(job.id),
+                "status": job.status,
+                "error": job.error,
+                "created_at": job.created_at.isoformat(),
+                "steps": [
+                    {
+                        "stage": step.stage,
+                        "status": step.status,
+                        "metrics": step.metrics,
+                        "started_at": step.started_at.isoformat() if step.started_at else None,
+                        "finished_at": step.finished_at.isoformat() if step.finished_at else None,
+                    }
+                    for step in steps
+                ],
+            }
+            if job
+            else None
+        ),
+    }
+
+
+@router.post("/{session_id}/upload", status_code=status.HTTP_202_ACCEPTED)
+async def upload_and_analyze(
+    session_id: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Stream a bounded upload to a generated private path and enqueue analysis."""
+    session = _owned_session(session_id, current_user, db)
+    if session.status not in {"created", "failed"}:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Session already uploaded")
+
+    original_name = file.filename or ""
+    extension = Path(original_name).suffix.casefold()
+    if extension not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Unsupported file type")
+    if file.content_type and file.content_type.casefold() not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Unsupported content type")
+
+    session_dir = (MEDIA_ROOT / str(session.id)).resolve()
+    if not session_dir.is_relative_to(MEDIA_ROOT):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session path")
+    upload_dir = session_dir / "upload"
+    upload_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    stored_path = upload_dir / f"{uuid.uuid4().hex}{extension}"
+
+    digest = hashlib.sha256()
+    total = 0
+    try:
+        with stored_path.open("xb") as destination:
+            while chunk := await file.read(1024 * 1024):
+                total += len(chunk)
+                if total > MAX_FILE_SIZE:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail="Upload exceeds the private-beta size limit",
+                    )
+                digest.update(chunk)
+                destination.write(chunk)
+        stored_path.chmod(0o600)
+    except Exception:
+        stored_path.unlink(missing_ok=True)
+        raise
+    finally:
+        await file.close()
+
+    if total == 0:
+        stored_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty")
+
+    retention_until = datetime.utcnow() + timedelta(days=DEFAULT_RETENTION_DAYS)
+    asset = MediaAsset(
+        session_id=session.id,
+        kind="original",
+        storage_uri=str(stored_path),
+        bytes=total,
+        sha256=digest.hexdigest(),
+        retention_until=retention_until,
+        codec_info={"content_type": file.content_type, "extension": extension},
+    )
+    job = AnalysisJob(
+        session_id=session.id,
+        scoring_config_version="1.0.0",
+        pipeline_version="0.2.0",
+        status="pending",
+    )
+    session.status = "uploaded"
+    db.add(asset)
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    output_dir = session_dir / str(job.id)
+    celery = Celery("stagecoach-api", broker=REDIS_URL, backend=REDIS_URL)
+    celery.send_task(
+        "tasks.run_mvp_analysis",
+        kwargs={
+            "job_id": str(job.id),
+            "session_id": str(session.id),
+            "input_path": str(stored_path),
+            "output_dir": str(output_dir),
+            "context_type": session.context_type,
+            "language": session.language,
+            "slot_min": session.slot_min,
+        },
+        queue="cpu",
+    )
+    session.status = "processing"
+    db.commit()
+    return {"session_id": str(session.id), "job_id": str(job.id), "status": "processing"}
+
+
+@router.get("/{session_id}/report")
+async def get_report(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    session = _owned_session(session_id, current_user, db)
+    job = (
+        db.query(AnalysisJob)
+        .filter(AnalysisJob.session_id == session.id)
+        .order_by(AnalysisJob.created_at.desc())
+        .first()
+    )
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No analysis job")
+    step = (
+        db.query(JobStep)
+        .filter(JobStep.job_id == job.id, JobStep.stage == "report", JobStep.status == "succeeded")
+        .order_by(JobStep.created_at.desc())
+        .first()
+    )
+    if not step or not step.output_uris or not step.output_uris.get("report"):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Report is not ready")
+    report_path = _safe_artifact_path(step.output_uris["report"])
+    return json.loads(report_path.read_text())
+
+
+@router.get("/{session_id}/media")
+async def get_playback_media(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    session = _owned_session(session_id, current_user, db)
+    job = (
+        db.query(AnalysisJob)
+        .filter(AnalysisJob.session_id == session.id)
+        .order_by(AnalysisJob.created_at.desc())
+        .first()
+    )
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No media")
+    step = (
+        db.query(JobStep)
+        .filter(JobStep.job_id == job.id, JobStep.stage == "report")
+        .order_by(JobStep.created_at.desc())
+        .first()
+    )
+    if not step or not step.output_uris or not step.output_uris.get("playback"):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Playback is not ready")
+    path = _safe_artifact_path(step.output_uris["playback"])
+    return FileResponse(
+        path,
+        filename=f"{session.id}{path.suffix}",
+        media_type=MEDIA_TYPES.get(path.suffix.casefold(), "application/octet-stream"),
+    )
+
+
+@router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_session(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Hard-delete owned DB rows and every file below this session's private root."""
+    session = _owned_session(session_id, current_user, db)
+    session_dir = (MEDIA_ROOT / str(session.id)).resolve()
+    if not session_dir.is_relative_to(MEDIA_ROOT) or session_dir == MEDIA_ROOT:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session path")
+    db.delete(session)
+    db.commit()
+    if session_dir.exists():
+        shutil.rmtree(session_dir)
+    return None

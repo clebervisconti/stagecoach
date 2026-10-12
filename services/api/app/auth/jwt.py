@@ -4,7 +4,8 @@ import os
 from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -15,6 +16,8 @@ security = HTTPBearer()
 # Auth.js uses HS256 by default with AUTH_SECRET
 AUTH_SECRET = os.getenv("AUTH_SECRET", "")
 ALGORITHM = "HS256"
+JWT_ISSUER = os.getenv("JWT_ISSUER", "stagecoach-web")
+JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "stagecoach-api")
 
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
@@ -26,11 +29,23 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
     Raises:
         HTTPException: 401 if token is invalid
     """
+    if len(AUTH_SECRET) < 32:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication is not configured",
+        )
     try:
         token = credentials.credentials
-        payload = jwt.decode(token, AUTH_SECRET, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token,
+            AUTH_SECRET,
+            algorithms=[ALGORITHM],
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+            options={"require": ["exp", "iat", "sub"]},
+        )
         return payload
-    except JWTError as e:
+    except InvalidTokenError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={
