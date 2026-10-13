@@ -40,10 +40,10 @@ step "Preflight"
 command -v docker >/dev/null || fail "docker CLI not found; expected ~/.orbstack/bin/docker (OrbStack)"
 docker info >/dev/null 2>&1 || fail "OrbStack engine is not running; open OrbStack and retry"
 docker compose version >/dev/null || fail "docker compose plugin missing"
-if curl -fsS -o /dev/null http://127.0.0.1:13133/; then
-  echo "OTel collector healthy on 127.0.0.1:13133"
+if lsof -nP -iTCP:4318 -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "OTel collector listening on 127.0.0.1:4318"
 else
-  echo "WARN: OTel collector health check failed; telemetry will not arrive until com.cyberlabs.otel-collector is up"
+  echo "WARN: nothing on :4318; telemetry will not arrive until com.cyberlabs.otel-collector is up"
 fi
 echo "OK: $(scutil --get ComputerName), user $USER, $(docker compose version --short)"
 
@@ -61,9 +61,13 @@ step "Keychain items (values are never shown)"
 has_secret POSTGRES_PASSWORD || generated_secret POSTGRES_PASSWORD
 has_secret AUTH_SECRET || generated_secret AUTH_SECRET
 has_secret PRIVATE_BETA_EMAIL || prompt_secret PRIVATE_BETA_EMAIL "Type the email address Cloudflare Access should allow."
-has_secret CF_API_TOKEN || prompt_secret CF_API_TOKEN "Paste a Cloudflare API token with Access: Apps and Policies Edit, Cloudflare Tunnel Edit, DNS Edit, Zone Read."
+CF_ITEM=cloudflare-api
+if ! has_secret cloudflare-api; then
+  CF_ITEM=CF_API_TOKEN
+  has_secret CF_API_TOKEN || prompt_secret CF_API_TOKEN "Paste a Cloudflare API token with Access: Apps and Policies Edit, Cloudflare Tunnel Edit, DNS Edit, Zone Read."
+fi
 [[ "$(secret_length AUTH_SECRET)" -ge 32 ]] || fail "cyberlabs-AUTH_SECRET must be at least 32 characters"
-for item in POSTGRES_PASSWORD AUTH_SECRET PRIVATE_BETA_EMAIL CF_API_TOKEN; do
+for item in POSTGRES_PASSWORD AUTH_SECRET PRIVATE_BETA_EMAIL "$CF_ITEM"; do
   echo "cyberlabs-$item present ($(secret_length "$item") chars)"
 done
 has_secret splunk-rum-token && echo "cyberlabs-splunk-rum-token present (browser RUM on)" \

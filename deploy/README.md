@@ -37,7 +37,7 @@ Create these items; do not put values in git:
 - `cyberlabs-POSTGRES_PASSWORD`
 - `cyberlabs-AUTH_SECRET` (≥ 32 characters)
 - `cyberlabs-PRIVATE_BETA_EMAIL`
-- `cyberlabs-CF_API_TOKEN` (Cloudflare API token used only by the edge setup helper)
+- Cloudflare: the existing lab token `cyberlabs-cloudflare-api` is used first; `cyberlabs-CF_API_TOKEN` is only a fallback
 - `cyberlabs-splunk-rum-token` (optional public browser RUM token; omitted means RUM stays off)
 
 The web, API, and worker containers export OTLP to `http://host.docker.internal:4318` with `service.name=stagecoach`. The host collector on loopback `:4317`/`:4318` is the only place the Splunk ingest token lives.
