@@ -1,44 +1,33 @@
-FROM node:18-alpine AS base
-
-# Install dependencies only when needed
-FROM base AS deps
+FROM node:22-alpine AS base
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json* ./
+FROM base AS deps
+COPY package.json package-lock.json ./
 RUN npm ci
 
-# Development image
-FROM base AS dev
-WORKDIR /app
+FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-ENV NODE_ENV=development
 ENV NEXT_TELEMETRY_DISABLED=1
-
-EXPOSE 3000
-
-CMD ["npm", "run", "dev"]
-
-# Production image (for later)
-FROM base AS runner
-WORKDIR /app
-
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
+ENV AUTH_SECRET=build-time-placeholder-not-a-runtime-secret
+ENV PRIVATE_BETA_MODE=true
+ENV PRIVATE_BETA_EMAIL=build@example.invalid
 RUN npm run build
 
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
 USER nextjs
-
 EXPOSE 3000
-
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

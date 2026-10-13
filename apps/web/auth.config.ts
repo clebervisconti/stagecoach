@@ -1,17 +1,9 @@
 import type { NextAuthConfig } from "next-auth";
-import Nodemailer from "next-auth/providers/nodemailer";
 
 export const authConfig = {
-  providers: [
-    Nodemailer({
-      server: process.env.EMAIL_SERVER || {
-        host: "localhost",
-        port: 1025,
-        auth: null,
-      },
-      from: process.env.EMAIL_FROM || "noreply@stagecoach.example.com",
-    }),
-  ],
+  // Cloudflare Access is the private-beta identity boundary. Application
+  // providers stay disabled until a production identity design is approved.
+  providers: [],
   pages: {
     signIn: "/sign-in",
     verifyRequest: "/verify-request",

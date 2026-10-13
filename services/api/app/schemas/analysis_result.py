@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Annotated, Any, Literal, Optional, Union
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, RootModel
@@ -40,10 +40,10 @@ class Session(BaseModel):
     id: UUID
     context_type: ContextType
     language: Language
-    slot_min: Optional[float] = None
+    slot_min: float | None
     qa_in_slot: bool
     camera_setup: CameraSetup
-    talk_plan_id: Optional[str] = None
+    talk_plan_id: str | None = None
 
 
 class Status(Enum):
@@ -88,22 +88,22 @@ class Media(BaseModel):
     has_video: bool
     has_audio: bool
     speech_span_s: float
-    fps_analyzed: Optional[float] = None
+    fps_analyzed: float | None
 
 
 class Quality(BaseModel):
     asr_mean_word_prob: float
-    snr_db: Optional[float] = None
-    face_visible_ratio: Optional[float] = None
-    person_visible_ratio: Optional[float] = None
-    hands_visible_ratio: Optional[float] = None
-    face_px_median: Optional[float] = None
+    snr_db: float | None
+    face_visible_ratio: float | None
+    person_visible_ratio: float | None
+    hands_visible_ratio: float | None
+    face_px_median: float | None
     warnings: list[str]
 
 
 class Overall(BaseModel):
-    score: Annotated[Optional[int], Field(ge=0, le=100)]
-    level: Annotated[Optional[int], Field(ge=1, le=5)]
+    score: Annotated[int | None, Field(ge=0, le=100)]
+    level: Annotated[int | None, Field(ge=1, le=5)]
     coverage: float
     confidence: float
     display_band: int
@@ -121,8 +121,8 @@ class Id(Enum):
 
 class Pillar(BaseModel):
     id: Id
-    score: Optional[int] = None
-    confidence: Optional[float] = None
+    score: int | None
+    confidence: float | None
     categories: list[str]
 
 
@@ -164,17 +164,17 @@ class Category(BaseModel):
     id: Id1
     pillar: str
     applicable: bool
-    na_reason: Optional[str] = None
-    score: Optional[int] = None
-    level: Optional[int] = None
-    confidence: Optional[float] = None
+    na_reason: str | None
+    score: int | None
+    level: int | None
+    confidence: float | None
     confidence_label: ConfidenceLabel
     weight_used: float
-    capped_by_gate: Optional[str] = None
+    capped_by_gate: str | None = None
     top_contributors: Annotated[list[str], Field(max_length=2)]
     evidence_ids: list[str]
     sources: list[Source]
-    counterfactual: Optional[str] = None
+    counterfactual: str | None
 
 
 class Kind(Enum):
@@ -194,15 +194,15 @@ class Metric(BaseModel):
     )
     id: str
     category_id: str
-    raw_value: Optional[Union[float, str, bool]] = None
+    raw_value: float | str | bool | None
     unit: str
-    score: Optional[float] = None
+    score: float | None
     weight: float
     confidence: float
     included: bool
     basis: Basis
-    target_band: Optional[str] = None
-    details: Optional[dict[str, Any]] = None
+    target_band: str | None = None
+    details: dict[str, Any] | None = None
 
 
 class Modality(Enum):
@@ -225,17 +225,17 @@ class EvidenceItem(BaseModel):
     )
     id: str
     category_id: str
-    metric_id: Optional[str] = None
+    metric_id: str | None = None
     t_start: Annotated[float, Field(ge=0.0)]
     t_end: Annotated[float, Field(ge=0.0)]
     modality: Modality
     kind: Kind1
     text: Annotated[str, Field(max_length=400)]
-    quote: Optional[str] = None
-    seg_ids: Optional[list[str]] = None
-    measurement: Optional[dict[str, Any]] = None
+    quote: str | None = None
+    seg_ids: list[str] | None = None
+    measurement: dict[str, Any] | None = None
     confidence: float
-    user_disputed: Optional[bool] = False
+    user_disputed: bool | None = False
 
 
 class Strength(BaseModel):
@@ -245,10 +245,10 @@ class Strength(BaseModel):
     category_id: str
     title: Annotated[str, Field(max_length=120)]
     body: Annotated[str, Field(max_length=800)]
-    fix: Annotated[Optional[str], Field(max_length=600)]
+    fix: Annotated[str | None, Field(max_length=600)]
     drill_ids: list[str]
     evidence_ids: Annotated[list[str], Field(min_length=1)]
-    impact_estimate: Optional[float] = None
+    impact_estimate: float | None = None
 
 
 class Status1(Enum):
@@ -262,7 +262,7 @@ class Objective(BaseModel):
     objective_id: str
     text: str
     status: Status1
-    score: Optional[int] = None
+    score: int | None
     evidence_ids: list[str]
 
 
@@ -273,10 +273,10 @@ class Items(BaseModel):
     category_id: str
     title: Annotated[str, Field(max_length=120)]
     body: Annotated[str, Field(max_length=800)]
-    fix: Annotated[Optional[str], Field(max_length=600)]
+    fix: Annotated[str | None, Field(max_length=600)]
     drill_ids: list[str]
     evidence_ids: Annotated[list[str], Field(min_length=1)]
-    impact_estimate: Optional[float] = None
+    impact_estimate: float | None = None
 
 
 class Insights(BaseModel):
@@ -306,6 +306,6 @@ class AnalysisResult(BaseModel):
     ]
     transcript_ref: str
     objectives: Annotated[
-        Optional[list[Objective]],
-        Field(None, description='Optional: scores against talk-plan objectives'),
-    ]
+        list[Objective] | None,
+        Field(description='Optional: scores against talk-plan objectives'),
+    ] = None

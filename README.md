@@ -4,11 +4,9 @@ An evidence-based presentation coaching platform that analyzes recorded presenta
 
 ## Project Status
 
-🚧 **Phase 1 (Audio + Text MVP)** in progress
+Private-beta MVP (`0.2.0`): upload → ASR/audio analysis → partial report → delete, served at `https://stagecoach.cybersphere.com.br` behind Cloudflare Access.
 
-- Phase 0 foundations complete
-- Ingest stage implemented (issue #17)
-- Building ASR and orchestration stages
+Production: LION loopback `:3107`, LaunchAgent `com.cyberlabs.stagecoach`. See `deploy/README.md`.
 
 ## Quick Links
 
@@ -44,7 +42,7 @@ Stage Coach is a monorepo containing:
 ### Prerequisites
 
 - Docker and Docker Compose
-- Node.js 20+ and pnpm
+- Node.js 22+ and npm
 - Python 3.11+
 - Make
 
