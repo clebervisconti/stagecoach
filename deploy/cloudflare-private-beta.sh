@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Create Access (first) then tunnel hostname + DNS for Stage Coach.
-# Loads credentials from ~/.env.cloudflare. Never prints the token.
+# Loads credentials from Apple Keychain. Never prints the token.
 # Usage:
 #   deploy/cloudflare-private-beta.sh              # discovery / dry-run
 #   deploy/cloudflare-private-beta.sh --apply      # mutate
@@ -11,25 +11,20 @@ if [[ "${1:-}" == "--apply" ]]; then
   APPLY=1
 fi
 
-ENV_FILE="${HOME}/.env.cloudflare"
-if [[ ! -f "$ENV_FILE" ]]; then
-  echo "missing $ENV_FILE" >&2
-  exit 1
-fi
-set -a
-# shellcheck disable=SC1090
-source "$ENV_FILE"
-set +a
+secret() {
+  security find-generic-password -a "$USER" -s "cyberlabs-$1" -w
+}
 
-if [[ -z "${CF_API_TOKEN:-}" || ${#CF_API_TOKEN} -lt 20 ]]; then
-  echo "CF_API_TOKEN is missing" >&2
+CF_API_TOKEN="$(secret CF_API_TOKEN)"
+if [[ ${#CF_API_TOKEN} -lt 20 ]]; then
+  echo "cyberlabs-CF_API_TOKEN is missing or invalid" >&2
   exit 1
 fi
 
 ACCOUNT_ID="${CF_ACCOUNT_ID:-${CF_ACCOUNT_ID_CLEBER:-}}"
 HOSTNAME="stagecoach.cybersphere.com.br"
 ORIGIN="http://127.0.0.1:3107"
-ACCESS_EMAIL="${STAGECOACH_ACCESS_EMAIL:-cleber.visconti@icloud.com}"
+ACCESS_EMAIL="${STAGECOACH_ACCESS_EMAIL:-$(secret PRIVATE_BETA_EMAIL)}"
 
 cf() {
   local method="$1"
