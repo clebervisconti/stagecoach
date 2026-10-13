@@ -53,6 +53,24 @@ install happen in the logged-in GUI session.
 
 ## Install
 
+One command, in a logged-in Terminal on LION (not SSH):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/clebervisconti/stagecoach/main/deploy/lion-bootstrap.sh -o /tmp/lion-bootstrap.sh
+bash /tmp/lion-bootstrap.sh
+```
+
+It checks that it is on LION in the GUI session with OrbStack running,
+clones or updates `~/cyberlabs/apps/stagecoach`, creates any missing
+Keychain item through a hidden prompt (generated values go via the
+clipboard, which is cleared afterwards), installs the LaunchAgent, waits for
+loopback health, confirms 3107 is loopback-only, then runs the Cloudflare
+helper as a dry run and applies it only after you confirm. The helper
+refuses to touch the tunnel or DNS unless the Access app has an allow
+policy, and repoints an existing DNS record if it targets another tunnel.
+
+Manual equivalent:
+
 ```bash
 # on LION, after cloning this repo to ~/cyberlabs/apps/stagecoach
 install -m 0755 deploy/stagecoach-run.sh ~/cyberlabs/hosts/lion/stagecoach-run.sh
