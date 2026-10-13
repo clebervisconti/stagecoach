@@ -33,6 +33,7 @@ Create these items; do not put values in git:
 - `cyberlabs-POSTGRES_PASSWORD`
 - `cyberlabs-AUTH_SECRET` (≥ 32 characters)
 - `cyberlabs-PRIVATE_BETA_EMAIL`
+- `cyberlabs-CF_API_TOKEN` (Cloudflare API token used only by the edge setup helper)
 
 Login Keychain does not unlock over SSH. First secret write and `launchctl`
 install happen in the logged-in GUI session.
