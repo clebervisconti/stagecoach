@@ -7,6 +7,8 @@ const isProduction = process.env.NODE_ENV === "production";
 const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
+  // Auto-instrumentation patches modules at require time; bundling it breaks that.
+  serverExternalPackages: ["@splunk/otel"],
   async headers() {
     return [
       {
@@ -20,7 +22,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob:",
               "font-src 'self'",
-              "connect-src 'self'",
+              "connect-src 'self' https://rum-ingest.us1.signalfx.com",
               "media-src 'self' blob:",
               "frame-ancestors 'none'",
               "base-uri 'self'",

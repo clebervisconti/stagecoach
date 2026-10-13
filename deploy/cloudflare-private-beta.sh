@@ -149,6 +149,18 @@ for p in data.get("result", []):
   fi
 fi
 
+if [[ "$APPLY" -eq 1 ]]; then
+  # Never publish a hostname without a gate in front of it.
+  [[ -n "${APP_ID:-}" ]] || { echo "Access application missing; refusing to touch tunnel or DNS" >&2; exit 1; }
+  GATED="$(cf GET "/accounts/${ACCOUNT_ID}/access/apps/${APP_ID}/policies" | parse '
+import json,sys
+data=json.load(sys.stdin)
+print(sum(1 for p in data.get("result", []) if p.get("decision") == "allow"))
+')"
+  [[ "$GATED" -ge 1 ]] || { echo "Access app has no allow policy; refusing to touch tunnel or DNS" >&2; exit 1; }
+  echo "Access gate confirmed (${GATED} allow policy)"
+fi
+
 echo
 echo "== tunnels =="
 TUNNELS="$(cf GET "/accounts/${ACCOUNT_ID}/cfd_tunnel?is_deleted=false")"
@@ -256,6 +268,15 @@ DNS_BODY="$(TUNNEL_ID="$TUNNEL_ID" python3 -c 'import json,os; print(json.dumps(
   "proxied": True,
 }))')"
 
+STALE_ID="$(printf '%s' "$RECORDS" | TUNNEL_ID="$TUNNEL_ID" parse '
+import json,os,sys
+want=os.environ["TUNNEL_ID"] + ".cfargotunnel.com"
+for r in json.load(sys.stdin).get("result", []):
+    if r.get("type") != "CNAME" or r.get("content") != want or not r.get("proxied"):
+        print(r["id"])
+        break
+')"
+
 if [[ "$RECORD_COUNT" == "0" && "$APPLY" -eq 1 ]]; then
   echo "creating proxied CNAME"
   TUNNEL_ID="$TUNNEL_ID" \
@@ -263,6 +284,14 @@ if [[ "$RECORD_COUNT" == "0" && "$APPLY" -eq 1 ]]; then
     | parse 'import json,sys; d=json.load(sys.stdin); assert d.get("success"), d; print("dns created")'
 elif [[ "$RECORD_COUNT" == "0" ]]; then
   echo "dry-run: would create proxied CNAME stagecoach -> <tunnel>.cfargotunnel.com"
+elif [[ -n "$STALE_ID" && "$APPLY" -eq 1 ]]; then
+  echo "repointing existing record at the LION tunnel"
+  cf PUT "/zones/${ZONE_ID}/dns_records/${STALE_ID}" --data "$DNS_BODY" \
+    | parse 'import json,sys; d=json.load(sys.stdin); assert d.get("success"), d; print("dns updated")'
+elif [[ -n "$STALE_ID" ]]; then
+  echo "dry-run: would repoint existing record to the LION tunnel (proxied CNAME)"
+else
+  echo "record already points at the LION tunnel"
 fi
 
 echo

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { redirectToSessions } from "@/lib/redirect-to-sessions";
 
-export default function HomePage() {
-  redirect("/sessions");
+export default async function HomePage() {
+  await redirectToSessions();
 }

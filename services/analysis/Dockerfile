@@ -23,8 +23,8 @@ RUN apt-get update && apt-get install -y \
 # Upgrade pip first for better wheel support
 RUN pip install --upgrade pip
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements-otel.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-otel.txt
 
 # Copy application code
 COPY . .

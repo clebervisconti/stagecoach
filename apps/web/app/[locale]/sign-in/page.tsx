@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
+import { redirectToSessions } from "@/lib/redirect-to-sessions";
 
-export default function SignInPage() {
+export default async function SignInPage() {
   // Cloudflare Access owns private-beta login.
-  redirect("/sessions");
+  await redirectToSessions();
 }

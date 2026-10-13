@@ -38,6 +38,9 @@ Create these items; do not put values in git:
 - `cyberlabs-AUTH_SECRET` (≥ 32 characters)
 - `cyberlabs-PRIVATE_BETA_EMAIL`
 - `cyberlabs-CF_API_TOKEN` (Cloudflare API token used only by the edge setup helper)
+- `cyberlabs-splunk-rum-token` (optional public browser RUM token; omitted means RUM stays off)
+
+The web, API, and worker containers export OTLP to `http://host.docker.internal:4318` with `service.name=stagecoach`. The host collector on loopback `:4317`/`:4318` is the only place the Splunk ingest token lives.
 
 Login Keychain does not unlock over SSH. First secret write and `launchctl`
 install happen in the logged-in GUI session.
@@ -49,6 +52,24 @@ install happen in the logged-in GUI session.
 3. Catch-all 404 until both exist.
 
 ## Install
+
+One command, in a logged-in Terminal on LION (not SSH):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/clebervisconti/stagecoach/main/deploy/lion-bootstrap.sh -o /tmp/lion-bootstrap.sh
+bash /tmp/lion-bootstrap.sh
+```
+
+It checks that it is on LION in the GUI session with OrbStack running,
+clones or updates `~/cyberlabs/apps/stagecoach`, creates any missing
+Keychain item through a hidden prompt (generated values go via the
+clipboard, which is cleared afterwards), installs the LaunchAgent, waits for
+loopback health, confirms 3107 is loopback-only, then runs the Cloudflare
+helper as a dry run and applies it only after you confirm. The helper
+refuses to touch the tunnel or DNS unless the Access app has an allow
+policy, and repoints an existing DNS record if it targets another tunnel.
+
+Manual equivalent:
 
 ```bash
 # on LION, after cloning this repo to ~/cyberlabs/apps/stagecoach

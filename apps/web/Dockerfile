@@ -9,6 +9,8 @@ RUN npm ci
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ARG NEXT_PUBLIC_SPLUNK_RUM_TOKEN=
+ENV NEXT_PUBLIC_SPLUNK_RUM_TOKEN=$NEXT_PUBLIC_SPLUNK_RUM_TOKEN
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV AUTH_SECRET=build-time-placeholder-not-a-runtime-secret
 ENV PRIVATE_BETA_MODE=true
