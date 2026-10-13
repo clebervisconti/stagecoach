@@ -5,6 +5,9 @@ set -euo pipefail
 APP_DIR="${STAGECOACH_DIR:-$HOME/cyberlabs/apps/stagecoach}"
 COMPOSE_FILE="${APP_DIR}/docker-compose.prod.yml"
 
+# launchd does not inherit a login PATH. OrbStack's CLI is the only docker on LION.
+export PATH="${HOME}/.orbstack/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
 secret() {
   security find-generic-password -a "$USER" -s "cyberlabs-$1" -w
 }
