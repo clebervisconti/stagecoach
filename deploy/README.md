@@ -1,7 +1,11 @@
 # Stage Coach production deploy (LION)
 
-Production is **LION**, loopback Docker Compose, Cloudflare Tunnel hostname
-`stagecoach.cybersphere.com.br`, Access policy **before** DNS.
+Production is **LION** (`LION.local`, lab VLAN), loopback Docker Compose,
+Cloudflare Tunnel hostname `stagecoach.cybersphere.com.br`, Access policy
+**before** DNS. Deploy from a logged-in session on LION, or from TIGER with
+`ssh lion`. The corporate laptop cannot resolve `LION.local` and holds no
+lab secrets. `deploy/stagecoach-run.sh` prepends `~/.orbstack/bin` because
+that is where LION's Docker CLI lives and launchd does not inherit it.
 
 ## Inventory (cyberlabs repo)
 
