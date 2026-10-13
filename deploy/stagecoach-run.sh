@@ -28,4 +28,9 @@ export ASR_MODEL="${ASR_MODEL:-tiny}"
 export MAX_UPLOAD_BYTES="${MAX_UPLOAD_BYTES:-83886080}"
 export AUTH_TRUST_HOST=true
 
+# Public RUM token. Missing item disables browser telemetry; it must not block startup.
+if SPLUNK_RUM_TOKEN="$(security find-generic-password -a "$USER" -s "cyberlabs-splunk-rum-token" -w 2>/dev/null)"; then
+  export SPLUNK_RUM_TOKEN
+fi
+
 exec docker compose -f "$COMPOSE_FILE" up --build --remove-orphans

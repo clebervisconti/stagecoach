@@ -38,6 +38,9 @@ Create these items; do not put values in git:
 - `cyberlabs-AUTH_SECRET` (≥ 32 characters)
 - `cyberlabs-PRIVATE_BETA_EMAIL`
 - `cyberlabs-CF_API_TOKEN` (Cloudflare API token used only by the edge setup helper)
+- `cyberlabs-splunk-rum-token` (optional public browser RUM token; omitted means RUM stays off)
+
+The web, API, and worker containers export OTLP to `http://host.docker.internal:4318` with `service.name=stagecoach`. The host collector on loopback `:4317`/`:4318` is the only place the Splunk ingest token lives.
 
 Login Keychain does not unlock over SSH. First secret write and `launchctl`
 install happen in the logged-in GUI session.

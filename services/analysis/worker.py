@@ -14,12 +14,28 @@ from typing import Optional
 
 import redis
 from celery import Celery
+from celery.signals import worker_process_init
 from sqlalchemy import create_engine, text
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+
+
+@worker_process_init.connect(weak=False)
+def init_telemetry(*args, **kwargs):
+    # Exporter threads do not survive the prefork fork, so each child starts its own.
+    if not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
+        return
+    try:
+        from splunk_otel import init_splunk_otel
+    except ImportError:
+        return
+    try:
+        init_splunk_otel()
+    except Exception:
+        logging.getLogger(__name__).exception("OpenTelemetry failed to start")
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
