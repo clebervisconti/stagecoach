@@ -15,9 +15,10 @@ secret() {
   security find-generic-password -a "$USER" -s "cyberlabs-$1" -w
 }
 
-CF_API_TOKEN="$(secret CF_API_TOKEN)"
+# cyberlabs-cloudflare-api is the lab's shared token (Keychain copy of the Vaultwarden item).
+CF_API_TOKEN="$(secret cloudflare-api 2>/dev/null || secret CF_API_TOKEN 2>/dev/null || true)"
 if [[ ${#CF_API_TOKEN} -lt 20 ]]; then
-  echo "cyberlabs-CF_API_TOKEN is missing or invalid" >&2
+  echo "neither cyberlabs-cloudflare-api nor cyberlabs-CF_API_TOKEN holds a usable token" >&2
   exit 1
 fi
 

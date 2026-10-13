@@ -49,8 +49,6 @@ services:
       OTEL_METRICS_EXPORTER: otlp
       OTEL_LOGS_EXPORTER: otlp
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=production,service.namespace=cybersphere,stagecoach.component=api
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -86,8 +84,6 @@ services:
       OTEL_METRICS_EXPORTER: otlp
       OTEL_LOGS_EXPORTER: otlp
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=production,service.namespace=cybersphere,stagecoach.component=worker
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -120,8 +116,6 @@ services:
       OTEL_SERVICE_NAME: stagecoach
       OTEL_EXPORTER_OTLP_ENDPOINT: http://host.docker.internal:4318
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=production,service.namespace=cybersphere,stagecoach.component=web
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       api:
         condition: service_healthy
