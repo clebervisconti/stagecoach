@@ -1129,3 +1129,37 @@ Issue #31 adds the report read API from SPEC §7.5. MinIO is not in the CI smoke
 - ✅ GET /report in smoke returns the same `report.json` the worker wrote
 - ⚠️ Playback URLs are valid for anyone who has the link until expiry — treat like a presigned object URL
 
+---
+
+## ADR-019: Report v1 UI plots only available pillars
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Issue #32 is the first report page. The analysis_result from #31 already marks missing pillars and categories with `score: null` and `applicable: false`. The UI must not turn those into zeros on the radar, and it must stay keyboard-accessible without a charting library.
+
+### Decision
+
+- Consume `GET /sessions/{id}/report` as the analysis_result view model from #31. Do not keep the private-beta metric-card layout.
+- Radar is a 6-axis SVG. Unavailable pillars (`score === null`) are omitted from the polygon (a gap) and labelled unavailable in the table. They are never drawn at 0.
+- Category cards that are not applicable are grey, show `na_reason`, and never display a numeric score.
+- Key-metric info controls are buttons that open a dialog with definition, source or heuristic, and confidence.
+- Copy lives in next-intl `en` and `pt-BR`. A unit test rejects emotion-inference words in those files.
+
+### Alternatives Considered
+
+1. **Chart.js / Recharts radar**  
+   - ❌ Extra dependency for one chart; harder to leave honest gaps for N/A axes
+
+2. **Keep the private-beta report layout**  
+   - ❌ Does not match §8.1–8.3 (overall ± band, pillars, category cards)
+
+### Consequences
+
+- ✅ Partial audio/text reports can render before vision exists
+- ⚠️ Player seeking, transcript highlights, and Voice tab graphs stay for issue #33
+- 📌 Do not plot a null pillar at the origin
+
