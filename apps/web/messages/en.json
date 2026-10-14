@@ -62,6 +62,27 @@
     "uploading": "Uploading…",
     "uploadAndAnalyze": "Upload and analyze"
   },
+  "consents": {
+    "heading": "Analysis consents",
+    "intro": "Video and expression processing are off until you turn each purpose on. Toggles are specific: pose/face landmarks, optional expression signals, and optional 30-day detailed tracking. No emotions are inferred.",
+    "what": "What is measured",
+    "why": "Why",
+    "limits": "Limits",
+    "never": "What this never does",
+    "loadError": "Could not load consents.",
+    "saveError": "Could not save this consent.",
+    "needsVideo": "Turn on video analysis first. Expression signals and detailed tracking are not used without it.",
+    "policyVersion": "Policy version",
+    "loading": "Loading consent text…",
+    "revoked": "This purpose was revoked. Latest state is off."
+  },
+  "settings": {
+    "heading": "Settings",
+    "account": "Account",
+    "email": "Email",
+    "locale": "Locale",
+    "signOut": "Sign Out"
+  },
   "report": {
     "loadError": "Could not load this session.",
     "back": "Sessions",

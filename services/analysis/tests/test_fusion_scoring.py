@@ -272,3 +272,33 @@ def test_never_invents_video_or_missing_llm_metrics(tmp_path: Path):
     }
     present = {m["id"] for m in result["metrics"]}
     assert invented.isdisjoint(present)
+
+
+def test_consent_denied_sets_video_na_reasons(tmp_path: Path):
+    _write_inputs(tmp_path, with_content=False, short=True)
+    (tmp_path / "consents.json").write_text(
+        json.dumps(
+            {
+                "policy_id": "1.0.0",
+                "purposes": {
+                    "video_analysis": {"granted": False},
+                    "expression_analysis": {"granted": False},
+                    "keep_detailed_tracking": {"granted": False},
+                },
+            }
+        )
+    )
+    result = run_fusion_scoring(
+        session_id="00000000-0000-4000-8000-000000000037",
+        output_dir=tmp_path,
+        packages_dir=PACKAGES,
+        transcript_path=tmp_path / "transcript.json",
+        metrics_path=tmp_path / "metrics.json",
+        audio_metrics_path=tmp_path / "audio_metrics.json",
+    )
+    by_id = {c["id"]: c for c in result["categories"]}
+    assert by_id["gestures_body"]["applicable"] is False
+    assert "consent is off" in (by_id["gestures_body"]["na_reason"] or "")
+    assert by_id["facial_affect"]["applicable"] is False
+    assert "Expression analysis is off" in (by_id["facial_affect"]["na_reason"] or "")
+    assert "gb_gesture_activity_ratio" not in {m["id"] for m in result["metrics"]}

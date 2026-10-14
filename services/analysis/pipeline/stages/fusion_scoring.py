@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from pipeline.consent import video_category_na_reason
+
 logger = logging.getLogger(__name__)
 
 STAGE_VERSION = "1.0.0"
@@ -782,7 +784,12 @@ def run_fusion_scoring(
         applicable = True
         if category_id in VIDEO_CATEGORIES:
             applicable = False
-            na_reason = VIDEO_CATEGORIES[category_id]
+            consents = _read_json(output_dir / "consents.json")
+            na_reason = (
+                video_category_na_reason(category_id, consents)
+                if consents
+                else VIDEO_CATEGORIES[category_id]
+            )
         else:
             ok, reason = _min_evidence_ok(category_id, config, stats, extras)
             if not ok:

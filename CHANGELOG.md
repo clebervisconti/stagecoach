@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 2: Video, slides, full report, PDF (In Progress)
+
+##### Added - Consent UI and `/me/consents` (issue #37)
+- `GET /me/consents` and `POST /me/consents` with append-only rows, policy SHA-256, and revocation
+- Separate toggles for `video_analysis`, `expression_analysis` (off by default), and `keep_detailed_tracking` in en and pt-BR
+- Pipeline gate: no vision processing without `video_analysis`; no facial metrics without `expression_analysis`; raw landmarks only with `keep_detailed_tracking`
+- Session upload snapshots current consents into `consents.json` for the job
+
 ## [0.2.0] - 2026-10-10
 
 ### Added

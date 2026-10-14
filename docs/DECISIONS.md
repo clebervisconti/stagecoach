@@ -1309,3 +1309,50 @@ Issue #36 / SPEC §12 Phase 1 AC requires a Playwright e2e for upload → report
 - ⚠️ A sine or espeak clip is not a consented human talk; D13 still blocks personal recordings
 - 📌 Do not write a 10-minute ≤ 15 minute claim unless `bench_phase1_cpu.py` was run and the wall time recorded
 
+---
+
+## ADR-024: Granular consents gate vision; store aggregates as specified in §5.4
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 2
+
+### Context
+
+Issue #37 / SPEC §2.3 J1, §5.4, §7.3, §10.2 require specific, highlighted consent before pose/face processing. Storing pose/face per-second aggregates is biometric-adjacent (§1.2, §10.1). Expression analysis is a separate opt-in. Category 14 / emotion inference (#42) is waiting on an owner decision and is not built here.
+
+The SPEC already defines the storage: per-second aggregates; raw landmarks discarded unless `keep_detailed_tracking` (30 days, H). This ADR implements that specification rather than adding a new undeclared data category.
+
+### Decision
+
+- Keep the Phase 0 `consents` table (append-only). Current state = latest row per `(user_id, purpose)`.
+- Purposes: `video_analysis`, `expression_analysis`, `keep_detailed_tracking`, `research_use`, `benchmarks`. UI in Phase 2 shows the first three. Expression analysis and detailed tracking default off.
+- Policy copy lives in `packages/consent/v1.json` (en and pt-BR). `consents.version` is SHA-256 of that canonical JSON.
+- `GET /me/consents` returns current state plus localized what/why/limits/never. `POST /me/consents` `{purpose, granted}` inserts a new row. Revocation sets `granted=false` and `revoked_at`.
+- On upload, snapshot consents into the Celery payload and `consents.json`. `pipeline.consent.decide_vision` is the only gate: no pose/hands/face without `video_analysis`; no expression metrics without both video and `expression_analysis`; no raw landmarks without `keep_detailed_tracking`. Frames are never stored as vision features.
+- Fusion uses consent-aware N/A reasons for body categories. The MediaPipe stage itself is issue #38.
+
+### Alternatives Considered
+
+1. **Bundle expression analysis into video_analysis**  
+   - ❌ SPEC §5.4 and LGPD Art. 11 require a separate, specific toggle
+
+2. **Edit the latest consents row in place**  
+   - ❌ Spec: append-only; current state = latest per purpose
+
+3. **Wait for a separate owner confirmation of §5.4 storage before shipping the API**  
+   - ❌ The owner already specified per-second aggregates and the 30-day raw-landmark opt-in in SPEC §5.4 / §10.1; issue #37 asks to implement that UI and gate. Independent confirmation beyond the SPEC remains labeled on the issue.
+
+### Consequences
+
+- ✅ Audio/text analysis still runs when video consent is off
+- ✅ Expression analysis cannot silently ride along with pose tracking
+- ⚠️ Issue #37 still carries `needs-owner-decision` for storage confirmation beyond the SPEC text
+- 📌 Do not add emotion classifiers or category 14 scoring in this PR (#42)
+
+---
+
+## Change Log (continued)
+
+- **2026-10-14**: ADR-024 (Phase 2: consent UI and vision gate, issue #37)
+

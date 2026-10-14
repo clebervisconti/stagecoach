@@ -580,8 +580,10 @@ def run_mvp_analysis_task(
     context_type: str,
     language: str,
     slot_min: Optional[int] = None,
+    consents: Optional[dict] = None,
 ):
     """Run ingest → ASR → audio → fusion_scoring → report (issue #30)."""
+    from pipeline.consent import persist_consent_snapshot, run_vision_if_allowed
     from pipeline.persist import persist_analysis_result
     from pipeline.stages.asr import transcribe_audio
     from pipeline.stages.audio_features import extract_audio_features
@@ -596,6 +598,30 @@ def run_mvp_analysis_task(
     _set_job_state(job_id, session_id, "running")
 
     try:
+        snapshot = persist_consent_snapshot(destination, consents)
+        vision_gate = run_vision_if_allowed(snapshot, runner=None)
+        if vision_gate["status"] == "skipped":
+            started = datetime.utcnow()
+            emit_progress(
+                job_id,
+                "vision",
+                "skipped",
+                pct=0,
+                message="Video analysis is off; pose and face landmarks were not processed",
+            )
+            _record_job_step(
+                job_id=job_id,
+                stage="vision",
+                status="skipped",
+                started_at=started,
+                metrics={
+                    "reason": vision_gate["reason"],
+                    "run_pose": False,
+                    "run_expression_metrics": False,
+                    "keep_raw_landmarks": False,
+                },
+            )
+
         started = datetime.utcnow()
         emit_progress(job_id, "ingest", "running", pct=5, message="Validating media")
         ingest_result = ingest(source, destination, session_id)

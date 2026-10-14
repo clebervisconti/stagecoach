@@ -27,6 +27,7 @@ from app.deletion import (
     local_session_dir,
     session_object_prefix,
 )
+from app.consents.store import snapshot_for_user
 from app.models.analysis_job import AnalysisJob
 from app.models.audit_log import AuditLog
 from app.models.category_score import CategoryScore
@@ -421,6 +422,7 @@ async def upload_and_analyze(
             "context_type": session.context_type,
             "language": session.language,
             "slot_min": session.slot_min,
+            "consents": snapshot_for_user(db, current_user.id),
         },
         queue="cpu",
     )

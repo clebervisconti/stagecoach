@@ -7,6 +7,8 @@ async function uploadTalk(
   language: "en" | "pt-BR",
 ) {
   await page.getByTestId("new-session").click();
+  await expect(page.getByTestId("consent-panel")).toBeVisible();
+  await expect(page.getByTestId("consent-video_analysis")).toBeVisible();
   await page.locator('input[name="title"]').fill(title);
   await page.locator('select[name="language"]').selectOption(language);
   await page.getByTestId("session-file").setInputFiles({

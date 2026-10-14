@@ -306,6 +306,8 @@ jobs:
           IMAGES=(
             "mirror.gcr.io/library/postgres:16-alpine"
             "mirror.gcr.io/library/redis:7-alpine"
+            "mirror.gcr.io/library/python:3.11-slim"
+            "mirror.gcr.io/library/python:3.11-slim-bookworm"
             "ghcr.io/axllent/mailpit:latest"
           )
           
@@ -564,7 +566,85 @@ jobs:
           
           echo "7. POST /api/v1/sessions with JWT:"
           TEST_JWT=$(docker compose exec -T api python -c "import os; from datetime import datetime, timedelta, timezone; import jwt; now=datetime.now(timezone.utc); print(jwt.encode({'email':'test@example.com','sub':'test-user','iss':'stagecoach-web','aud':'stagecoach-api','iat':now,'nbf':now-timedelta(seconds=5),'exp':now+timedelta(minutes=5)}, os.environ['AUTH_SECRET'], algorithm='HS256'))")
-          
+
+          echo ""
+          echo "7a. GET/POST /api/v1/me/consents (issue #37):"
+          CONSENT_GET=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            -H "Authorization: Bearer $TEST_JWT" \
+            "http://localhost:8000/api/v1/me/consents?locale=en")
+          CONSENT_STATUS=$(echo "$CONSENT_GET" | grep "HTTP_STATUS:" | cut -d: -f2)
+          CONSENT_BODY=$(echo "$CONSENT_GET" | sed '/HTTP_STATUS:/d')
+          echo "   GET HTTP Status: $CONSENT_STATUS"
+          echo "$CONSENT_BODY" | python3 -c "
+          import sys, json
+          d=json.load(sys.stdin)
+          assert d.get('policy_version') and len(d['policy_version'])==64
+          by={c['purpose']: c for c in d['consents']}
+          for p in ('video_analysis','expression_analysis','keep_detailed_tracking'):
+              assert by[p]['granted'] is False, p
+              assert by[p]['title'] and by[p]['what'] and by[p]['why'] and by[p]['limits'] and by[p]['never']
+          never=' '.join(c['never'].lower() for c in d['consents'])
+          assert 'emotion inference' in never
+          assert 'inner states' in never
+          print('policy_version', d['policy_version'][:12], 'defaults off')
+          "
+          if [ "$CONSENT_STATUS" != "200" ]; then
+            echo "   ❌ Expected 200 from GET /me/consents, got $CONSENT_STATUS"
+            echo "$CONSENT_BODY"
+            exit 1
+          fi
+          CONSENT_POST=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            -H "Authorization: Bearer $TEST_JWT" \
+            -H "Content-Type: application/json" \
+            -d '{"purpose":"video_analysis","granted":true}' \
+            "http://localhost:8000/api/v1/me/consents?locale=en")
+          POST_STATUS=$(echo "$CONSENT_POST" | grep "HTTP_STATUS:" | cut -d: -f2)
+          POST_BODY=$(echo "$CONSENT_POST" | sed '/HTTP_STATUS:/d')
+          echo "   POST grant HTTP Status: $POST_STATUS"
+          echo "$POST_BODY" | python3 -c "
+          import sys, json
+          d=json.load(sys.stdin)
+          by={c['purpose']: c for c in d['consents']}
+          assert by['video_analysis']['granted'] is True
+          assert by['expression_analysis']['granted'] is False
+          print('granted video_analysis; expression still off')
+          "
+          if [ "$POST_STATUS" != "201" ]; then
+            echo "   ❌ Expected 201 from POST /me/consents, got $POST_STATUS"
+            echo "$POST_BODY"
+            exit 1
+          fi
+          CONSENT_REVOKE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            -H "Authorization: Bearer $TEST_JWT" \
+            -H "Content-Type: application/json" \
+            -d '{"purpose":"video_analysis","granted":false}' \
+            "http://localhost:8000/api/v1/me/consents")
+          REVOKE_STATUS=$(echo "$CONSENT_REVOKE" | grep "HTTP_STATUS:" | cut -d: -f2)
+          REVOKE_BODY=$(echo "$CONSENT_REVOKE" | sed '/HTTP_STATUS:/d')
+          echo "$REVOKE_BODY" | python3 -c "
+          import sys, json
+          d=json.load(sys.stdin)
+          by={c['purpose']: c for c in d['consents']}
+          assert by['video_analysis']['granted'] is False
+          assert by['video_analysis']['revoked_at']
+          print('revoked video_analysis')
+          "
+          if [ "$REVOKE_STATUS" != "201" ]; then
+            echo "   ❌ Expected 201 from revoke POST, got $REVOKE_STATUS"
+            echo "$REVOKE_BODY"
+            exit 1
+          fi
+          BAD=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $TEST_JWT" \
+            -H "Content-Type: application/json" \
+            -d '{"purpose":"emotion_inference","granted":true}' \
+            "http://localhost:8000/api/v1/me/consents")
+          if [ "$BAD" != "422" ]; then
+            echo "   ❌ Expected 422 for unknown purpose, got $BAD"
+            exit 1
+          fi
+          echo "   ✅ Consents default off, grant/revoke append-only, unknown purpose rejected"
+
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
             -H "Authorization: Bearer $TEST_JWT" \
             -H "Content-Type: application/json" \
@@ -893,6 +973,9 @@ jobs:
 
           echo ""
           echo "✅ Phase 0 + Phase 1 smoke test complete"
+          echo ""
+          echo "Phase 2 additions:"
+          echo "  - GET/POST /me/consents (defaults off, grant/revoke, unknown purpose 422)"
           echo ""
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"
