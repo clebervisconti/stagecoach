@@ -128,6 +128,7 @@ def run_slides_stage(
     transcript: Optional[dict[str, Any]] = None,
     is_screen_recording: Optional[bool] = None,
     is_audio_only: bool = False,
+    llm_client: Any = None,
 ) -> SlidesOutput:
     """Write slides.json / deck_text.json / keyframes. Missing inputs stay empty, never scored."""
     dest = Path(output_dir)
@@ -272,6 +273,41 @@ def run_slides_stage(
         "slide_count": len(slides),
         "skip_reason": reason,
     }
+    glance = None
+    va_payload = None
+    if slides:
+        from pipeline.slides.glance import run_slides_v1
+        from pipeline.slides.visual_aids import compute_visual_aids_metrics
+
+        glance = run_slides_v1(slides, client=llm_client, language=language)
+        if glance:
+            payload["slides_v1"] = glance
+            glance_path = dest / "slides_v1.json"
+            glance_path.write_text(json.dumps(glance, indent=2) + "\n", encoding="utf-8")
+            artifacts["slides_v1"] = str(glance_path)
+        events = []
+        events_path = dest / "vision_events.json"
+        if events_path.exists():
+            try:
+                events = (json.loads(events_path.read_text(encoding="utf-8")) or {}).get("events") or []
+            except json.JSONDecodeError:
+                events = []
+        duration = 1.0
+        if slides and slides[0].get("t_end") is not None:
+            duration = max(float(slides[-1].get("t_end") or 1.0), 1.0)
+        va_payload = compute_visual_aids_metrics(
+            payload,
+            transcript=transcript,
+            vision_events=events,
+            duration_s=duration,
+            glance=glance,
+        )
+        if va_payload:
+            va_path = dest / "visual_aids_metrics.json"
+            va_path.write_text(json.dumps(va_payload, indent=2) + "\n", encoding="utf-8")
+            artifacts["visual_aids_metrics"] = str(va_path)
+            payload["visual_aids"] = {"slide_count": va_payload.get("slide_count"), "deck_only": va_payload.get("deck_only")}
+
     slides_path = dest / "slides.json"
     if slides or deck_error:
         slides_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -286,6 +322,7 @@ def run_slides_stage(
             "has_deck": bool(deck_payload),
             "scene_engine": engine,
             "region_method": region.get("method") if isinstance(region, dict) else None,
+            "visual_aids": bool(va_payload),
         },
         skipped=skipped,
         skip_reason=reason,

@@ -33,6 +33,7 @@ providers:
 # Model selection per prompt type (can be overridden)
 model_assignments:
   default: grok-beta
+  slides_v1: grok-beta
   # Future: specific models for specific prompt types
   # outline_v1: grok-2-1212
   # message_v1: grok-beta

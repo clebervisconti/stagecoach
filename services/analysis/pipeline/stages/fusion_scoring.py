@@ -26,7 +26,7 @@ PIPELINE_VERSION = "1.0.0"
 SCHEMA_VERSION = "1.0.0"
 
 VIDEO_CATEGORIES = {
-    "visual_aids": "Vision and slides stages were not run (Phase 1 is audio/text only).",
+    "visual_aids": "No slides were detected and no deck was uploaded.",
     "gestures_body": "Vision stage was not run; body metrics need a visible person.",
     "eye_contact": "Vision stage was not run; gaze metrics need a visible face.",
     "facial_affect": "Expression analysis is off and vision was not run.",
@@ -202,6 +202,7 @@ def _min_evidence_ok(category_id: str, config: dict[str, Any], stats: dict[str, 
             found = extras.get("slides_detected") or 0
             if found < threshold:
                 return False, "No slides were detected and no deck was uploaded."
+            continue
         if key == "person_visible_ratio":
             ratio = float(extras.get("person_visible_ratio") or 0.0)
             if ratio < float(threshold):
@@ -516,6 +517,27 @@ def _energy_from_audio(
             )
         )
     return metrics
+
+
+def _visual_aids_from_payload(payload: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map visual_aids_metrics.json onto scoring-config visual_aids ids."""
+    out: list[dict[str, Any]] = []
+    allowed = config["categories"]["visual_aids"]["metrics"]
+    for metric_id, row in (payload.get("metrics") or {}).items():
+        if metric_id not in allowed:
+            continue
+        if not row or row.get("applicable") is False or row.get("value") is None:
+            continue
+        out.append(
+            _metric_payload(
+                metric_id=metric_id,
+                category_id="visual_aids",
+                raw_value=row["value"],
+                confidence=float(row.get("confidence") or 0.5),
+                config=config,
+            )
+        )
+    return out
 
 
 def _section_boundaries(content: Optional[dict[str, Any]], transcript: dict[str, Any]) -> list[float]:
@@ -945,7 +967,24 @@ def run_fusion_scoring(
             audio_only = camera_setup == "audio_only" or bool(
                 ((ingest or {}).get("modality") or {}).get("is_audio_only")
             )
-            if category_id == "gestures_body":
+            if category_id == "visual_aids":
+                va = _read_json(output_dir / "visual_aids_metrics.json")
+                slides = _read_json(output_dir / "slides.json")
+                count = int((va or {}).get("slide_count") or (slides or {}).get("slide_count") or 0)
+                extras["slides_detected"] = count
+                if not va or count < 1:
+                    applicable = False
+                    na_reason = "No slides were detected and no deck was uploaded."
+                else:
+                    ok, reason = _min_evidence_ok(category_id, config, stats, extras)
+                    if ok:
+                        applicable = True
+                        na_reason = None
+                        grouped["visual_aids"].extend(_visual_aids_from_payload(va, config))
+                    else:
+                        applicable = False
+                        na_reason = reason
+            elif category_id == "gestures_body":
                 from pipeline.accessibility import (
                     gesture_na_reason,
                     load_accessibility,

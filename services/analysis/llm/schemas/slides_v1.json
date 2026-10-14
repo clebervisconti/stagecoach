@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stagecoach.local/schemas/llm/slides_v1.json",
+  "title": "SlidesV1",
+  "description": "Glance Test judgments for sampled slides",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["slides", "insufficient_evidence"],
+  "properties": {
+    "insufficient_evidence": { "type": "boolean" },
+    "slides": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "title_type", "one_idea", "glance_level", "issues", "insufficient_evidence"],
+        "properties": {
+          "index": { "type": "integer", "minimum": 1 },
+          "title_type": { "type": "string", "enum": ["assertion", "topic", "none"] },
+          "one_idea": { "type": "boolean" },
+          "glance_level": { "type": "number", "minimum": 1, "maximum": 5 },
+          "issues": {
+            "type": "array",
+            "items": { "type": "string", "maxLength": 120 }
+          },
+          "insufficient_evidence": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

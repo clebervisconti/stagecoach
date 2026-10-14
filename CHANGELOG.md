@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Category 8 visual aids and slides_v1 Glance Test (issue #44)
+- All `va_*` scoring.yaml metrics, including reading-ratio 3-gram overlap
+- `slides_v1` on at most 20 slides via the existing LLM client; missing key → glance N/A, never a fake level
+- N/A when no slides and no deck; deck-only alignment multiplies reading-ratio confidence by 0.6
+- Golden test on a synthetic screen-recording fixture
+
 ##### Added - Slides stage: PySceneDetect, keyframes, deck, OCR (issue #43)
 - Slide region: full frame for screen recordings; stage uses a bright low-motion quadrilateral (H)
 - Scene changes via PySceneDetect ContentDetector (BSD-3-Clause); merge gaps under 2 s; ffmpeg scene fallback

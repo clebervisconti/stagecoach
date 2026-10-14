@@ -289,3 +289,42 @@ Phase 2 additions:
   - category 14 (facial_affect) only when expression_analysis is granted; no emotion labels
   - slides stage: PySceneDetect (BSD), keyframes, python-pptx/pdftotext, Tesseract OCR; deck antivirus in sandbox
 ```
+
+## PR #119 — Category 8 visual aids and slides_v1 Glance Test (#44)
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/119
+- Head SHA at green CI: `63663f6c600e2285ad97d605a219c96a51683924`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38621509928
+- `gh run view 38621509928 --json conclusion,headSha` → `success` / `63663f6c600e2285ad97d605a219c96a51683924`
+
+Jobs on that SHA (all success): Web Type Check and Build, Docker Compose Smoke Test, Test Suite, Validate Scoring Config, Playwright E2E, Check Generated Code, Worker Tests, Production Dependency Audit, Lint and Type Check, API Unit Tests, Secret Scan.
+
+Worker Tests excerpt:
+
+```
+tests/test_visual_aids.py::test_units_match_scoring_yaml PASSED
+tests/test_visual_aids.py::test_headline_heuristic_and_reading_ratio PASSED
+tests/test_visual_aids.py::test_deck_only_scales_reading_confidence PASSED
+tests/test_visual_aids.py::test_none_without_slides PASSED
+tests/test_visual_aids.py::test_slides_v1_caps_at_20_and_uses_client PASSED
+tests/test_visual_aids.py::test_golden_screen_recording_scores_visual_aids PASSED
+================== 183 passed, 8 skipped, 1 warning in 19.57s ==================
+```
+
+API Unit Tests excerpt:
+
+```
+=================== 34 passed, 2 skipped, 1 warning in 1.01s ===================
+```
+
+Smoke excerpt (issue #44 echo):
+
+```
+Phase 2 additions:
+  - GET/POST /me/consents (defaults off, grant/revoke, unknown purpose 422)
+  - model_registry table seeded with MediaPipe pose/hands/face (Apache-2.0)
+  - vision_events.json / vision_quality.json when video_analysis is granted
+  - category 14 (facial_affect) only when expression_analysis is granted; no emotion labels
+  - slides stage: PySceneDetect (BSD), keyframes, python-pptx/pdftotext, Tesseract OCR; deck antivirus in sandbox
+  - category 8 (visual_aids) from slides.json; slides_v1 Glance Test ≤20 images; no slides/deck stays N/A
+```

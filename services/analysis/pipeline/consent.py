@@ -138,5 +138,5 @@ def video_category_na_reason(category_id: str, consents: Optional[dict[str, Any]
             return "Vision stage was not run; body metrics need a visible person."
         return "Vision stage was not run; gaze metrics need a visible face."
     if category_id == "visual_aids":
-        return "Vision and slides stages were not run (Phase 1 is audio/text only)."
+        return "No slides were detected and no deck was uploaded."
     return "Required video evidence is not available."
