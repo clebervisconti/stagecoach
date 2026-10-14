@@ -16,3 +16,13 @@ test("en and pt-BR UI strings do not use emotion-inference terms", () => {
     }
   }
 });
+
+test("consent policy strings do not use emotion-inference terms", () => {
+  const policy = JSON.parse(
+    readFileSync(join(here, "../../../packages/consent/v1.json"), "utf8"),
+  );
+  for (const text of collectStrings(policy)) {
+    const hit = findForbiddenEmotionTerm(text);
+    assert.equal(hit, null, `consent policy uses forbidden term ${hit}: ${text}`);
+  }
+});

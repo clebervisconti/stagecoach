@@ -46,6 +46,12 @@ def test_policy_text_does_not_infer_emotions():
         r"\bansioso\b",
         r"\braiva\b",
         r"\bmedo\b",
+        r"\bstress\b",
+        r"\bengagement\b",
+        r"\bauthenticity\b",
+        r"\bestresse\b",
+        r"\bengajamento\b",
+        r"\bautenticidade\b",
     )
     for pattern in forbidden:
         assert re.search(pattern, blob) is None, pattern

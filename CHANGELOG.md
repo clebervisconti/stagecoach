@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Category 14 facial expressiveness signals, opt-in (issue #42, D8)
+- `facial_affect` is scored only when `expression_analysis` is granted (off by default)
+- Metrics from MediaPipe blendshapes: smile presence, expressivity index, expression variety
+- Incongruence flags are low-confidence observations from content cues overlapping smile/flat-face events
+- Forbidden-terms tests cover UI, consent policy, and generated report/expression JSON (en and pt-BR)
+- No SER models; no emotion labels
+
 ##### Added - Vision events, quality JSON, camera-setup check (issue #39)
 - Timestamped `vision_events.json`: gesture strokes, self-adaptors, crossed arms, notes-down, screen turns, locomotion; smile and flat-face only with `expression_analysis`
 - `vision_quality.json`: visibility ratios, pixel sizes, luma, camera motion, occlusion, declared vs detected camera setup

@@ -9,6 +9,9 @@ export const FORBIDDEN_EMOTION_TERMS = [
   "frustrated",
   "excited",
   "nervous",
+  "stress",
+  "engagement",
+  "authenticity",
   "feliz",
   "triste",
   "ansioso",
@@ -18,6 +21,9 @@ export const FORBIDDEN_EMOTION_TERMS = [
   "empolgado",
   "nervoso",
   "nervosa",
+  "estresse",
+  "engajamento",
+  "autenticidade",
 ] as const;
 
 const BOUNDARY = new RegExp(

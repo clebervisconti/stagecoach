@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from pipeline.consent import video_category_na_reason
+from pipeline.consent import decide_vision, video_category_na_reason
 
 logger = logging.getLogger(__name__)
 
@@ -198,8 +198,16 @@ def _min_evidence_ok(category_id: str, config: dict[str, Any], stats: dict[str, 
             return False, "No Q&A was detected."
         if key == "question_count" and extras.get("question_count", 0) < threshold:
             return False, "Fewer than one question was detected."
-        if key in {"slides_detected", "person_visible_ratio", "hands_visible_ratio", "face_visible_ratio", "face_px_median"}:
+        if key in {"slides_detected", "person_visible_ratio", "hands_visible_ratio"}:
             return False, "Required video evidence is not available."
+        if key == "face_visible_ratio":
+            ratio = float(extras.get("face_visible_ratio") or 0.0)
+            if ratio < float(threshold):
+                return False, f"Face visible in {ratio:.0%} of frames; need {float(threshold):.0%}."
+        if key == "face_px_median":
+            px = float(extras.get("face_px_median") or 0.0)
+            if px < float(threshold):
+                return False, f"Median face height {px:.0f} px is below {threshold}."
     return True, None
 
 
@@ -501,6 +509,26 @@ def _energy_from_audio(
     return metrics
 
 
+def _facial_metrics_from_payload(payload: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map expression_metrics.json onto scoring-config facial_affect ids. No emotion labels."""
+    out: list[dict[str, Any]] = []
+    for metric_id, row in (payload.get("metrics") or {}).items():
+        if metric_id not in config["categories"]["facial_affect"]["metrics"]:
+            continue
+        if not row or row.get("applicable") is False or row.get("value") is None:
+            continue
+        out.append(
+            _metric_payload(
+                metric_id=metric_id,
+                category_id="facial_affect",
+                raw_value=row["value"],
+                confidence=float(row.get("confidence") or 0.5),
+                config=config,
+            )
+        )
+    return out
+
+
 def _score_one(
     engine: Any,
     item: dict[str, Any],
@@ -578,6 +606,7 @@ def _evidence_from_inputs(
     transcript: dict[str, Any],
     metrics: list[dict[str, Any]],
     content: Optional[dict[str, Any]],
+    output_dir: Optional[Path] = None,
 ) -> list[dict[str, Any]]:
     evidence: list[dict[str, Any]] = []
 
@@ -672,6 +701,37 @@ def _evidence_from_inputs(
             kind="observation",
             modality="text",
         )
+    if output_dir is not None:
+        events_payload = _read_json(Path(output_dir) / "vision_events.json") or {}
+        expr = _read_json(Path(output_dir) / "expression_metrics.json") or {}
+        added_vision = 0
+        for event in events_payload.get("events") or []:
+            if event.get("type") != "smile":
+                continue
+            add(
+                category_id="facial_affect",
+                metric_id="fa_smile_presence_ratio",
+                text="Smile signal (blendshape mouthSmile mean above the configured threshold).",
+                t_start=float(event.get("t_start") or 0),
+                t_end=float(event.get("t_end") or event.get("t_start") or 0),
+                kind="observation",
+                modality="video",
+                confidence=0.6,
+            )
+            added_vision += 1
+            if added_vision >= 6:
+                break
+        for obs in ((expr.get("metrics") or {}).get("fa_congruence") or {}).get("observations") or []:
+            add(
+                category_id="facial_affect",
+                metric_id="fa_congruence",
+                text=str(obs.get("note") or "Expression/content overlap flagged for review."),
+                t_start=float(obs.get("t_start") or 0),
+                t_end=float(obs.get("t_end") or 0),
+                kind="observation",
+                modality="video",
+                confidence=0.4,
+            )
     if not evidence:
         duration = float(transcript.get("duration") or 0)
         add(
@@ -783,13 +843,40 @@ def run_fusion_scoring(
         na_reason = None
         applicable = True
         if category_id in VIDEO_CATEGORIES:
-            applicable = False
             consents = _read_json(output_dir / "consents.json")
-            na_reason = (
-                video_category_na_reason(category_id, consents)
-                if consents
-                else VIDEO_CATEGORIES[category_id]
-            )
+            expr = _read_json(output_dir / "expression_metrics.json")
+            if (
+                category_id == "facial_affect"
+                and consents
+                and decide_vision(consents).run_expression_metrics
+                and expr
+            ):
+                from pipeline.vision.expressiveness import attach_incongruence
+
+                events_payload = _read_json(output_dir / "vision_events.json") or {}
+                expr = attach_incongruence(
+                    expr,
+                    events_payload.get("events") or [],
+                    transcript,
+                    float(stats.get("duration_s") or 1.0),
+                )
+                extras["face_visible_ratio"] = float(expr.get("face_visible_ratio") or 0.0)
+                extras["face_px_median"] = float(expr.get("face_px_median") or 0.0)
+                ok, reason = _min_evidence_ok(category_id, config, stats, extras)
+                if ok:
+                    applicable = True
+                    na_reason = None
+                    grouped["facial_affect"].extend(_facial_metrics_from_payload(expr, config))
+                else:
+                    applicable = False
+                    na_reason = reason
+            else:
+                applicable = False
+                na_reason = (
+                    video_category_na_reason(category_id, consents)
+                    if consents
+                    else VIDEO_CATEGORIES[category_id]
+                )
         else:
             ok, reason = _min_evidence_ok(category_id, config, stats, extras)
             if not ok:
@@ -908,7 +995,7 @@ def run_fusion_scoring(
     if not ingest:
         has_video = False
 
-    evidence = _evidence_from_inputs(transcript, scored_metrics, content)
+    evidence = _evidence_from_inputs(transcript, scored_metrics, content, output_dir=output_dir)
     by_cat: dict[str, list[str]] = {}
     for item in evidence:
         by_cat.setdefault(item["category_id"], []).append(item["id"])

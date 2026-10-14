@@ -342,6 +342,9 @@ def load_forbidden_terms(language: str) -> List[str]:
             "confident",  # ambiguous: "sounds confident" is OK, "feels confident" is not
             "feels",
             "feeling",
+            "stress",
+            "engagement",
+            "authenticity",
         ],
         "pt-BR": [
             "feliz",
@@ -355,6 +358,9 @@ def load_forbidden_terms(language: str) -> List[str]:
             "confiante",
             "sente",
             "sentindo",
+            "estresse",
+            "engajamento",
+            "autenticidade",
         ],
     }
 
