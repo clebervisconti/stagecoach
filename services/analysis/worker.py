@@ -69,6 +69,7 @@ app.conf.update(
         "tasks.fusion_scoring": {"queue": "cpu"},
         "tasks.report": {"queue": "cpu"},
         "tasks.run_mvp_analysis": {"queue": "cpu"},
+        "tasks.export_pdf": {"queue": "cpu"},
     },
 )
 
@@ -639,6 +640,53 @@ def audio_features_task(
         if job_id:
             emit_progress(job_id, "audio_features", "failed", message=f"audio_features failed: {str(exc)}")
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
+
+
+def _write_export_meta(meta_path: Path, payload: dict) -> None:
+    meta_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+@app.task(name="tasks.export_pdf", bind=True, max_retries=2)
+def export_pdf_task(
+    self,
+    export_id: str,
+    session_id: str,
+    output_dir: str,
+    dest_dir: str,
+    include_transcript: bool = False,
+):
+    """SPEC §7.5 / §8.9 async PDF via Playwright Chromium (issue #49)."""
+    from pipeline.pdf_export import export_session_pdf
+
+    dest = Path(dest_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+    meta_path = dest / "meta.json"
+    try:
+        current = json.loads(meta_path.read_text()) if meta_path.is_file() else {}
+        current.update({"id": export_id, "session_id": session_id, "status": "running"})
+        _write_export_meta(meta_path, current)
+        result = export_session_pdf(
+            Path(output_dir),
+            dest / "report.pdf",
+            include_transcript=include_transcript,
+        )
+        current.update(
+            {
+                "status": "ready",
+                "pdf": result["path"],
+                "bytes": result["bytes"],
+                "include_transcript": include_transcript,
+            }
+        )
+        _write_export_meta(meta_path, current)
+        return current
+    except Exception as exc:
+        current = json.loads(meta_path.read_text()) if meta_path.is_file() else {}
+        current.update({"status": "failed", "error": str(exc)[:200]})
+        _write_export_meta(meta_path, current)
+        logger = logging.getLogger(__name__)
+        logger.exception("export_pdf failed export=%s session=%s", export_id, session_id)
+        raise
 
 
 @app.task(name="tasks.fusion_scoring", bind=True, max_retries=3)

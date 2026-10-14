@@ -338,6 +338,24 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
     if (method === "GET" && path === `/sessions/${SESSION_ID}/keyframe`) {
       return route.fulfill({ status: 404, body: "" });
     }
+    if (method === "POST" && path === `/sessions/${SESSION_ID}/export/pdf`) {
+      return json(route, { id: "export-1", status: "queued" }, 202);
+    }
+    if (method === "GET" && path === "/exports/export-1") {
+      return json(route, {
+        id: "export-1",
+        status: "ready",
+        include_transcript: false,
+        download: "/api/v1/exports/export-1/file",
+      });
+    }
+    if (method === "GET" && path === "/exports/export-1/file") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/pdf",
+        body: "%PDF-1.4 mock",
+      });
+    }
     if (method === "GET" && path === `/sessions/${SESSION_ID}/timeline`) {
       return json(route, {
         duration_s: 12,

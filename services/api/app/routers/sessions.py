@@ -119,6 +119,10 @@ class SessionResponse(BaseModel):
     upload: dict
 
 
+class PdfExportRequest(BaseModel):
+    include_transcript: bool = False
+
+
 def _owned_session(session_id: str, user: User, db: Session) -> SessionModel:
     session = (
         db.query(SessionModel)
@@ -701,6 +705,48 @@ async def get_keyframe(
     if not candidate.is_file() or not candidate.is_relative_to(MEDIA_ROOT):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Keyframe is not ready")
     return FileResponse(candidate, media_type="image/jpeg")
+
+
+@router.post("/{session_id}/export/pdf", status_code=status.HTTP_202_ACCEPTED)
+async def export_pdf(
+    session_id: str,
+    body: PdfExportRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Async Playwright PDF export (SPEC §7.5 / §8.9, issue #49)."""
+    session = _owned_session(session_id, current_user, db)
+    _, outputs = _outputs_or_conflict(session, db)
+    directory = _artifact_dir(outputs)
+    if not directory:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Report is not ready")
+    include = bool(body.include_transcript) if body else False
+    export_id = str(uuid.uuid4())
+    dest = (MEDIA_ROOT / "exports" / export_id).resolve()
+    if not dest.is_relative_to(MEDIA_ROOT):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid export path")
+    dest.mkdir(parents=True, exist_ok=True, mode=0o700)
+    meta = {
+        "id": export_id,
+        "session_id": str(session.id),
+        "user_id": str(current_user.id),
+        "status": "queued",
+        "include_transcript": include,
+        "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    (dest / "meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    celery = Celery("stagecoach-api", broker=REDIS_URL, backend=REDIS_URL)
+    celery.send_task(
+        "tasks.export_pdf",
+        kwargs={
+            "export_id": export_id,
+            "session_id": str(session.id),
+            "output_dir": str(directory),
+            "dest_dir": str(dest),
+            "include_transcript": include,
+        },
+    )
+    return {"id": export_id, "status": "queued"}
 
 
 @router.get("/{session_id}/sprite")

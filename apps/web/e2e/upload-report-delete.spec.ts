@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { mockStagecoachApi, silentWav } from "./helpers.ts";
+import { mockStagecoachApi, SESSION_ID, silentWav } from "./helpers.ts";
 
 async function uploadTalk(
   page: import("@playwright/test").Page,
@@ -44,6 +44,23 @@ test("partial_ready shows the report while analysis is still processing", async 
   await expect(page.getByTestId("report")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("processing")).toBeVisible();
   await expect(page.getByText(/audio and text categories appear first/i)).toBeVisible();
+});
+
+test("print view visual snapshot matches the web report", async ({ page }) => {
+  await mockStagecoachApi(page, { language: "en", title: "PDF snapshot talk" });
+  await page.goto("/sessions", { waitUntil: "domcontentloaded" });
+  await uploadTalk(page, "PDF snapshot talk", "en");
+  await expect(page.getByTestId("report")).toBeVisible({ timeout: 15_000 });
+  const webScore = await page.locator("#report-summary-heading").innerText();
+  await expect(page.getByTestId("export-pdf")).toBeVisible();
+  await page.goto(`/sessions/${SESSION_ID}/print`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("pdf-print")).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator("#report-summary-heading")).toHaveText(webScore);
+  await expect(page.getByTestId("pdf-transcript")).toHaveCount(0);
+  await expect(page.getByTestId("pdf-print")).toHaveScreenshot("report-print.png", {
+    maxDiffPixelRatio: 0.03,
+    animations: "disabled",
+  });
 });
 
 test("body and slides tabs render from report artifacts", async ({ page }) => {

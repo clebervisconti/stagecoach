@@ -7,7 +7,7 @@ import redis
 from sqlalchemy import text
 
 from app.rate_limit import TokenBucketMiddleware
-from app.routers import users, sessions, progress, evidence
+from app.routers import users, sessions, progress, evidence, exports
 from app.database import engine
 
 app = FastAPI(
@@ -23,6 +23,7 @@ app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(sessions.router, prefix="/api/v1", tags=["sessions"])
 app.include_router(progress.router, prefix="/api/v1", tags=["progress"])
 app.include_router(evidence.router, prefix="/api/v1", tags=["evidence"])
+app.include_router(exports.router, prefix="/api/v1", tags=["exports"])
 
 
 @app.get("/")

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - PDF export via Playwright Chromium (issue #49)
+- `POST /sessions/{id}/export/pdf` enqueues a CPU worker job; `GET /exports/{id}` and `/file`
+- Print HTML sections follow SPEC §8.9; charts are SVG; keyframes replace video
+- Transcript is omitted unless "include transcript" is ticked
+- Visual snapshot compares the print view to the web report score and layout
+
 ##### Added - Body tab and Slides tab (issue #48)
 - Body: gesture heat strip, wrist-space silhouette, events list, sway, yaw histogram, notes-down, opt-in expressivity, data-quality panel
 - Slides: filmstrip with dwell, words, title type, Glance level, reading %, facing-screen seconds; click seeks
