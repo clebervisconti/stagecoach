@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Category 13 audience-facing / gaze proxies (issue #41)
+- All `ec_*` scoring.yaml metrics from head yaw/pitch and MediaPipe `eyeLook*` blendshapes
+- To-camera vs stage thresholds (H); wide shots cap confidence at 0.6 and disable eye-gaze
+- UI wording is "audience-facing time (head orientation)", not eye contact; L2CS-Net is not used
+- Audio-only, screen recordings, missing faces, and accessibility opt-out stay N/A
+
 ##### Added - Category 12 gestures & body + accessibility profile (issue #40)
 - All `gb_*` scoring.yaml metrics from pose trajectories and vision events (`gb_gesture_speech_sync` weight 0)
 - Hands-visible < 40% → hand-based metrics N/A; webcam framing caps confidence at 0.6; audio-only is N/A

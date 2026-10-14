@@ -284,6 +284,29 @@ def run_vision_stage(
     elif gesture_path.exists():
         gesture_path.unlink()
 
+    from pipeline.vision.gaze import compute_gaze_metrics
+
+    gaze_path = dest / "gaze_metrics.json"
+    if decision.run_face_landmarks:
+        detected = (quality.get("camera_setup") or {}).get("detected") or camera_setup
+        declared = (quality.get("camera_setup") or {}).get("declared") or camera_setup
+        gaze_setup = declared if declared in {"stage", "to_camera"} else detected
+        gaze = compute_gaze_metrics(
+            face_rows,
+            duration_s=max(duration, 1.0),
+            setup=str(gaze_setup or "unknown"),
+            accessibility=load_accessibility(dest),
+            audio_only=False,
+            mean_face_height_px=quality.get("mean_face_height_px"),
+        )
+        if gaze is not None:
+            gaze_path.write_text(json.dumps(gaze, indent=2) + "\n", encoding="utf-8")
+            artifacts["gaze_metrics"] = str(gaze_path)
+        elif gaze_path.exists():
+            gaze_path.unlink()
+    elif gaze_path.exists():
+        gaze_path.unlink()
+
     expr_path = dest / "expression_metrics.json"
     if decision.run_expression_metrics:
         from pipeline.vision.expressiveness import compute_expression_metrics
