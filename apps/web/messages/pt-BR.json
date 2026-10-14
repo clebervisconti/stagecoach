@@ -83,6 +83,30 @@
     "locale": "Idioma",
     "signOut": "Sair"
   },
+  "accessibility": {
+    "heading": "Perfil de acessibilidade",
+    "intro": "Estas opções alteram quais métricas corporais são pontuadas. Elas são uma preferência que você define, nunca inferida do vídeo. Métricas indisponíveis aparecem como N/D, sem penalidade.",
+    "loadError": "Não foi possível carregar as preferências de acessibilidade.",
+    "saveError": "Não foi possível salvar as preferências de acessibilidade.",
+    "keys": {
+      "seated": "Apresentação sentada",
+      "wheelchair": "Uso de cadeira de rodas",
+      "limited_mobility": "Mobilidade reduzida",
+      "one_handed": "Gestos com uma mão",
+      "speech_difference": "Diferença de fala",
+      "prefers_no_video_metrics": "Não pontuar métricas corporais de vídeo",
+      "low_vision": "Baixa visão"
+    },
+    "hints": {
+      "seated": "Desliga métricas de oscilação e deslocamento.",
+      "wheelchair": "Tratado como apresentação sentada para oscilação e deslocamento.",
+      "limited_mobility": "Desliga oscilação, deslocamento e quantidade de gestos.",
+      "one_handed": "Usa só a mão visível; uma mão oculta não conta como postura fechada.",
+      "speech_difference": "Reservado para opções de fluência; não altera a pontuação de gestos.",
+      "prefers_no_video_metrics": "Gestos, olhar e categorias de vídeo relacionadas ficam N/D.",
+      "low_vision": "Não altera a pontuação de gestos; reservado para preferências de exibição."
+    }
+  },
   "report": {
     "loadError": "Não foi possível carregar esta sessão.",
     "back": "Sessões",
@@ -181,7 +205,7 @@
     "enableHint": {
       "visual_aids": "Grave os slides visíveis ou anexe um deck para habilitar esta categoria.",
       "gestures_body": "Grave com as mãos visíveis para obter retorno sobre gestos.",
-      "eye_contact": "Grave com o rosto visível para a câmera para habilitar métricas de olhar.",
+      "eye_contact": "Grave com o rosto visível. As pontuações são tempo voltado à audiência (orientação da cabeça), não contato visual.",
       "facial_affect": "A análise de expressão é opcional e descreve sinais visíveis, nunca estados internos.",
       "qa": "Declare perguntas e respostas no slot, ou inclua turnos de pergunta na gravação."
     },
@@ -190,7 +214,7 @@
       "pp_wpm": "Palavras por minuto",
       "fl_filler_sounds_per_min": "Sons de preenchimento por minuto",
       "pp_unplanned_long_pauses_per_10min": "Pausas longas por 10 min",
-      "audience_facing_ratio": "Voltado à audiência",
+      "ec_audience_facing_ratio": "Tempo voltado à audiência (orientação da cabeça)",
       "vv_pvq_median": "Variação de tom (PVQ)"
     },
     "keyMetricDefinitions": {
@@ -198,7 +222,7 @@
       "pp_wpm": "Palavras lexicais por minuto de fala. A faixa é uma referência de prática; normas de ritmo dependem do tipo de apresentação (heurística informada por S13).",
       "fl_filler_sounds_per_min": "Pausas preenchidas como um e uh por minuto de fala. Até 5/min não há penalidade no estudo citado; 12/min é claramente prejudicial (S12).",
       "pp_unplanned_long_pauses_per_10min": "Pausas não planejadas acima do limiar de meio de frase, por 10 minutos (heurística).",
-      "audience_facing_ratio": "Parcela do tempo de fala voltada à audiência ou à câmera. Exige o estágio de visão, então fica indisponível em relatórios só de áudio/texto.",
+      "ec_audience_facing_ratio": "Parcela do tempo de fala com a cabeça orientada à audiência ou à câmera. É um proxy de orientação da cabeça, não contato visual (heurística).",
       "vv_pvq_median": "Quociente de variação de tom: desvio-padrão do F0 dividido pela média do F0 (S24)."
     },
     "keyMetricUnits": {
@@ -206,7 +230,7 @@
       "pp_wpm": "PPM",
       "fl_filler_sounds_per_min": "/min",
       "pp_unplanned_long_pauses_per_10min": "/10 min",
-      "audience_facing_ratio": "voltado",
+      "ec_audience_facing_ratio": "voltado",
       "vv_pvq_median": "PVQ"
     },
     "fillerBenchmarks": "Referências: 5/min (sem penalidade) e 12/min (prejudicial) em S12.",

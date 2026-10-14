@@ -263,11 +263,54 @@ def run_vision_stage(
     events_path.write_text(json.dumps(events_payload, indent=2) + "\n", encoding="utf-8")
     artifacts["vision_quality"] = str(quality_path)
     artifacts["vision_events"] = str(events_path)
+    from pipeline.accessibility import load_accessibility
+    from pipeline.vision.gestures import compute_gesture_metrics
+
+    duration = float(frames[-1].t) if frames else 0.0
+    webcam = (quality.get("camera_setup") or {}).get("detected") == "to_camera"
+    gesture = compute_gesture_metrics(
+        pose_rows,
+        events,
+        duration_s=max(duration, 1.0),
+        accessibility=load_accessibility(dest),
+        webcam_framing=bool(webcam),
+        audio_only=False,
+        fps=POSE_FPS,
+    )
+    gesture_path = dest / "gesture_metrics.json"
+    if gesture is not None:
+        gesture_path.write_text(json.dumps(gesture, indent=2) + "\n", encoding="utf-8")
+        artifacts["gesture_metrics"] = str(gesture_path)
+    elif gesture_path.exists():
+        gesture_path.unlink()
+
+    from pipeline.vision.gaze import compute_gaze_metrics
+
+    gaze_path = dest / "gaze_metrics.json"
+    if decision.run_face_landmarks:
+        detected = (quality.get("camera_setup") or {}).get("detected") or camera_setup
+        declared = (quality.get("camera_setup") or {}).get("declared") or camera_setup
+        gaze_setup = declared if declared in {"stage", "to_camera"} else detected
+        gaze = compute_gaze_metrics(
+            face_rows,
+            duration_s=max(duration, 1.0),
+            setup=str(gaze_setup or "unknown"),
+            accessibility=load_accessibility(dest),
+            audio_only=False,
+            mean_face_height_px=quality.get("mean_face_height_px"),
+        )
+        if gaze is not None:
+            gaze_path.write_text(json.dumps(gaze, indent=2) + "\n", encoding="utf-8")
+            artifacts["gaze_metrics"] = str(gaze_path)
+        elif gaze_path.exists():
+            gaze_path.unlink()
+    elif gaze_path.exists():
+        gaze_path.unlink()
+
     expr_path = dest / "expression_metrics.json"
     if decision.run_expression_metrics:
         from pipeline.vision.expressiveness import compute_expression_metrics
 
-        duration = float(frames[-1].t) if frames else 0.0
         expr = compute_expression_metrics(face_rows, events, duration_s=max(duration, 1.0))
         if expr is not None:
             expr_path.write_text(json.dumps(expr, indent=2) + "\n", encoding="utf-8")

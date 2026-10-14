@@ -142,7 +142,7 @@ export const KEY_METRIC_IDS = [
   "pp_wpm",
   "fl_filler_sounds_per_min",
   "pp_unplanned_long_pauses_per_10min",
-  "audience_facing_ratio",
+  "ec_audience_facing_ratio",
   "vv_pvq_median",
 ] as const;
 

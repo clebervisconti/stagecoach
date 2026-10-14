@@ -18,6 +18,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sandbox antivirus: magic bytes, zip-bomb/macro/JS checks; ClamAV if `clamscan` is on PATH
 - `POST /sessions/{id}/deck` stores PPTX/PDF beside the session; audio-only with no deck stays empty
 
+##### Added - Category 13 audience-facing / gaze proxies (issue #41)
+- All `ec_*` scoring.yaml metrics from head yaw/pitch and MediaPipe `eyeLook*` blendshapes
+- To-camera vs stage thresholds (H); wide shots cap confidence at 0.6 and disable eye-gaze
+- UI wording is "audience-facing time (head orientation)", not eye contact; L2CS-Net is not used
+- Audio-only, screen recordings, missing faces, and accessibility opt-out stay N/A
+
+##### Added - Category 12 gestures & body + accessibility profile (issue #40)
+- All `gb_*` scoring.yaml metrics from pose trajectories and vision events (`gb_gesture_speech_sync` weight 0)
+- Hands-visible < 40% → hand-based metrics N/A; webcam framing caps confidence at 0.6; audio-only is N/A
+- Accessibility profile (seated/wheelchair, limited mobility, one-handed, prefers_no_video_metrics) disables or adjusts metrics; never inferred
+- Unit tests on synthetic trajectories; fusion scores only when `gesture_metrics.json` exists
+
 ##### Added - Category 14 facial expressiveness signals, opt-in (issue #42, D8)
 - `facial_affect` is scored only when `expression_analysis` is granted (off by default)
 - Metrics from MediaPipe blendshapes: smile presence, expressivity index, expression variety
