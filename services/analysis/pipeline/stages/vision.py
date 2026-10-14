@@ -109,6 +109,7 @@ def run_vision_stage(
     frames: Optional[list[FrameDetections]] = None,
     encryption_key: Optional[bytes] = None,
     models_dir: Optional[Path] = None,
+    camera_setup: str = "unknown",
 ) -> VisionOutput:
     """Run pose every frame and face/hands at 10 fps when video_analysis is granted."""
     _assert_no_openface()
@@ -204,6 +205,9 @@ def run_vision_stage(
         prev_xyz = pose.xyz
         prev_t = frame.t
 
+    pose_rows.sort(key=lambda row: float(row.get("t") or 0.0))
+    face_rows.sort(key=lambda row: float(row.get("t") or 0.0))
+
     pose_cols = aggregate_pose(pose_rows)
     face_cols = aggregate_face(face_rows, include_blendshapes=decision.run_expression_metrics)
     pose_path = dest / "pose.parquet"
@@ -228,6 +232,38 @@ def run_vision_stage(
     person_ratio = (
         float(np.nanmean(pose_cols["person_visible_ratio"])) if n_seconds else 0.0
     )
+    from pipeline.vision.events import detect_events
+    from pipeline.vision.quality import build_quality
+
+    frame_h = frames[0].height if frames else 480
+    quality = build_quality(
+        pose_rows,
+        face_rows,
+        frames or [],
+        declared_setup=camera_setup,
+        has_video=True,
+        frame_height=frame_h,
+    )
+    scale = float((quality.get("camera_setup") or {}).get("threshold_scale") or 1.0)
+    events = detect_events(
+        pose_rows,
+        face_rows,
+        expression_metrics=decision.run_expression_metrics,
+        threshold_scale=scale,
+    )
+    events_payload = {
+        "version": STAGE_VERSION,
+        "emotion_inference": False,
+        "events": events,
+        "threshold_scale": scale,
+    }
+    quality_path = dest / "vision_quality.json"
+    events_path = dest / "vision_events.json"
+    quality_path.write_text(json.dumps(quality, indent=2) + "\n", encoding="utf-8")
+    events_path.write_text(json.dumps(events_payload, indent=2) + "\n", encoding="utf-8")
+    artifacts["vision_quality"] = str(quality_path)
+    artifacts["vision_events"] = str(events_path)
+
     metrics = {
         "cpu_only": True,
         "openface_used": False,
@@ -246,6 +282,8 @@ def run_vision_stage(
         ],
         "session_id": session_id,
         "stage_version": STAGE_VERSION,
+        "event_count": len(events),
+        "camera_setup": quality.get("camera_setup"),
     }
     metrics_path = dest / "vision_metrics.json"
     metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
@@ -302,6 +340,7 @@ def _detect_video(
     width, height, fps = video_size(video_path)
     detector = CpuLandmarkers(models_dir=models_dir)
     out: list[FrameDetections] = []
+    prev_gray: Optional[np.ndarray] = None
     try:
         for index, t, frame in iter_rgb_frames(video_path):
             run_fh = should_run_face_hands(index, fps or POSE_FPS) and (
@@ -315,6 +354,12 @@ def _detect_video(
                 faces = []
             if not decision.run_hands:
                 hands = []
+            gray = frame.mean(axis=2)
+            luma = float(gray.mean() / 255.0)
+            motion = 0.0
+            if prev_gray is not None:
+                motion = float(np.mean(np.abs(gray - prev_gray)) / 255.0)
+            prev_gray = gray
             out.append(
                 FrameDetections(
                     t=t,
@@ -325,6 +370,8 @@ def _detect_video(
                     faces=faces,
                     hands=hands,
                     run_face_hands=ran,
+                    luma=luma,
+                    motion=motion,
                 )
             )
             del frame

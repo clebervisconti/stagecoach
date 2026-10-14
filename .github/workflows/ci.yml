@@ -988,6 +988,7 @@ jobs:
           echo "Phase 2 additions:"
           echo "  - GET/POST /me/consents (defaults off, grant/revoke, unknown purpose 422)"
           echo "  - model_registry table seeded with MediaPipe pose/hands/face (Apache-2.0)"
+          echo "  - vision_events.json / vision_quality.json when video_analysis is granted"
           echo ""
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"

@@ -247,6 +247,7 @@ def vision_task(
     output_dir: str,
     session_id: str,
     consents: Optional[dict] = None,
+    camera_setup: str = "unknown",
     job_id: Optional[str] = None,
 ):
     """Vision stage: CPU MediaPipe pose/hands/face (issue #38). Consent-gated."""
@@ -265,6 +266,7 @@ def vision_task(
             session_id=session_id,
             decision=decision,
             video_path=Path(proxy) if proxy else None,
+            camera_setup=camera_setup,
         ).to_dict()
 
     if job_id:
@@ -625,8 +627,9 @@ def run_mvp_analysis_task(
     language: str,
     slot_min: Optional[int] = None,
     consents: Optional[dict] = None,
+    camera_setup: str = "unknown",
 ):
-    """Run ingest → ASR → audio → fusion_scoring → report (issue #30)."""
+    """Run ingest → vision (if consented) → ASR → audio → fusion_scoring → report."""
     from pipeline.consent import persist_consent_snapshot, run_vision_if_allowed
     from pipeline.persist import persist_analysis_result
     from pipeline.stages.asr import transcribe_audio
@@ -702,6 +705,7 @@ def run_mvp_analysis_task(
                         session_id=session_id,
                         decision=decision,
                         video_path=proxy if proxy.exists() else None,
+                        camera_setup=camera_setup,
                     ).to_dict()
 
                 vision_gate = run_vision_if_allowed(snapshot, _vision_runner)
@@ -823,7 +827,7 @@ def run_mvp_analysis_task(
             language=resolved_language,
             slot_min=slot_min,
             qa_in_slot=False,
-            camera_setup="unknown",
+            camera_setup=camera_setup if camera_setup else "unknown",
             ingest=ingest_dict,
             transcript_path=transcript_path,
             audio_metrics_path=Path(audio.artifacts["audio_metrics"]),
