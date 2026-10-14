@@ -83,6 +83,22 @@
     "locale": "Locale",
     "signOut": "Sign Out"
   },
+  "retention": {
+    "heading": "Recording retention",
+    "intro": "Original uploads are deleted after 30 days by default. Analysis working copies (16 kHz audio and the analysis proxy) are always removed when a job finishes. Scores and the report stay until you delete the session.",
+    "loadError": "Could not load retention settings.",
+    "saveError": "Could not save retention settings.",
+    "keys": {
+      "after_analysis": "Delete immediately after analysis",
+      "days_30": "Keep for 30 days after analysis",
+      "until_delete": "Keep until I delete the session"
+    },
+    "hints": {
+      "after_analysis": "Removes the original recording as soon as the report is ready. Playback may remain so you can review the session.",
+      "days_30": "Default. A nightly sweeper deletes originals whose retention date has passed.",
+      "until_delete": "Originals stay until you delete the session. Object-storage lifecycle rules are only a backstop."
+    }
+  },
   "accessibility": {
     "heading": "Accessibility profile",
     "intro": "These options change which body metrics are scored. They are stored as a preference you set, never inferred from video. Unavailable metrics are shown as N/A rather than a penalty.",

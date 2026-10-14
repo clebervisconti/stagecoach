@@ -14,6 +14,7 @@ from typing import Optional
 
 import redis
 from celery import Celery
+from celery.schedules import crontab
 from celery.signals import worker_process_init
 from sqlalchemy import create_engine, text
 
@@ -70,6 +71,13 @@ app.conf.update(
         "tasks.report": {"queue": "cpu"},
         "tasks.run_mvp_analysis": {"queue": "cpu"},
         "tasks.export_pdf": {"queue": "cpu"},
+        "tasks.retention_sweeper": {"queue": "cpu"},
+    },
+    beat_schedule={
+        "retention-sweeper-nightly": {
+            "task": "tasks.retention_sweeper",
+            "schedule": crontab(hour=3, minute=17),
+        },
     },
 )
 
@@ -215,10 +223,51 @@ def _record_job_step(
         )
 
 
+def _finalize_media(
+    output_dir: Path,
+    input_path: Path,
+    ingest_dict: Optional[dict],
+    *,
+    retention_policy: Optional[str],
+    session_id: str,
+) -> None:
+    """Drop ephemeral transcodes and honor the user's retention choice."""
+    from pipeline.retention import finalize_job_media
+
+    media_root = Path(os.getenv("MEDIA_ROOT", "/data/stagecoach"))
+    try:
+        finalize_job_media(
+            output_dir=output_dir,
+            input_path=input_path,
+            ingest_artifacts=(ingest_dict or {}).get("artifacts"),
+            retention_policy=retention_policy,
+            media_root=media_root if media_root.exists() else None,
+            session_id=session_id,
+        )
+    except Exception:
+        logging.getLogger(__name__).exception("retention finalize failed session=%s", session_id)
+
+
 @app.task(name="tasks.health_check")
 def health_check():
     """Health check task for worker verification."""
     return {"status": "healthy", "worker": "celery"}
+
+
+@app.task(name="tasks.retention_sweeper")
+def retention_sweeper_task(now_iso: Optional[str] = None) -> dict:
+    """Nightly cross-check of media_assets.retention_until (SPEC §10.3)."""
+    from pipeline.retention import sweep_from_database
+
+    now = datetime.fromisoformat(now_iso) if now_iso else datetime.utcnow()
+    media_root = Path(os.getenv("MEDIA_ROOT", "/data/stagecoach"))
+    result = sweep_from_database(now, media_root=media_root if media_root.exists() else None)
+    logging.getLogger(__name__).info(
+        "retention_sweeper object_count=%s kinds=%s",
+        result.get("object_count"),
+        result.get("kinds"),
+    )
+    return result
 
 
 @app.task(name="tasks.ingest", bind=True, max_retries=3)
@@ -771,6 +820,7 @@ def run_mvp_analysis_task(
     consents: Optional[dict] = None,
     camera_setup: str = "unknown",
     accessibility_profile: Optional[dict] = None,
+    retention_policy: Optional[str] = None,
 ):
     """Run ingest → ASR → audio → partial scores → vision → slides → fusion → report."""
     from pipeline.accessibility import persist_accessibility
@@ -788,6 +838,7 @@ def run_mvp_analysis_task(
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
     _set_job_state(job_id, session_id, "running")
+    ingest_dict = None
 
     try:
         persist_accessibility(destination, accessibility_profile)
@@ -1153,6 +1204,13 @@ def run_mvp_analysis_task(
         _set_job_state(job_id, session_id, "partial")
         emit_progress(job_id, "report", "succeeded", pct=100, message="Report ready")
         emit_done(job_id, "partial", session_id=session_id)
+        _finalize_media(
+            destination,
+            source,
+            ingest_dict,
+            retention_policy=retention_policy,
+            session_id=session_id,
+        )
         logger.info("MVP analysis completed session=%s job=%s", session_id, job_id)
         return {"job_id": job_id, "session_id": session_id, "report_path": str(report_path)}
     except Exception as exc:
@@ -1160,6 +1218,14 @@ def run_mvp_analysis_task(
         logger.exception("MVP analysis failed session=%s job=%s", session_id, job_id)
         _set_job_state(job_id, session_id, "failed", safe_error)
         emit_progress(job_id, "pipeline", "failed", message="Analysis failed")
+        if ingest_dict is not None:
+            _finalize_media(
+                destination,
+                source,
+                ingest_dict,
+                retention_policy=retention_policy,
+                session_id=session_id,
+            )
         raise
 
 

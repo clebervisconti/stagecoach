@@ -34,6 +34,12 @@ class User(Base):
         comment="Disability/speech-difference preferences: seated, limited_mobility, "
                 "one_handed, speech_difference, prefers_no_video_metrics"
     )
+    retention_policy = Column(
+        String(32),
+        nullable=False,
+        default="days_30",
+        comment="after_analysis, days_30, until_delete",
+    )
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True, index=True)

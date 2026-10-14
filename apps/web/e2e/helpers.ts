@@ -222,6 +222,7 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
           prefers_no_video_metrics: false,
           low_vision: false,
         },
+        retention_policy: "days_30",
       });
     }
     if (method === "PATCH" && path === "/me") {
@@ -239,6 +240,7 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
           prefers_no_video_metrics: false,
           low_vision: false,
         },
+        retention_policy: "days_30",
       });
     }
     if (method === "GET" && path === "/me/consents") {

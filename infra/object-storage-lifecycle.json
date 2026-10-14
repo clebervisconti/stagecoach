@@ -1,0 +1,31 @@
+{
+  "comment": "Backstop lifecycle rules for S3/MinIO (SPEC §10.3). The nightly retention_sweeper is the source of truth for media_assets.retention_until. Do not apply this document in CI — the minio compose profile is skipped there. until_delete originals stay because the sweeper never expires them.",
+  "Rules": [
+    {
+      "ID": "ephemeral-analysis-derivatives",
+      "Status": "Enabled",
+      "Filter": {
+        "Tag": {
+          "Key": "stagecoach-kind",
+          "Value": "ephemeral"
+        }
+      },
+      "Expiration": {
+        "Days": 1
+      }
+    },
+    {
+      "ID": "original-upload-backstop",
+      "Status": "Enabled",
+      "Filter": {
+        "Tag": {
+          "Key": "stagecoach-kind",
+          "Value": "original"
+        }
+      },
+      "Expiration": {
+        "Days": 90
+      }
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { auth, signOut } from "@/auth";
 import { getTranslations } from "next-intl/server";
 import { ConsentPanel } from "@/components/consents/consent-panel";
 import { AccessibilityPanel } from "@/components/settings/accessibility-panel";
+import { RetentionPanel } from "@/components/settings/retention-panel";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -24,6 +25,8 @@ export default async function SettingsPage() {
         </div>
 
         <ConsentPanel />
+
+        <RetentionPanel />
 
         <AccessibilityPanel />
 
