@@ -444,7 +444,7 @@
       "id": "energy_presence",
       "pillar": "presence_time",
       "applicable": false,
-      "na_reason": "Energy & presence needs audio intensity trajectory or content-language inputs that are not available.",
+      "na_reason": "Energy & presence needs loudness, pitch-variation, gesture, expressivity, or language inputs; missing modalities stay N/A.",
       "score": null,
       "level": null,
       "confidence": null,

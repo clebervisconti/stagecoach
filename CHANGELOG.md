@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Category 15 energy & presence fusion (issue #45)
+- Composite E(t) = mean of z-scores of loudness, PVQ, gesture activity, and expressivity when each exists
+- Trajectory is last-third minus first-third; missing modalities stay N/A, never a made-up score
+- Not labeled as confidence detection; no SER models
+- `ep_confident_language` / `ep_recovery` use LLM levels when present; recovery is N/A without disruptions
+
 ##### Added - Category 8 visual aids and slides_v1 Glance Test (issue #44)
 - All `va_*` scoring.yaml metrics, including reading-ratio 3-gram overlap
 - `slides_v1` on at most 20 slides via the existing LLM client; missing key → glance N/A, never a fake level

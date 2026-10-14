@@ -998,6 +998,7 @@ jobs:
           echo "  - category 13 (eye_contact) is audience-facing time (head orientation), not eye contact; L2CS-Net not used"
           echo "  - slides stage: PySceneDetect (BSD), keyframes, python-pptx/pdftotext, Tesseract OCR; deck antivirus in sandbox"
           echo "  - category 8 (visual_aids) from slides.json; slides_v1 Glance Test ≤20 images; no slides/deck stays N/A"
+          echo "  - category 15 (energy_presence) fuses loudness/PVQ/gesture/expressivity z-scores; not confidence detection; no SER"
           echo ""
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"

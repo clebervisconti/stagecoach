@@ -421,6 +421,21 @@ def compute_gesture_metrics(
         conf = min(conf, WEBCAM_CONF_CAP)
 
     activity = gb_gesture_activity_ratio(visible, one_handed=one_handed)
+    activity_windows: list[dict[str, float]] = []
+    times = _times(visible)
+    speed = _wrist_speed(visible, one_handed=one_handed)
+    if times.size:
+        w0 = float(times[0])
+        w1 = float(times[-1])
+        start = w0
+        while start < w1 - 1e-9:
+            end = start + ACTIVITY_WINDOW_S
+            mask = (times >= start) & (times < end)
+            if np.any(mask):
+                activity_windows.append(
+                    {"start": round(start, 3), "value": round(float(np.max(speed[mask])), 4)}
+                )
+            start = end
     space = gb_gesture_space_ratio(visible, one_handed=one_handed)
     adaptor = gb_self_adaptor_per_min(extra_events, max(duration_s, 1.0))
     closed = gb_closed_posture_ratio(visible, extra_events, one_handed=one_handed)
@@ -488,6 +503,7 @@ def compute_gesture_metrics(
         "disabled_metrics": sorted(disabled),
         "stroke_times_s": [round(t, 3) for t in stroke_times],
         "locomotion_segments": _locomotion_segments(extra_events),
+        "activity_windows": activity_windows,
         "metrics": metrics,
     }
     return payload
