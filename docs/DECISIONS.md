@@ -1445,8 +1445,48 @@ Issue #39 / SPEC §6.5 steps 5–6 require timestamped vision events and `vision
 
 ---
 
+## ADR-027: D8 — Category 14 facial expressiveness is opt-in, descriptive only
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 2  
+**Owner decision:** D8 (2026-10-14)
+
+### Context
+
+Issue #42 / SPEC §4.4.14, §5, §10.4. The owner decided (D8) to include category 14, opt-in only. Expression analysis (#42) was waiting on that decision; #37 already ships the `expression_analysis` toggle off by default. No emotion inference, no SER, no affect classification. Incongruence flags are observations to review.
+
+### Decision
+
+- Score `facial_affect` only when `expression_analysis` is granted, `video_analysis` is granted, and `expression_metrics.json` exists (written by the vision stage from MediaPipe blendshapes).
+- Metrics are movement/variability only: `fa_smile_presence_ratio`, `fa_expressivity_index` (5 s window SD of the blendshape subset), `fa_expression_variety` (count of subset channels peaking above 0.3).
+- `fa_congruence` / incongruence flags: overlap of long smile events with transcript sentences that contain serious *content* cues, or flat-face windows with celebratory *content* cues. Shown as observations with confidence 0.4. Not an emotion or authenticity score.
+- Forbidden-terms tests (en and pt-BR) cover UI strings, consent policy, generated expression/report JSON, and vision source. No SER models in requirements.
+- Off by default: without the toggle, category 14 stays N/A with "Expression analysis is off".
+
+### Alternatives Considered
+
+1. **Leave category 14 N/A until a later phase**  
+   - ❌ D8 says include it now, gated on the existing consent
+
+2. **Speech-emotion recognition (SER) or affect classifiers**  
+   - ❌ SPEC §5 / §10.4; issue AC forbids SER
+
+3. **Store frames or raw landmarks to compute expressions later**  
+   - ❌ Landmarks stay encrypted; frames are never vision features; metrics are derived numbers
+
+### Consequences
+
+- ✅ Turning on expression analysis adds category 14 to the scored report
+- ✅ Same consent gate as ADR-024; no new model files
+- ⚠️ Incongruence cues are a tiny English heuristic list (H) and will miss most real talks
+- 📌 Gestures/body and eye-contact scoring remain later issues
+
+---
+
 ## Change Log (continued)
 
+- **2026-10-14**: ADR-027 (D8: category 14 facial expressiveness opt-in, issue #42)
 - **2026-10-14**: ADR-026 (Phase 2: vision events and camera-setup mismatch, issue #39)
 - **2026-10-14**: ADR-025 (Phase 2: CPU MediaPipe vision stage, issue #38)
 - **2026-10-14**: ADR-024 (Phase 2: consent UI and vision gate, issue #37)

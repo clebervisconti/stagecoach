@@ -23,14 +23,14 @@
         "what": "When on, Stage Coach records descriptive facial-movement signals from blendshapes: smile presence, brow movement, and an expressivity index over short windows. Jaw and mouth-shape channels used for speech are excluded. This toggle is separate from video analysis and is off until you turn it on.",
         "why": "Optional category 14 describes visible expression signals that can support the message. It is self-coaching only.",
         "limits": "Expressions vary by person, culture, and situation. A neutral resting face is not a problem. Landmark quality drops when the face is small, poorly lit, or partly hidden. Off unless this toggle is on, even if video analysis is on.",
-        "never": "The app does not infer inner states from the face or voice. A smile is reported as a smile. Reports never assign mood, engagement, honesty, or authenticity scores."
+        "never": "The app does not infer inner states from the face or voice. A smile is reported as a smile. Reports never assign mood or honesty scores."
       },
       "pt-BR": {
         "title": "Análise de expressão (opcional, desligada por padrão)",
         "what": "Quando ativada, o Stage Coach registra sinais descritivos de movimento facial a partir de blendshapes: presença de sorriso, movimento de sobrancelha e um índice de expressividade em janelas curtas. Canais de mandíbula e forma da boca ligados à fala ficam de fora. Este controle é separado da análise de vídeo e permanece desligado até você ligá-lo.",
         "why": "A categoria 14, opcional, descreve sinais visíveis de expressão que podem apoiar a mensagem. Uso apenas para autoaperfeiçoamento.",
         "limits": "Expressões variam por pessoa, cultura e situação. Um rosto em repouso neutro não é um problema. A qualidade dos pontos cai quando o rosto é pequeno, mal iluminado ou parcialmente coberto. Permanece desligada se este controle estiver off, mesmo com análise de vídeo ligada.",
-        "never": "O aplicativo não infere estados internos a partir do rosto ou da voz. Um sorriso é relatado como sorriso. Relatórios nunca atribuem estados de ânimo, engajamento, honestidade ou autenticidade."
+        "never": "O aplicativo não infere estados internos a partir do rosto ou da voz. Um sorriso é relatado como sorriso. Relatórios nunca atribuem estados de ânimo ou honestidade."
       }
     },
     "keep_detailed_tracking": {

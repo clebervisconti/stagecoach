@@ -263,6 +263,17 @@ def run_vision_stage(
     events_path.write_text(json.dumps(events_payload, indent=2) + "\n", encoding="utf-8")
     artifacts["vision_quality"] = str(quality_path)
     artifacts["vision_events"] = str(events_path)
+    expr_path = dest / "expression_metrics.json"
+    if decision.run_expression_metrics:
+        from pipeline.vision.expressiveness import compute_expression_metrics
+
+        duration = float(frames[-1].t) if frames else 0.0
+        expr = compute_expression_metrics(face_rows, events, duration_s=max(duration, 1.0))
+        if expr is not None:
+            expr_path.write_text(json.dumps(expr, indent=2) + "\n", encoding="utf-8")
+            artifacts["expression_metrics"] = str(expr_path)
+    elif expr_path.exists():
+        expr_path.unlink()
 
     metrics = {
         "cpu_only": True,
