@@ -18,6 +18,12 @@ RUN apt-get update && apt-get install -y \
     libavutil-dev \
     libswscale-dev \
     libswresample-dev \
+    libglib2.0-0 \
+    libgomp1 \
+    libgl1 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
@@ -36,6 +42,10 @@ RUN pip install --no-cache-dir -r requirements-alignment.txt && \
 
 # Copy application code
 COPY . .
+
+# MediaPipe Tasks models are downloaded on first vision run (Apache-2.0, SHA pinned).
+ENV MEDIAPIPE_MODELS_DIR=/models
+RUN mkdir -p /models
 
 # Create temp directory for processing
 RUN mkdir -p /tmp/stagecoach

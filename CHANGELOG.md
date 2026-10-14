@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Vision stage: MediaPipe pose/hands/face (issue #38)
+- CPU-only MediaPipe Tasks VIDEO mode: pose every 15 fps frame, face and hands at 10 fps
+- Primary-person IoU tracking, One-Euro then Savitzky-Golay smoothing
+- Encrypted `pose.parquet` / `face.parquet` per-second aggregates; raw landmarks discarded unless `keep_detailed_tracking`
+- Model SHAs and Apache-2.0 evidence in `models/model_registry.json` and `model_registry` table
+- OpenFace is not a dependency; no emotion labels in artifacts
+
 ##### Added - Consent UI and `/me/consents` (issue #37)
 - `GET /me/consents` and `POST /me/consents` with append-only rows, policy SHA-256, and revocation
 - Separate toggles for `video_analysis`, `expression_analysis` (off by default), and `keep_detailed_tracking` in en and pt-BR

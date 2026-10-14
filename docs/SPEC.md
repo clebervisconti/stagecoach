@@ -941,7 +941,7 @@ Every judgment includes `level` (1–5, half-steps allowed), `rationale` (≤ 60
 | WhisperX [S40] | BSD-2-Clause (repo) | ✅ |
 | pyannote pipelines [S42] | Gated on Hugging Face; community-1 is CC-BY-4.0 | ✅ with attribution and accepted conditions |
 | Silero VAD [S43] | MIT | ✅ |
-| MediaPipe [S38] | Apache-2.0 (repo; not re-checked in this session) | ✅ |
+| MediaPipe [S38] | Apache-2.0 (repo + pose/hands/face .task float16/1 re-checked 2026-10-14; ADR-025) | ✅ |
 | L2CS-Net [S49] | MIT | ✅ (check the training-data terms of the pretrained weights before shipping) |
 | PySceneDetect [S47] | BSD-3-Clause | ✅ |
 | PaddleOCR [S48] | Apache-2.0 | ✅ |

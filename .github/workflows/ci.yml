@@ -189,7 +189,13 @@ jobs:
             libavutil-dev \
             libswscale-dev \
             libswresample-dev \
-            libavfilter-dev
+            libavfilter-dev \
+            libglib2.0-0 \
+            libgomp1 \
+            libgl1 \
+            libsm6 \
+            libxext6 \
+            libxrender1
       
       - name: Install Python dependencies
         run: |
@@ -297,6 +303,7 @@ jobs:
             echo "MINIO_SECRET_KEY=$(openssl rand -hex 32)"
             echo "PRIVATE_BETA_MODE=true"
             echo "PRIVATE_BETA_EMAIL=ci@example.invalid"
+            echo "STAGECOACH_ARTIFACT_KEY=$(openssl rand -hex 32)"
           } > .env
       
       - name: Pre-pull images with retries
@@ -553,11 +560,15 @@ jobs:
           echo ""
           
           echo "4. Database Tables (baseline + result + audit tables):"
-          docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "\dt" | grep -E "table|users|consents|sessions|media_assets|analysis_jobs|job_steps|scoring_configs|transcripts|metric_values|category_scores|overall_scores|evidence_items|insights|audit_log|deletion_requests"
+          docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "\dt" | grep -E "table|users|consents|sessions|media_assets|analysis_jobs|job_steps|scoring_configs|transcripts|metric_values|category_scores|overall_scores|evidence_items|insights|audit_log|deletion_requests|model_registry"
           echo ""
           
           echo "5. Seeded Config:"
           docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "SELECT version, created_at FROM scoring_configs LIMIT 1;"
+          echo ""
+          echo "5b. model_registry (issue #38):"
+          docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "SELECT model_name, license FROM model_registry ORDER BY model_name;"
+          docker compose exec -T postgres psql -U stagecoach -d stagecoach -tAc "SELECT COUNT(*) FROM model_registry WHERE license = 'Apache-2.0'" | grep -qx '3'
           echo ""
           
           echo "6. Redis:"
@@ -976,6 +987,7 @@ jobs:
           echo ""
           echo "Phase 2 additions:"
           echo "  - GET/POST /me/consents (defaults off, grant/revoke, unknown purpose 422)"
+          echo "  - model_registry table seeded with MediaPipe pose/hands/face (Apache-2.0)"
           echo ""
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"

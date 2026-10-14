@@ -62,6 +62,7 @@ class PipelineOrchestrator:
         "alignment": "1.0.0",
         "diarization": "1.0.0",
         "audio_features": "1.0.0",
+        "vision": "1.0.0",
         "fusion_scoring": "1.0.0",
         "report": "1.0.0",
     }
