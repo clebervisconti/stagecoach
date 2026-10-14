@@ -83,6 +83,30 @@
     "locale": "Locale",
     "signOut": "Sign Out"
   },
+  "accessibility": {
+    "heading": "Accessibility profile",
+    "intro": "These options change which body metrics are scored. They are stored as a preference you set, never inferred from video. Unavailable metrics are shown as N/A rather than a penalty.",
+    "loadError": "Could not load accessibility preferences.",
+    "saveError": "Could not save accessibility preferences.",
+    "keys": {
+      "seated": "Seated presentation",
+      "wheelchair": "Wheelchair user",
+      "limited_mobility": "Limited mobility",
+      "one_handed": "One-handed gesturing",
+      "speech_difference": "Speech difference",
+      "prefers_no_video_metrics": "Do not score video body metrics",
+      "low_vision": "Low vision"
+    },
+    "hints": {
+      "seated": "Turns off sway and walking metrics.",
+      "wheelchair": "Treated as seated for sway and walking metrics.",
+      "limited_mobility": "Turns off sway, walking, and gesture-amount metrics.",
+      "one_handed": "Uses the visible hand only; a hidden hand is not treated as a closed posture.",
+      "speech_difference": "Reserved for fluency options; it does not change gesture scoring.",
+      "prefers_no_video_metrics": "Gestures, gaze, and related video categories stay N/A.",
+      "low_vision": "Does not change gesture scoring; reserved for display preferences."
+    }
+  },
   "report": {
     "loadError": "Could not load this session.",
     "back": "Sessions",

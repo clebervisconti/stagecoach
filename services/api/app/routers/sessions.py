@@ -424,6 +424,7 @@ async def upload_and_analyze(
             "slot_min": session.slot_min,
             "consents": snapshot_for_user(db, current_user.id),
             "camera_setup": session.camera_setup,
+            "accessibility_profile": current_user.accessibility_profile or {},
         },
         queue="cpu",
     )

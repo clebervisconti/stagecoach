@@ -537,6 +537,7 @@ def extract_audio_features(
 
     # Prominence (experimental, §6.4): local maxima of z(F0)+z(intensity)
     emphasis_rate = 0.0
+    emphasis_times: List[float] = []
     if voiced_f0.size > 10 and voiced_intensity.size > 10:
         z_f0 = (f0_st - np.nanmean(f0_st)) / (np.nanstd(f0_st) + 1e-9)
         z_i = (intensity_db - np.nanmean(intensity_db)) / (np.nanstd(intensity_db) + 1e-9)
@@ -547,6 +548,7 @@ def extract_audio_features(
                 continue
             if combo[i] > 1.5 and combo[i] >= combo[i - 1] and combo[i] >= combo[i + 1]:
                 peaks += 1
+                emphasis_times.append(round(i * TIME_STEP_S, 3))
         emphasis_rate = peaks / (duration_s / 60.0) if duration_s > 0 else 0.0
 
     confidence_cap = 1.0
@@ -573,6 +575,7 @@ def extract_audio_features(
         "monotone_windows_ratio": round(monotone_windows_ratio(pvq_windows, range_windows), 4),
         "intensity_sd_db_median": None if intensity_sd is None else round(intensity_sd, 3),
         "emphasis_rate_per_min": round(emphasis_rate, 3),
+        "emphasis_times_s": emphasis_times[:500],
         "syllable_count": len(nuclei),
         "phonation_time_s": round(phonation_s, 3),
         "articulation_rate_sps": round(articulation_rate, 3),
