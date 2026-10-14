@@ -1,0 +1,14 @@
+{
+  "duration_s": 180.0,
+  "voiced_s": 90.0,
+  "voiced_ratio": 0.5,
+  "snr_db": 22.0,
+  "music_flag": false,
+  "noise_flag": false,
+  "pvq_windows": [
+    {
+      "start": 0,
+      "value": 0.18
+    }
+  ]
+}

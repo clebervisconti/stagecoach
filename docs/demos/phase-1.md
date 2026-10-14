@@ -237,3 +237,32 @@ audit object_count=3 db_rows={'insights': 1, 'sessions': 1, 'job_steps': 1, 'tra
 ✅ Phase 0 + Phase 1 smoke test complete
 ```
 
+## PR #110 — Golden fixtures and metric validation start (#35)
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/110
+- Impl SHA: `fb45c95cec8de905f3942e31ae0d892f5440d676`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38592701585
+- Branched from `main` (`478e91a`)
+- After merging origin/main (`7bb7164`, includes #109): merge SHA `fe329530d9a10eb2bfaae033ae4f23510cf74d43`
+- Merge CI: https://github.com/clebervisconti/stagecoach/actions/runs/38594492808
+- `gh pr view 110 --json mergeable,mergeStateStatus` → `MERGEABLE` / `CLEAN`
+
+Jobs on merge SHA `fe329530d9a10eb2bfaae033ae4f23510cf74d43` (all success): Production Dependency Audit, Secret Scan, Lint and Type Check, Check Generated Code, Test Suite, Validate Scoring Config, Web Type Check and Build, Worker Tests, Docker Compose Smoke Test, API Unit Tests.
+
+Jobs on impl SHA `fb45c95cec8de905f3942e31ae0d892f5440d676` (all success): Web Type Check and Build, Validate Scoring Config, API Unit Tests, Lint and Type Check, Docker Compose Smoke Test, Test Suite, Production Dependency Audit, Check Generated Code, Worker Tests, Secret Scan.
+
+Worker Tests excerpt (`gh run view 38592701585 --log`):
+
+```
+tests/golden/test_golden.py::test_golden_comparison_tolerances[en_clean] PASSED
+tests/golden/test_golden.py::test_golden_comparison_tolerances[ptbr_clean] PASSED
+tests/golden/test_golden.py::test_golden_comparison_tolerances[noisy_low_snr] PASSED
+tests/golden/test_golden.py::test_noisy_fixture_is_low_confidence_and_excluded_from_overall PASSED
+tests/golden/test_validation_start.py::test_en_and_ptbr_corpora_are_at_least_twenty_minutes PASSED
+PASS en_clean language=en kind=clean overall=92 confidence=0.8499999999999999
+PASS ptbr_clean language=pt-BR kind=clean overall=91 confidence=0.8499999999999999
+PASS noisy_low_snr language=en kind=noisy overall=None confidence=0.0
+all golden fixtures passed (±2 scores, ±5% metrics)
+```
+
+

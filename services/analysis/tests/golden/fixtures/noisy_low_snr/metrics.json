@@ -1,0 +1,152 @@
+{
+  "version": "1.0.0",
+  "scoring_config_version": "1.0.0",
+  "asr_confidence": 0.3,
+  "prosody_confidence": 0.3,
+  "metrics": {
+    "pp_wpm": {
+      "id": "pp_wpm",
+      "value": 145.0,
+      "unit": "words_per_minute",
+      "basis": "heuristic",
+      "source": "H",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "pp_pace_cv": {
+      "id": "pp_pace_cv",
+      "value": 0.12,
+      "unit": "coefficient_of_variation",
+      "basis": "heuristic",
+      "source": "H",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "pp_rush_index": {
+      "id": "pp_rush_index",
+      "value": 1.02,
+      "unit": "ratio",
+      "basis": "heuristic",
+      "source": "H",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "pp_boundary_pause_ratio": {
+      "id": "pp_boundary_pause_ratio",
+      "value": 0.6,
+      "unit": "ratio",
+      "basis": "heuristic",
+      "source": "H",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "pp_unplanned_long_pauses_per_10min": {
+      "id": "pp_unplanned_long_pauses_per_10min",
+      "value": 0.5,
+      "unit": "per_10min",
+      "basis": "heuristic",
+      "source": "H",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "pp_mean_length_of_run": {
+      "id": "pp_mean_length_of_run",
+      "value": 9.0,
+      "unit": "words",
+      "basis": "heuristic",
+      "source": "H",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "vv_pvq_median": {
+      "id": "vv_pvq_median",
+      "value": 0.18,
+      "unit": "ratio",
+      "basis": "heuristic",
+      "source": "H",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "vv_pitch_range_st": {
+      "id": "vv_pitch_range_st",
+      "value": 8.0,
+      "unit": "semitones",
+      "basis": "heuristic",
+      "source": "H",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "vv_monotone_windows_ratio": {
+      "id": "vv_monotone_windows_ratio",
+      "value": 0.08,
+      "unit": "ratio",
+      "basis": "heuristic",
+      "source": "H",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "vv_intensity_variation_db": {
+      "id": "vv_intensity_variation_db",
+      "value": 4.0,
+      "unit": "decibels",
+      "basis": "heuristic",
+      "source": "H",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "vv_emphasis_rate_per_min": {
+      "id": "vv_emphasis_rate_per_min",
+      "value": 10.0,
+      "unit": "per_minute",
+      "basis": "heuristic",
+      "source": "H",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "fl_filler_sounds_per_min": {
+      "id": "fl_filler_sounds_per_min",
+      "value": 2.0,
+      "unit": "per_minute",
+      "basis": "research",
+      "source": "S12",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "fl_filler_words_per_min": {
+      "id": "fl_filler_words_per_min",
+      "value": 1.0,
+      "unit": "per_minute",
+      "basis": "research",
+      "source": "S12",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "fl_hedges_apologies_per_10min": {
+      "id": "fl_hedges_apologies_per_10min",
+      "value": 1.0,
+      "unit": "per_10min",
+      "basis": "research",
+      "source": "S12",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "fl_repetitions_restarts_per_min": {
+      "id": "fl_repetitions_restarts_per_min",
+      "value": 0.2,
+      "unit": "per_minute",
+      "basis": "research",
+      "source": "S12",
+      "confidence": 0.3,
+      "applicable": true
+    },
+    "tm_pct_of_slot": {
+      "id": "tm_pct_of_slot",
+      "value": 0.9,
+      "unit": "ratio",
+      "basis": "heuristic",
+      "source": "H",
+      "confidence": 0.3,
+      "applicable": true
+    }
+  }
+}

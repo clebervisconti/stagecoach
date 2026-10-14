@@ -1237,3 +1237,39 @@ Issue #34 / SPEC §10.3 requires `DELETE /sessions/{id}` to remove objects under
 - ⚠️ Enabling MinIO in production still needs `boto3` on the API image
 - 📌 Do not delete `/data/stagecoach/smoke-fixture` from a session DELETE
 
+---
+
+## ADR-022: Golden fixtures are synthetic; 20 min validation uses annotated timestamps
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Issue #35 asks for three consented/licensed short audio fixtures (en + pt-BR), `scripts/process_local.py --golden` with ±2 score / ±5% metric tolerances, a noisy fixture that is Low confidence and excluded from overall, and validation of fillers/WPM/pauses started on ≥ 20 min annotated audio per language. The repo is public. `*.wav` is gitignored. Owner decision D13 (fixture sourcing) has not licensed personal recordings.
+
+### Decision
+
+- Three fixtures (`en_clean`, `ptbr_clean`, `noisy_low_snr`) are 16 kHz mono sines written with the stdlib `wave` module (CC0 generated signals). WAVs are produced at test time, not committed.
+- Golden comparison runs fusion on committed `metrics.json` / `transcript.json` / `audio_metrics.json` against `expected/analysis_result.json`. Transcripts span 180 s so min_evidence can pass without storing long media.
+- Noisy fixture: SNR 10 dB, metric confidence 0.3 (`include_none_below` / `category_min_for_overall`). Overall score is null, not zero.
+- ≥ 20 min per language is a synthetic annotated timestamp corpus in `validation_corpus.py`. Results go in `docs/VALIDATION.md`. That starts §11.1; it is not a human-rated dataset.
+
+### Alternatives Considered
+
+1. **Commit personal or scraped talks**  
+   - ❌ Public repo; issue forbids personal recordings without an explicit license
+
+2. **Commit 20 min of WAV per language**  
+   - ❌ gitignored media policy; large binaries; still not consented speech
+
+3. **Skip noisy overall-exclusion until real noise recordings exist**  
+   - ❌ Phase 1 AC requires the Low-confidence path
+
+### Consequences
+
+- ✅ CI can run `--golden` without ffmpeg TTS or Whisper
+- ⚠️ Metric validation on synthetic timestamps will need a licensed corpus before §11.2 claims
+- 📌 Do not add real recordings unless the owner licenses them (D13)
+
