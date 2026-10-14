@@ -88,3 +88,35 @@ Running upgrade 004_audit_deletion -> 005_model_registry, model_registry for vis
 Phase 2 additions:
   - model_registry table seeded with MediaPipe pose/hands/face (Apache-2.0)
 ```
+
+## PR #114 — Vision events, quality JSON, camera-setup check (#39)
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/114
+- Head SHA at green CI: `465e6c6d0af6890f65f1b3cc6061915272890770`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38609292593
+- `gh run view 38609292593 --json conclusion,headSha` → `success` / `465e6c6d0af6890f65f1b3cc6061915272890770`
+
+Jobs on that SHA (all success): Web Type Check and Build, Lint and Type Check, Validate Scoring Config, Production Dependency Audit, API Unit Tests, Docker Compose Smoke Test, Test Suite, Worker Tests, Playwright E2E, Check Generated Code, Secret Scan.
+
+Worker Tests excerpt:
+
+```
+tests/test_vision_events.py::test_scripted_events_cover_required_types PASSED
+tests/test_vision_events.py::test_smile_and_flat_face_require_expression_consent PASSED
+tests/test_vision_events.py::test_flat_face_window_on_long_low_expressivity PASSED
+tests/test_vision_events.py::test_setup_mismatch_relaxes_thresholds PASSED
+tests/test_vision_events.py::test_mismatch_written_on_emptyish_person PASSED
+tests/test_vision_events.py::test_detect_events_direct_stroke PASSED
+tests/test_vision_events.py::test_detect_events_direct_pose_and_face_types PASSED
+tests/test_vision_events.py::test_quality_json_has_no_emotion_labels PASSED
+================== 160 passed, 8 skipped, 1 warning in 27.11s ==================
+```
+
+Smoke excerpt (issue #39 echo):
+
+```
+Phase 2 additions:
+  - GET/POST /me/consents (defaults off, grant/revoke, unknown purpose 422)
+  - model_registry table seeded with MediaPipe pose/hands/face (Apache-2.0)
+  - vision_events.json / vision_quality.json when video_analysis is granted
+```
