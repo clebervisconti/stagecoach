@@ -747,7 +747,87 @@ Per SPEC §6.2 and issue #17.
 - **2026-10-09**: ADR-011 (Phase 1: ingest stage implementation)
 - **2026-10-09**: ADR-012 (Phase 1: DAG orchestration and SSE progress #18, #19)
 - **2026-10-10**: ADR-013 (Phase 1: parselmouth GPL server-only for audio features #24)
-- **2026-10-14**: ADR-014 (Phase 1: pure metric functions with scoring.yaml units #25)
+- **2026-10-09**: ADR-014 (Phase 1: WhisperX alignment with VAD and gap detection #21)
+- **2026-10-09**: ADR-015 (Phase 1: Speaker diarization with pyannote gated model #22)
+- **2026-10-14**: ADR-016 (Phase 1: pure metric functions with scoring.yaml units #25)
+
+---
+
+## ADR-015: Speaker Diarization with Pyannote (HF_TOKEN Feature Gate)
+
+**Date:** 2026-10-09  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Category 17 (Q&A Handling) requires distinguishing the primary speaker from questioners. Speaker diarization solves this, but:
+- Best open-source model is pyannote/speaker-diarization-community-1 (gated on Hugging Face)
+- CI cannot download gated models without credentials
+- System must work without diarization for development
+
+### Decision
+
+**Diarization:** pyannote/speaker-diarization-community-1 behind HF_TOKEN feature flag  
+**License:** CC-BY-4.0 (permissive, requires attribution)  
+**Feature gate:** `HF_TOKEN` environment variable  
+**Fallback:** When disabled, use LLM-based Q&A detection per SPEC §6.3
+
+**Implementation:**
+- `diarization.py` checks `HF_TOKEN` at module load
+- If absent: skip diarization, return fallback output with `fallback_mode=True`
+- If present: authenticate with HF, run pyannote pipeline
+- Primary speaker = speaker with most total speech time
+- Category 17 scoring:
+  - With diarization: full confidence, speaker-change boundaries
+  - Without: LLM spots "repeat the question", confidence capped at 0.6 (H)
+
+**CI behavior:**
+- No `HF_TOKEN` → diarization tests skipped via `@pytest.mark.skipif`
+- Fallback test runs always (ensures graceful degradation)
+- Never download gated models in CI
+
+**Production:**
+- Set `HF_TOKEN` via Cursor Dashboard (Cloud Agents > Secrets) or env config
+- Token requires accepting pyannote/speaker-diarization-community-1 terms on Hugging Face
+
+**Attribution:**
+- CC-BY-4.0 requires attribution
+- Credit pyannote in `/about` page and model registry
+- Attribution text: "Speaker diarization powered by pyannote.audio (CC-BY-4.0)"
+
+### Alternatives Considered
+
+1. **Require diarization always**  
+   - ❌ Breaks CI without HF token  
+   - ❌ Blocks development for contributors without token
+
+2. **Non-gated diarization model**  
+   - ❌ pyannote is state-of-the-art  
+   - ❌ Alternatives (resemblyzer + clustering) have worse accuracy
+
+3. **Cloud diarization APIs** (AWS Transcribe, Deepgram)  
+   - ❌ Per-minute cost  
+   - ❌ Privacy: audio sent to third party  
+   - ❌ Vendor lock-in
+
+4. **LLM-only Q&A detection (no diarization)**  
+   - ✅ Works without extra models  
+   - ❌ Lower accuracy for short or overlapping questions  
+   - ✅ Used as fallback
+
+### Consequences
+
+- ✅ Best-in-class diarization when `HF_TOKEN` is available
+- ✅ System works (with degraded Q&A scoring) when token is absent
+- ✅ CI passes without gated model download
+- ✅ Contributors can develop without HF account
+- ✅ CC-BY-4.0 attribution properly credited
+- ⚠️ Two code paths to test (with/without diarization)
+- ⚠️ Production deployment must provide `HF_TOKEN` for full Q&A analysis
+- 📌 Document in README: "Optional: Set HF_TOKEN for speaker diarization (improves Q&A analysis)"
+- 📌 Add note in category 17 report card when diarization was unavailable
+- 📌 List owner decision needed: D4 HF token (not yet supplied)
 
 ---
 
@@ -870,7 +950,84 @@ openSMILE / eGeMAPS [S44] would give standardized GeMAPS features but needs a co
 
 ---
 
-## ADR-014: Pure metric functions, units from scoring.yaml
+## ADR-014: WhisperX Forced Alignment with VAD and Gap Detection
+
+**Date:** 2026-10-09  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Issue #21 requires precise word boundaries and recovery of fillers that Whisper drops. Whisper's word_timestamps are approximate; accurate alignment is needed for:
+- Fluency metrics (filler detection depends on precise timing)
+- Pace and pausing analysis (requires exact word boundaries)
+- Gap detection (identifying > 300ms speech gaps where fillers may have been dropped)
+
+### Decision
+
+**Alignment:** WhisperX forced alignment with wav2vec2 models  
+**VAD:** Silero VAD for speech/non-speech segmentation  
+**Gap detection:** Identify speech gaps > 300ms between aligned words  
+**Gap filling:** Acoustic fallback labels gaps as `[filler_candidate]` with low confidence
+
+**Models (all licenses verified permissive):**
+- en: `facebook/wav2vec2-large-960h-lv60-self` (Apache-2.0)
+- pt: `jonatasgrosman/wav2vec2-large-xlsr-53-portuguese` (Apache-2.0)
+- VAD: Silero VAD (MIT)
+- WhisperX: BSD-2-Clause
+
+**Pipeline flow:**
+```
+audio16k.wav + transcript.json
+  ↓
+1. Load Silero VAD → speech/non-speech segments
+2. WhisperX align (wav2vec2) → precise word boundaries
+3. Detect gaps: aligned_words[i].end to [i+1].start > 300ms AND overlaps VAD speech
+4. Fill gaps: acoustic fallback `[filler_candidate]` (score=0.3, source=acoustic_fallback)
+```
+
+**Word source tracking:**
+- `whisper_asr`: Original aligned words from WhisperX
+- `gap_detector`: Re-decoded gaps (future: use Whisper beam search on gap audio)
+- `acoustic_fallback`: Placeholder for gaps that can't be decoded
+
+**Output:** `{session_id}_alignment.json` with `{aligned_words, vad_segments, gap_fills_count, acoustic_fallback_count, mean_alignment_score}`
+
+### Alternatives Considered
+
+1. **Gentle forced aligner**  
+   - ❌ Less accurate than WhisperX  
+   - ❌ Older Kaldi-based models
+
+2. **Montreal Forced Aligner**  
+   - ✅ Very accurate  
+   - ❌ Requires grapheme-to-phoneme models per language  
+   - ❌ More setup complexity than WhisperX
+
+3. **Skip alignment, use Whisper word timestamps directly**  
+   - ❌ Too imprecise for fluency and pacing metrics  
+   - ❌ No gap detection possible
+
+4. **Re-decode gaps with beam search** (future)  
+   - ✅ Better filler recovery than acoustic fallback  
+   - ⚠️ Phase 1: acoustic fallback is sufficient; beam search in Phase 2
+
+5. **WebRTC VAD instead of Silero**  
+   - ❌ Less accurate  
+   - ✅ Silero is state-of-the-art and MIT licensed
+
+### Consequences
+
+- ✅ Precise word boundaries enable accurate fluency and pacing metrics
+- ✅ Gap detection recovers some dropped fillers (acoustic fallback)
+- ✅ VAD segments can be used for silence/pause analysis
+- ✅ All dependencies are permissively licensed (Apache-2.0, MIT, BSD-2)
+- ⚠️ WhisperX alignment adds ~30s overhead for 10-min talks on CPU
+- ⚠️ Acoustic fallback has low confidence (0.3); LLM disambiguation needed downstream
+- 📌 Phase 2: implement gap-detector re-decoding with Whisper beam search
+- 📌 Benchmark alignment time on target hardware (target: ≤0.5× media duration)
+
+## ADR-016: Pure metric functions, units from scoring.yaml
 
 **Date:** 2026-10-14  
 **Status:** Accepted  
