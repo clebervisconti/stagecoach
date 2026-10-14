@@ -746,12 +746,13 @@ Per SPEC §6.2 and issue #17.
 - **2026-10-09**: ADR-007 through ADR-010 (Phase 1: owner decisions D2, D3, D4, D5/D6)
 - **2026-10-09**: ADR-011 (Phase 1: ingest stage implementation)
 - **2026-10-09**: ADR-012 (Phase 1: DAG orchestration and SSE progress #18, #19)
-- **2026-10-09**: ADR-013 (Phase 1: WhisperX alignment with VAD and gap detection #21)
-- **2026-10-09**: ADR-014 (Phase 1: Speaker diarization with pyannote gated model #22)
+- **2026-10-10**: ADR-013 (Phase 1: parselmouth GPL server-only for audio features #24)
+- **2026-10-09**: ADR-014 (Phase 1: WhisperX alignment with VAD and gap detection #21)
+- **2026-10-09**: ADR-015 (Phase 1: Speaker diarization with pyannote gated model #22)
 
 ---
 
-## ADR-014: Speaker Diarization with Pyannote (HF_TOKEN Feature Gate)
+## ADR-015: Speaker Diarization with Pyannote (HF_TOKEN Feature Gate)
 
 **Date:** 2026-10-09  
 **Status:** Accepted  
@@ -829,7 +830,126 @@ Category 17 (Q&A Handling) requires distinguishing the primary speaker from ques
 
 ---
 
-## ADR-013: WhisperX Forced Alignment with VAD and Gap Detection
+## ADR-012: Celery DAG Orchestration with Job Steps Tracking
+
+**Date:** 2026-10-09  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Issues #18 and #19 require a robust pipeline orchestration system with:
+- Individual stage tracking and re-runnability
+- Progress streaming to the browser during analysis
+- Idempotency for safe retries
+- Graceful handling of partial failures
+
+The existing worker had standalone tasks for ingest and ASR but no coordination layer.
+
+### Decision
+
+**Orchestration:** PipelineOrchestrator class manages DAG execution via Celery chains
+**Job tracking:** job_steps table records (job_id, stage, status, input_hash, stage_version, output_uris, metrics, timing, error)
+**Status values:** 
+- JobStep: pending → running → succeeded | failed | skipped
+- AnalysisJob: pending → running → succeeded | failed | partial
+- Session: created → uploaded → processing → ready | partial | failed
+
+**Idempotency:** Hash of (session_id, stage, inputs, stage_version) prevents duplicate processing
+**Progress streaming:** Tasks emit events to Redis pub/sub channel `progress:{job_id}` with {stage, status, pct, eta_s, message, timestamp}
+**SSE endpoint:** `GET /sessions/{id}/events` streams progress via Server-Sent Events with reconnect support
+
+**Task chaining:** Ingest result passes `audio_path` to ASR via Celery chain signature:
+```python
+chain(
+    ingest_task.s(input_path, output_dir, session_id, job_id),
+    asr_task.s(output_dir, session_id, language, model_name, job_id)
+)
+```
+
+**Retries:** Celery task decorators handle exponential backoff (4s, 16s, 64s) for 3 attempts
+**Partial status:** Non-critical stage failures (e.g., diarization when HF_TOKEN absent) mark job as "partial" and continue
+
+### Alternatives Considered
+
+1. **Task polling instead of Redis pub/sub**  
+   - ❌ Higher latency, more API load  
+   - ❌ No live streaming
+
+2. **WebSocket instead of SSE**  
+   - ✅ Bidirectional (not needed here)  
+   - ❌ More complex client code  
+   - ❌ Harder to deploy through proxies
+
+3. **Store all progress in DB**  
+   - ❌ High write load for fine-grained updates  
+   - ✅ SSE reads from ephemeral Redis pub/sub, final state in DB
+
+4. **Temporal Workflow instead of Celery**  
+   - ✅ Better observability and retry logic  
+   - ❌ More infrastructure complexity for MVP  
+   - 📅 Consider for v2
+
+### Consequences
+
+- ✅ Each stage is independently re-runnable via POST /sessions/{id}/reanalyze?from_stage=X
+- ✅ Browser shows live progress with ETA during 10+ minute analysis
+- ✅ Idempotency prevents wasted computation on retries
+- ✅ Job history visible in job_steps for debugging
+- ⚠️ Redis pub/sub is ephemeral: if client disconnects and misses events, it must reconnect (SSE handles this)
+- ⚠️ Progress percentages and ETAs are estimates; tasks emit them when possible
+- 📌 Document progress event schema in API README
+- 📌 Add smoke test: start job, verify SSE receives "succeeded" events
+
+---
+
+## ADR-013: Parselmouth / Praat is server-side only (GPL)
+
+**Date:** 2026-10-10  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Issue #24 and SPEC §6.4 require research-grade F0, intensity, and syllable-nucleus extraction. The specified library is **parselmouth** (Praat in Python) [S45], licensed **GPL-3.0-or-later**. SPEC §6.9 allows this only as server-side use with no distribution to clients, and requires an ADR.
+
+openSMILE / eGeMAPS [S44] would give standardized GeMAPS features but needs a commercial license for product use. It stays out of the worker.
+
+### Decision
+
+- Use **praat-parselmouth** only inside `services/analysis` (Celery worker). Do not import it from `apps/web`, ship it in a browser bundle, or vendor Praat into a client app.
+- Compute F0 with Praat autocorrelation, two-pass speaker-adaptive floor/ceiling `[q15·0.83, q65·1.92]` (H), then remove octave jumps > 10 st.
+- Port de Jong & Wempe (2009) [S25] syllable nuclei on the Praat intensity + voiced mask.
+- Use **librosa** (ISC) for spectral-flatness music/noise heuristics only. Do not add openSMILE to the product path.
+- Record `basis` + source keys (`S24`, `S25`, `S45`) on every `audio_metrics.json`.
+- Energy-based VAD is the standalone pause detector in this stage. Silero VAD arrives with WhisperX alignment (#21) and can replace the energy VAD later without changing the artifact schema.
+
+### Alternatives Considered
+
+1. **openSMILE / eGeMAPS in the worker**  
+   - ✅ Standardized feature set  
+   - ❌ Commercial license required for products [S44]
+
+2. **Pure librosa / numpy F0 (piptrack, yin)**  
+   - ✅ Permissive licenses  
+   - ❌ Weaker voiced/unvoiced decisions than Praat AC for presentation speech  
+   - ❌ SPEC names parselmouth as the F0 source
+
+3. **Bundle Praat in the Next.js app for live overlay**  
+   - ❌ GPL distribution to end users  
+   - ❌ Live overlay is a v2 client-side MediaPipe + Web Audio path (§3.2)
+
+### Consequences
+
+- ✅ Matches SPEC §6.4 and §6.9
+- ✅ No GPL code is shipped to browsers
+- ⚠️ Anyone distributing the worker image or a desktop build that includes parselmouth must treat that binary as a GPL work
+- ⚠️ Energy VAD is a heuristic until Silero is wired from #21
+- 📌 Keep parselmouth out of `apps/web` and any client package; a CI grep can enforce this later
+
+---
+
+## ADR-014: WhisperX Forced Alignment with VAD and Gap Detection
 
 **Date:** 2026-10-09  
 **Status:** Accepted  
@@ -905,78 +1025,4 @@ audio16k.wav + transcript.json
 - ⚠️ Acoustic fallback has low confidence (0.3); LLM disambiguation needed downstream
 - 📌 Phase 2: implement gap-detector re-decoding with Whisper beam search
 - 📌 Benchmark alignment time on target hardware (target: ≤0.5× media duration)
-
----
-
-## ADR-012: Celery DAG Orchestration with Job Steps Tracking
-
-**Date:** 2026-10-09  
-**Status:** Accepted  
-**Phase:** 1
-
-### Context
-
-Issues #18 and #19 require a robust pipeline orchestration system with:
-- Individual stage tracking and re-runnability
-- Progress streaming to the browser during analysis
-- Idempotency for safe retries
-- Graceful handling of partial failures
-
-The existing worker had standalone tasks for ingest and ASR but no coordination layer.
-
-### Decision
-
-**Orchestration:** PipelineOrchestrator class manages DAG execution via Celery chains
-**Job tracking:** job_steps table records (job_id, stage, status, input_hash, stage_version, output_uris, metrics, timing, error)
-**Status values:** 
-- JobStep: pending → running → succeeded | failed | skipped
-- AnalysisJob: pending → running → succeeded | failed | partial
-- Session: created → uploaded → processing → ready | partial | failed
-
-**Idempotency:** Hash of (session_id, stage, inputs, stage_version) prevents duplicate processing
-**Progress streaming:** Tasks emit events to Redis pub/sub channel `progress:{job_id}` with {stage, status, pct, eta_s, message, timestamp}
-**SSE endpoint:** `GET /sessions/{id}/events` streams progress via Server-Sent Events with reconnect support
-
-**Task chaining:** Ingest result passes `audio_path` to ASR via Celery chain signature:
-```python
-chain(
-    ingest_task.s(input_path, output_dir, session_id, job_id),
-    asr_task.s(output_dir, session_id, language, model_name, job_id)
-)
-```
-
-**Retries:** Celery task decorators handle exponential backoff (4s, 16s, 64s) for 3 attempts
-**Partial status:** Non-critical stage failures (e.g., diarization when HF_TOKEN absent) mark job as "partial" and continue
-
-### Alternatives Considered
-
-1. **Task polling instead of Redis pub/sub**  
-   - ❌ Higher latency, more API load  
-   - ❌ No live streaming
-
-2. **WebSocket instead of SSE**  
-   - ✅ Bidirectional (not needed here)  
-   - ❌ More complex client code  
-   - ❌ Harder to deploy through proxies
-
-3. **Store all progress in DB**  
-   - ❌ High write load for fine-grained updates  
-   - ✅ SSE reads from ephemeral Redis pub/sub, final state in DB
-
-4. **Temporal Workflow instead of Celery**  
-   - ✅ Better observability and retry logic  
-   - ❌ More infrastructure complexity for MVP  
-   - 📅 Consider for v2
-
-### Consequences
-
-- ✅ Each stage is independently re-runnable via POST /sessions/{id}/reanalyze?from_stage=X
-- ✅ Browser shows live progress with ETA during 10+ minute analysis
-- ✅ Idempotency prevents wasted computation on retries
-- ✅ Job history visible in job_steps for debugging
-- ⚠️ Redis pub/sub is ephemeral: if client disconnects and misses events, it must reconnect (SSE handles this)
-- ⚠️ Progress percentages and ETAs are estimates; tasks emit them when possible
-- 📌 Document progress event schema in API README
-- 📌 Add smoke test: start job, verify SSE receives "succeeded" events
-
 

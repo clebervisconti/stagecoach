@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stagecoach.local/schemas/llm/open_close_v1.json",
+  "title": "OpenCloseV1",
+  "description": "Opening and closing effectiveness",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["opening", "closing", "insufficient_evidence"],
+  "properties": {
+    "opening": {
+      "type": "object",
+      "description": "First 60s analysis",
+      "additionalProperties": false,
+      "required": ["hook_type", "hook_level", "value_preview_level", "throat_clearing_end_seg", "rationale"],
+      "properties": {
+        "hook_type": {
+          "type": "string",
+          "enum": ["story", "question", "fact", "bold_statement", "connection", "none"]
+        },
+        "hook_level": {
+          "type": "number",
+          "description": "How engaging is the opening? (1-5)",
+          "minimum": 1.0,
+          "maximum": 5.0
+        },
+        "value_preview_level": {
+          "type": "number",
+          "description": "Does it preview value for audience? (1-5)",
+          "minimum": 1.0,
+          "maximum": 5.0
+        },
+        "throat_clearing_end_seg": {
+          "type": ["string", "null"],
+          "description": "Last segment of unproductive preamble, if any",
+          "pattern": "^S[0-9]{4}$"
+        },
+        "rationale": {
+          "type": "string",
+          "maxLength": 400
+        }
+      }
+    },
+    "closing": {
+      "type": "object",
+      "description": "Last 90s analysis (or last 30s after Q&A if present)",
+      "additionalProperties": false,
+      "required": ["ending_type", "message_restated", "cta_clear", "fades_out", "closing_level", "rationale"],
+      "properties": {
+        "ending_type": {
+          "type": "string",
+          "enum": ["strong_close", "cta", "summary", "fade_out", "questions_only", "none"]
+        },
+        "message_restated": {
+          "type": "boolean",
+          "description": "Is core message reinforced in close?"
+        },
+        "cta_clear": {
+          "type": "boolean",
+          "description": "Clear call to action?"
+        },
+        "fades_out": {
+          "type": "boolean",
+          "description": "Does it trail off weakly?"
+        },
+        "closing_level": {
+          "type": "number",
+          "description": "Overall closing strength (1-5)",
+          "minimum": 1.0,
+          "maximum": 5.0
+        },
+        "rationale": {
+          "type": "string",
+          "maxLength": 400
+        }
+      }
+    },
+    "insufficient_evidence": {
+      "type": "boolean"
+    }
+  }
+}

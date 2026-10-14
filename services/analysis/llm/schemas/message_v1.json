@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stagecoach.local/schemas/llm/message_v1.json",
+  "title": "MessageV1",
+  "description": "Core message, purpose, and CTA extraction",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["core_message", "reinforcements", "cta", "bluf", "insufficient_evidence"],
+  "properties": {
+    "core_message": {
+      "type": ["object", "null"],
+      "description": "The central throughline, or null if not identifiable",
+      "additionalProperties": false,
+      "required": ["text", "quote", "seg_ids", "claim_type", "level", "rationale"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Core message in ≤15 words",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "quote": {
+          "type": "string",
+          "description": "Verbatim quote where first stated",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "seg_ids": {
+          "type": "array",
+          "description": "Segment IDs where core message appears",
+          "items": {
+            "type": "string",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "minItems": 1
+        },
+        "claim_type": {
+          "type": "string",
+          "enum": ["claim", "vague_claim", "topic", "none"],
+          "description": "Is it a claim or just a topic?"
+        },
+        "level": {
+          "type": "number",
+          "description": "1-5 level for message identifiability",
+          "minimum": 1.0,
+          "maximum": 5.0
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Brief explanation (≤60 words)",
+          "maxLength": 400
+        }
+      }
+    },
+    "reinforcements": {
+      "type": "array",
+      "description": "Places where message recurs or is paraphrased",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["seg_id", "quote"],
+        "properties": {
+          "seg_id": {
+            "type": "string",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "cta": {
+      "type": "object",
+      "description": "Call to action",
+      "additionalProperties": false,
+      "required": ["text", "seg_ids", "specificity_level", "rationale"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The call to action",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "seg_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^S[0-9]{4}$"
+          }
+        },
+        "specificity_level": {
+          "type": "number",
+          "description": "1=absent, 2=generic, 4=clear, 5=specific with owner+timeframe",
+          "minimum": 1.0,
+          "maximum": 5.0
+        },
+        "rationale": {
+          "type": "string",
+          "maxLength": 400
+        }
+      }
+    },
+    "bluf": {
+      "type": "object",
+      "description": "Bottom Line Up Front (answer-first)",
+      "additionalProperties": false,
+      "required": ["present", "seg_id"],
+      "properties": {
+        "present": {
+          "type": "boolean",
+          "description": "Does talk lead with the recommendation/conclusion?"
+        },
+        "seg_id": {
+          "type": ["string", "null"],
+          "description": "Segment where BLUF appears, if present",
+          "pattern": "^S[0-9]{4}$"
+        }
+      }
+    },
+    "insufficient_evidence": {
+      "type": "boolean"
+    }
+  }
+}

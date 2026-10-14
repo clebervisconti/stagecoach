@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stagecoach.local/schemas/llm/story_impact_v1.json",
+  "title": "StoryImpactV1",
+  "description": "Storytelling, concreteness, and charismatic leadership tactics",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["stories", "contrasts", "clt_instances", "success_profile", "memorable_moment", "insufficient_evidence"],
+  "properties": {
+    "stories": {
+      "type": "array",
+      "description": "Story units with character, conflict, resolution, point",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["start_seg", "end_seg", "character", "conflict", "resolution", "point", "tied_to_message"],
+        "properties": {
+          "start_seg": {
+            "type": "string",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "end_seg": {
+            "type": "string",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "character": {
+            "type": "string",
+            "description": "Who is the story about?",
+            "maxLength": 200
+          },
+          "conflict": {
+            "type": "string",
+            "description": "What challenge or tension?",
+            "maxLength": 300
+          },
+          "resolution": {
+            "type": "string",
+            "description": "How was it resolved?",
+            "maxLength": 300
+          },
+          "point": {
+            "type": "string",
+            "description": "What's the takeaway?",
+            "maxLength": 200
+          },
+          "tied_to_message": {
+            "type": "boolean",
+            "description": "Does this story serve the core message?"
+          }
+        }
+      }
+    },
+    "contrasts": {
+      "type": "array",
+      "description": "What is vs what could be, before/after contrasts",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["seg_id", "quote"],
+        "properties": {
+          "seg_id": {
+            "type": "string",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "clt_instances": {
+      "type": "array",
+      "description": "Charismatic leadership tactics (verbal)",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "seg_id", "quote"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "metaphor",
+              "story",
+              "contrast",
+              "rhetorical_question",
+              "three_part_list",
+              "moral_conviction",
+              "group_sentiment",
+              "high_goal",
+              "confidence"
+            ]
+          },
+          "seg_id": {
+            "type": "string",
+            "pattern": "^S[0-9]{4}$"
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "success_profile": {
+      "type": "object",
+      "description": "SUCCESs framework levels (Heath)",
+      "additionalProperties": false,
+      "required": ["simple_level", "unexpected_level", "concrete_level", "credible_level", "emotional_level", "stories_level", "rationale"],
+      "properties": {
+        "simple_level": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 5.0
+        },
+        "unexpected_level": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 5.0
+        },
+        "concrete_level": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 5.0
+        },
+        "credible_level": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 5.0
+        },
+        "emotional_level": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 5.0
+        },
+        "stories_level": {
+          "type": "number",
+          "minimum": 1.0,
+          "maximum": 5.0
+        },
+        "rationale": {
+          "type": "string",
+          "maxLength": 400
+        }
+      }
+    },
+    "memorable_moment": {
+      "type": ["object", "null"],
+      "description": "Jaw-dropping moment or peak, if any",
+      "additionalProperties": false,
+      "required": ["seg_id", "quote", "why_memorable"],
+      "properties": {
+        "seg_id": {
+          "type": "string",
+          "pattern": "^S[0-9]{4}$"
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "why_memorable": {
+          "type": "string",
+          "maxLength": 200
+        }
+      }
+    },
+    "insufficient_evidence": {
+      "type": "boolean"
+    }
+  }
+}

@@ -14,10 +14,9 @@ from app.models.user import User
 
 def seed_demo_user():
     """Create a demo user for development."""
-    database_url = os.getenv(
-        "DATABASE_URL",
-        "postgresql://stagecoach:dev_password_change_in_prod@localhost:5432/stagecoach"
-    )
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL is required")
     
     engine = create_engine(database_url)
     Session = sessionmaker(bind=engine)

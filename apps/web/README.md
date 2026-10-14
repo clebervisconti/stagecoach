@@ -32,11 +32,11 @@ lib/
 ## Development
 
 ```bash
-pnpm install
-pnpm dev              # Start dev server on :3000
-pnpm build
-pnpm test
-pnpm lint
+npm ci
+npm run dev           # Start dev server on :3000
+npm run build
+npm run type-check
+npm run lint
 ```
 
 ## Phase Status

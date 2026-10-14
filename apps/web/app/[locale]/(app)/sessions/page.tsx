@@ -1,23 +1,197 @@
-import { useTranslations } from "next-intl";
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { Loader2, Plus, Upload } from "lucide-react";
+
+type Session = {
+  id: string;
+  title: string;
+  status: string;
+  context_type: string;
+  language: string;
+  created_at: string;
+};
 
 export default function SessionsPage() {
   const t = useTranslations("dashboard");
+  const locale = useLocale();
+  const router = useRouter();
+  const prefix = locale === "en" ? "" : `/${locale}`;
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const loadSessions = useCallback(async () => {
+    const response = await fetch("/api/stagecoach/sessions", { cache: "no-store" });
+    if (!response.ok) throw new Error(t("loadError"));
+    const body = await response.json();
+    setSessions(body.sessions);
+  }, [t]);
+
+  useEffect(() => {
+    const refresh = () => {
+      void loadSessions()
+        .catch((reason: Error) => setError(reason.message))
+        .finally(() => setLoading(false));
+    };
+    const initial = window.setTimeout(refresh, 0);
+    const timer = window.setInterval(() => {
+      void loadSessions().catch(() => undefined);
+    }, 5000);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(timer);
+    };
+  }, [loadSessions]);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError("");
+    const form = new FormData(event.currentTarget);
+    const file = form.get("file");
+    try {
+      if (!(file instanceof File) || !file.size) throw new Error(t("fileRequired"));
+      const create = await fetch("/api/stagecoach/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: form.get("title"),
+          context_type: form.get("context_type"),
+          language: form.get("language"),
+          slot_min: form.get("slot_min") ? Number(form.get("slot_min")) : null,
+          qa_in_slot: false,
+          camera_setup: form.get("camera_setup"),
+        }),
+      });
+      const created = await create.json();
+      if (!create.ok) throw new Error(created.detail || t("createError"));
+
+      const uploadBody = new FormData();
+      uploadBody.set("file", file);
+      const upload = await fetch(`/api/stagecoach/sessions/${created.id}/upload`, {
+        method: "POST",
+        body: uploadBody,
+      });
+      const uploaded = await upload.json();
+      if (!upload.ok) throw new Error(uploaded.detail || t("uploadError"));
+      router.push(`${prefix}/sessions/${created.id}`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t("createError"));
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t("recentSessions")}</h1>
-        <button className="rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90">
+        <button
+          onClick={() => setShowForm((value) => !value)}
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
           {t("newSession")}
         </button>
       </div>
 
-      <div className="rounded-lg border bg-card p-8 text-center text-card-foreground">
-        <p className="text-muted-foreground">{t("noSessions")}</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Phase 0 - Sessions API not yet implemented
-        </p>
-      </div>
+      {error && (
+        <div role="alert" className="mb-6 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm">
+          {error}
+        </div>
+      )}
+
+      {showForm && (
+        <form onSubmit={submit} className="mb-8 grid gap-4 rounded-lg border bg-card p-6 md:grid-cols-2">
+          <label className="grid gap-2 text-sm font-medium">
+            {t("title")}
+            <input name="title" required maxLength={255} className="rounded-md border bg-background px-3 py-2" />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            {t("presentationType")}
+            <select name="context_type" className="rounded-md border bg-background px-3 py-2">
+              <option value="keynote">{t("keynote")}</option>
+              <option value="exec_briefing">{t("executiveBriefing")}</option>
+              <option value="sales_pitch">{t("salesPitch")}</option>
+              <option value="class_academic">{t("classAcademic")}</option>
+              <option value="virtual_meeting">{t("virtualMeeting")}</option>
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            {t("language")}
+            <select name="language" className="rounded-md border bg-background px-3 py-2">
+              <option value="en">English</option>
+              <option value="pt-BR">Português (Brasil)</option>
+              <option value="auto">{t("autoDetect")}</option>
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            {t("slotMinutes")}
+            <input name="slot_min" type="number" min="1" max="180" className="rounded-md border bg-background px-3 py-2" />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            {t("cameraSetup")}
+            <select name="camera_setup" className="rounded-md border bg-background px-3 py-2">
+              <option value="to_camera">{t("toCamera")}</option>
+              <option value="stage">{t("stage")}</option>
+              <option value="screen_recording">{t("screenRecording")}</option>
+              <option value="audio_only">{t("audioOnly")}</option>
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            {t("mediaFile")}
+            <input
+              name="file"
+              type="file"
+              required
+              accept=".mp4,.mov,.webm,.mkv,.m4a,.mp3,.wav,.ogg,.flac,audio/*,video/*"
+              className="rounded-md border bg-background px-3 py-2"
+            />
+          </label>
+          <div className="md:col-span-2">
+            <button
+              disabled={submitting}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground disabled:opacity-50"
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {submitting ? t("uploading") : t("uploadAndAnalyze")}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
+      ) : sessions.length === 0 ? (
+        <div className="rounded-lg border bg-card p-8 text-center text-card-foreground">
+          <p className="text-muted-foreground">{t("noSessions")}</p>
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {sessions.map((session) => (
+            <button
+              key={session.id}
+              onClick={() => router.push(`${prefix}/sessions/${session.id}`)}
+              className="flex items-center justify-between rounded-lg border bg-card p-5 text-left hover:border-primary/50"
+            >
+              <div>
+                <div className="font-semibold">{session.title}</div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  {session.context_type.replaceAll("_", " ")} · {session.language} ·{" "}
+                  {new Date(session.created_at).toLocaleString()}
+                </div>
+              </div>
+              <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium capitalize">
+                {session.status}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

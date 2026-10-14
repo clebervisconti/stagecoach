@@ -12,12 +12,10 @@ import tempfile
 @pytest.fixture
 def test_db_url():
     """Create a temporary test database URL."""
-    # In CI, use the test database
-    if "CI" in os.environ or "GITHUB_ACTIONS" in os.environ:
-        return "postgresql://stagecoach:dev_password_change_in_prod@localhost:5432/stagecoach_test"
-    else:
-        # For local testing, use a test database
-        return "postgresql://stagecoach:dev_password_change_in_prod@localhost:5432/stagecoach_test"
+    url = os.getenv("TEST_DATABASE_URL")
+    if not url:
+        pytest.skip("TEST_DATABASE_URL is not configured")
+    return url
 
 
 def test_migration_upgrade_downgrade(test_db_url):

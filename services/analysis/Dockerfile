@@ -24,9 +24,9 @@ RUN apt-get update && apt-get install -y \
 # Upgrade pip first for better wheel support
 RUN pip install --upgrade pip
 
-# Install base dependencies (including CPU-only torch)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install base dependencies (including CPU-only torch) plus OTEL
+COPY requirements.txt requirements-otel.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-otel.txt
 
 # Install alignment dependencies (whisperx, pyannote)
 # Force rebuild: 2026-10-09T23:45

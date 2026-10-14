@@ -46,5 +46,5 @@ pytest tests/golden/  # Golden-file tests
 ## Phase Status
 
 - Phase 0: Package structure only
-- Phase 1: Audio + text pipeline
+- Phase 1: Ingest, ASR, content LLM, and audio features (`prosody.parquet` / pauses / syllables)
 - Phase 2: Vision pipeline

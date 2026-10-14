@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-10
+
+### Added
+- Private-beta upload → background analysis → partial report → delete flow
+- Production Compose stack on LION (`127.0.0.1:3107`) behind Cloudflare Access
+- Health endpoint `GET /api/health` for the web BFF
+
+### Phase 1: Audio + text MVP report (In Progress)
+
+##### Added - Audio-features stage
+- `audio_features` stage (issue #24, SPEC §6.4) writing `prosody.parquet` (10 ms), `pauses.json`, `syllables.json`, `audio_metrics.json`
+- Two-pass Praat F0 with speaker-adaptive floor/ceiling and octave-jump removal
+- PVQ and semitone-relative pitch (Hincks [S24]); de Jong & Wempe syllable nuclei [S25]
+- Pause classification (boundary vs mid-sentence) from ASR punctuation
+- SNR estimate and heuristic music/noise flags that feed confidence
+- ADR-013: parselmouth GPL is server-side only
+- Unit tests: sine / chirp → F0 and PVQ; pause, SNR, and artifact checks
+
 ### Phase 0: Foundations (In Progress)
 
 #### [0.1.0] - 2026-10-09

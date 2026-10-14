@@ -8,6 +8,8 @@ pydantic-settings==2.4.0
 psycopg2-binary==2.9.9
 alembic==1.13.2
 asyncpg==0.29.0
+sqlalchemy==2.0.25
+pyyaml==6.0.1
 
 # Task queue
 celery==5.4.0
@@ -29,11 +31,17 @@ ctranslate2==4.4.0
 # xAI LLM client
 openai==1.54.5
 
-# Observability
-opentelemetry-api==1.28.2
-opentelemetry-sdk==1.28.2
-opentelemetry-instrumentation==0.49b2
+# Observability lives in requirements-otel.txt (splunk-opentelemetry 2.13.1
+# needs opentelemetry-api==1.45.1; do not pin 1.28.x here).
 
 # Dev/Test
 pytest==7.4.3
 pytest-asyncio==0.21.1
+requests==2.31.0
+jsonschema==4.20.0
+
+# Audio features (issue #24) — parselmouth is GPL, server-side only (ADR-013)
+praat-parselmouth==0.4.5
+librosa==0.10.2.post1
+soundfile==0.12.1
+pyarrow==16.1.0
