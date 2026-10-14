@@ -1,20 +1,22 @@
 """Session, upload, report, playback, and deletion endpoints."""
 
 import hashlib
+import hmac
 import json
 import os
 import shutil
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from celery import Celery
 
-from app.auth import get_current_user
+from app.auth import get_current_user, get_optional_user
+from app.auth import jwt as auth_jwt
 from app.database import get_db
 from app.models.analysis_job import AnalysisJob
 from app.models.job_step import JobStep
@@ -43,6 +45,17 @@ ALLOWED_CONTENT_TYPES = {
     "audio/flac",
     "application/octet-stream",
 }
+PLAYBACK_TTL_S = 15 * 60
+SERIES_NAMES = {
+    "pace",
+    "pitch",
+    "loudness",
+    "energy",
+    "gesture",
+    "gaze",
+    "expressivity",
+}
+VIDEO_SERIES = {"gesture", "gaze", "expressivity"}
 MEDIA_TYPES = {
     ".mp4": "video/mp4",
     ".mov": "video/quicktime",
@@ -99,6 +112,98 @@ def _safe_artifact_path(raw_path: str) -> Path:
     if not candidate.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artifact not found")
     return candidate
+
+
+def _latest_job(session: SessionModel, db: Session) -> AnalysisJob:
+    job = (
+        db.query(AnalysisJob)
+        .filter(AnalysisJob.session_id == session.id)
+        .order_by(AnalysisJob.created_at.desc())
+        .first()
+    )
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No analysis job")
+    return job
+
+
+def _merged_outputs(job: AnalysisJob, db: Session) -> dict:
+    steps = (
+        db.query(JobStep)
+        .filter(JobStep.job_id == job.id, JobStep.status == "succeeded")
+        .order_by(JobStep.created_at.asc())
+        .all()
+    )
+    outputs: dict = {}
+    for step in steps:
+        if step.output_uris:
+            outputs.update(step.output_uris)
+    return outputs
+
+
+def _outputs_or_conflict(session: SessionModel, db: Session) -> tuple[AnalysisJob, dict]:
+    job = _latest_job(session, db)
+    outputs = _merged_outputs(job, db)
+    return job, outputs
+
+
+def _artifact_from_outputs(outputs: dict, key: str) -> Path:
+    raw = outputs.get(key)
+    if not raw:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"{key} is not ready")
+    return _safe_artifact_path(raw)
+
+
+def _artifact_dir(outputs: dict) -> Optional[Path]:
+    for key in ("report", "analysis_result", "transcript"):
+        raw = outputs.get(key)
+        if raw:
+            return Path(raw).resolve().parent
+    return None
+
+
+def sign_playback(session_id: str, expires_at: int) -> str:
+    secret = auth_jwt.AUTH_SECRET
+    if len(secret) < 32:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Playback signing is not configured")
+    payload = f"{session_id}:{expires_at}".encode()
+    return hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+
+
+def verify_playback(session_id: str, expires_at: int, signature: str) -> bool:
+    if len(auth_jwt.AUTH_SECRET) < 32:
+        return False
+    expected = sign_playback(session_id, expires_at)
+    return hmac.compare_digest(expected, signature or "")
+
+
+def _highlights_from_artifacts(transcript: dict, report: Optional[dict]) -> list[dict]:
+    """Highlights from existing evidence only. Never invents spans."""
+    highlights = []
+    for item in (report or {}).get("evidence") or []:
+        highlights.append(
+            {
+                "kind": item.get("kind") or "observation",
+                "category_id": item.get("category_id"),
+                "metric_id": item.get("metric_id"),
+                "t_start": item.get("t_start"),
+                "t_end": item.get("t_end"),
+                "text": item.get("text"),
+                "quote": item.get("quote"),
+                "user_disputed": bool(item.get("user_disputed")),
+            }
+        )
+    return highlights
+
+
+def _empty_series(name: str, duration_s: float) -> dict:
+    length = max(1, int(duration_s) if duration_s else 1)
+    return {
+        "name": name,
+        "resolution_s": 1,
+        "points": [{"t": float(i), "value": None} for i in range(length)],
+        "unavailable": True,
+        "na_reason": "Vision series are not produced in Phase 1 (audio/text only).",
+    }
 
 
 @router.post("", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
@@ -314,50 +419,148 @@ async def get_report(
     db: Session = Depends(get_db),
 ):
     session = _owned_session(session_id, current_user, db)
-    job = (
-        db.query(AnalysisJob)
-        .filter(AnalysisJob.session_id == session.id)
-        .order_by(AnalysisJob.created_at.desc())
-        .first()
-    )
-    if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No analysis job")
-    step = (
-        db.query(JobStep)
-        .filter(JobStep.job_id == job.id, JobStep.stage == "report", JobStep.status == "succeeded")
-        .order_by(JobStep.created_at.desc())
-        .first()
-    )
-    if not step or not step.output_uris or not step.output_uris.get("report"):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Report is not ready")
-    report_path = _safe_artifact_path(step.output_uris["report"])
+    _, outputs = _outputs_or_conflict(session, db)
+    report_path = _artifact_from_outputs(outputs, "report")
     return json.loads(report_path.read_text())
 
 
-@router.get("/{session_id}/media")
-async def get_playback_media(
+@router.get("/{session_id}/analysis")
+async def get_analysis(
     session_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     session = _owned_session(session_id, current_user, db)
-    job = (
-        db.query(AnalysisJob)
-        .filter(AnalysisJob.session_id == session.id)
-        .order_by(AnalysisJob.created_at.desc())
-        .first()
-    )
-    if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No media")
-    step = (
-        db.query(JobStep)
-        .filter(JobStep.job_id == job.id, JobStep.stage == "report")
-        .order_by(JobStep.created_at.desc())
-        .first()
-    )
-    if not step or not step.output_uris or not step.output_uris.get("playback"):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Playback is not ready")
-    path = _safe_artifact_path(step.output_uris["playback"])
+    _, outputs = _outputs_or_conflict(session, db)
+    raw = outputs.get("analysis_result") or outputs.get("report")
+    if not raw:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Analysis is not ready")
+    return json.loads(_safe_artifact_path(raw).read_text())
+
+
+@router.get("/{session_id}/transcript")
+async def get_transcript(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    session = _owned_session(session_id, current_user, db)
+    _, outputs = _outputs_or_conflict(session, db)
+    transcript_path = _artifact_from_outputs(outputs, "transcript")
+    transcript = json.loads(transcript_path.read_text())
+    report = None
+    raw_report = outputs.get("report") or outputs.get("analysis_result")
+    if raw_report:
+        try:
+            report = json.loads(_safe_artifact_path(raw_report).read_text())
+        except HTTPException:
+            report = None
+    words = []
+    for segment in transcript.get("segments") or []:
+        if segment.get("words"):
+            words.extend(segment["words"])
+        else:
+            tokens = str(segment.get("text") or "").split()
+            start = float(segment.get("start") or 0)
+            end = float(segment.get("end") or start)
+            step = (end - start) / max(len(tokens), 1)
+            for i, token in enumerate(tokens):
+                words.append(
+                    {
+                        "word": token,
+                        "start": start + i * step,
+                        "end": start + (i + 1) * step,
+                        "probability": transcript.get("mean_word_probability")
+                        or transcript.get("mean_word_prob"),
+                    }
+                )
+    return {
+        "language": transcript.get("language"),
+        "duration": transcript.get("duration"),
+        "segments": transcript.get("segments") or [],
+        "words": words,
+        "highlights": _highlights_from_artifacts(transcript, report),
+    }
+
+
+@router.get("/{session_id}/series/{name}")
+async def get_series(
+    session_id: str,
+    name: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if name not in SERIES_NAMES:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown series")
+    session = _owned_session(session_id, current_user, db)
+    _, outputs = _outputs_or_conflict(session, db)
+    raw = outputs.get(f"series_{name}")
+    if raw:
+        return json.loads(_safe_artifact_path(raw).read_text())
+    directory = _artifact_dir(outputs)
+    if directory:
+        candidate = (directory / f"series_{name}.json").resolve()
+        if candidate.is_file() and candidate.is_relative_to(MEDIA_ROOT):
+            return json.loads(candidate.read_text())
+    if name in VIDEO_SERIES:
+        duration = 1.0
+        raw_report = outputs.get("report") or outputs.get("analysis_result")
+        if raw_report:
+            try:
+                report = json.loads(_safe_artifact_path(raw_report).read_text())
+                duration = float((report.get("media") or {}).get("duration_s") or 1)
+            except HTTPException:
+                pass
+        return _empty_series(name, duration)
+    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"{name} series is not ready")
+
+
+@router.get("/{session_id}/media/playback")
+async def get_playback_url(
+    session_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Short-lived playback URL. TTL is at most 15 minutes (SPEC §7.5)."""
+    session = _owned_session(session_id, current_user, db)
+    _, outputs = _outputs_or_conflict(session, db)
+    _artifact_from_outputs(outputs, "playback")
+    expires_at = int(datetime.now(timezone.utc).timestamp()) + PLAYBACK_TTL_S
+    signature = sign_playback(str(session.id), expires_at)
+    base = str(request.base_url).rstrip("/")
+    url = f"{base}/api/v1/sessions/{session.id}/media?exp={expires_at}&sig={signature}"
+    return {
+        "url": url,
+        "expires_at": datetime.fromtimestamp(expires_at, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "expires_in_s": PLAYBACK_TTL_S,
+    }
+
+
+@router.get("/{session_id}/media")
+async def get_playback_media(
+    session_id: str,
+    exp: Optional[int] = Query(default=None),
+    sig: Optional[str] = Query(default=None),
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    session = None
+    if exp is not None and sig:
+        now = int(datetime.now(timezone.utc).timestamp())
+        if exp < now or exp - now > PLAYBACK_TTL_S:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Playback URL expired")
+        if not verify_playback(session_id, exp, sig):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid playback signature")
+        session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
+        if not session:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    else:
+        if current_user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        session = _owned_session(session_id, current_user, db)
+    _, outputs = _outputs_or_conflict(session, db)
+    path = _artifact_from_outputs(outputs, "playback")
     return FileResponse(
         path,
         filename=f"{session.id}{path.suffix}",

@@ -12,6 +12,7 @@ from app.database import get_db
 from app.models.user import User
 
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
 # Auth.js uses HS256 by default with AUTH_SECRET
 AUTH_SECRET = os.getenv("AUTH_SECRET", "")
@@ -95,3 +96,14 @@ async def get_current_user(
         db.refresh(user)
     
     return user
+
+
+async def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """Return the user when a bearer token is present; otherwise None."""
+    if credentials is None:
+        return None
+    token_data = verify_token(credentials)
+    return await get_current_user(token_data, db)
