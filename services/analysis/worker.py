@@ -472,6 +472,18 @@ def audio_features_task(
             session_id=session_id,
             transcript_path=transcript_path,
         )
+        from metrics.compute import persist_session_metrics
+
+        dest = Path(output_dir)
+        metrics_path = persist_session_metrics(
+            output_dir=dest,
+            transcript_path=transcript_path or dest / "transcript.json",
+            audio_metrics_path=dest / "audio_metrics.json",
+            pauses_path=dest / "pauses.json",
+            packages_dir=Path("/packages"),
+        )
+        payload = result.to_dict()
+        payload["artifacts"]["metrics"] = str(metrics_path)
         if job_id:
             emit_progress(
                 job_id,
@@ -481,7 +493,7 @@ def audio_features_task(
                 message="Prosody features extracted",
             )
         logger.info(f"audio_features completed for {session_id}")
-        return result.to_dict()
+        return payload
     except Exception as exc:
         logger.error(f"audio_features failed for {session_id}: {exc}")
         if job_id:
@@ -566,6 +578,17 @@ def run_mvp_analysis_task(
             session_id=session_id,
             transcript_path=transcript_path,
         )
+        from metrics.compute import persist_session_metrics
+
+        metrics_path = persist_session_metrics(
+            output_dir=destination,
+            transcript_path=transcript_path,
+            audio_metrics_path=Path(audio.artifacts["audio_metrics"]),
+            pauses_path=destination / "pauses.json",
+            packages_dir=Path("/packages"),
+            slot_s=(slot_min * 60) if slot_min else None,
+        )
+        audio.artifacts["metrics"] = str(metrics_path)
         _record_job_step(
             job_id=job_id,
             stage="audio_features",
@@ -576,6 +599,7 @@ def run_mvp_analysis_task(
                 "pvq_median": audio.metrics.get("pvq_median"),
                 "snr_db": audio.metrics.get("snr_db"),
                 "confidence": audio.metrics.get("confidence"),
+                "metrics_path": str(metrics_path),
             },
         )
         emit_progress(

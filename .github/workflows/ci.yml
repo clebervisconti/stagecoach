@@ -430,7 +430,30 @@ jobs:
               print(f"Transcript: {len(transcript_data['segments'])} segments, {transcript_data['word_count']} words")
               print(f"Language: {transcript_data['language']} (confidence: {transcript_data['language_probability']:.2f})")
               
-          print("✅ Ingest + ASR pipeline test passed")
+              # Audio features + persisted metrics (issues #24, #25)
+              result = app.send_task(
+                  "tasks.audio_features",
+                  args=[asr_output, str(output_dir), "smoke-test", None],
+                  queue="cpu",
+              )
+              features_output = result.get(timeout=180)
+              print(f"audio_features keys: {list(features_output.keys())}")
+              artifacts = features_output.get("artifacts") or {}
+              for name in ("prosody", "pauses", "syllables", "audio_metrics"):
+                  path = Path(artifacts[name])
+                  assert path.exists(), f"{name} missing at {path}"
+              metrics_path = Path(output_dir) / "metrics.json"
+              if "metrics" in artifacts:
+                  metrics_path = Path(artifacts["metrics"])
+              assert metrics_path.exists(), f"metrics.json not found at {metrics_path}"
+              with open(metrics_path) as f:
+                  metrics_data = json.load(f)
+              assert "pp_wpm" in metrics_data["metrics"]
+              assert metrics_data["metrics"]["pp_wpm"]["unit"] == "words_per_minute"
+              assert metrics_data["metrics"]["vv_pvq_median"]["unit"] == "ratio"
+              print(f"✅ audio_features + metrics persisted: {metrics_path}")
+              
+          print("✅ Ingest + ASR + audio_features + metrics pipeline test passed")
           EOF
       
       - name: Verify Phase 0 Acceptance Criteria
