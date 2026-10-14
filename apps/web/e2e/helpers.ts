@@ -205,6 +205,40 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
     const path = url.pathname.replace(/^\/api\/stagecoach/, "");
     const method = request.method();
 
+    if (method === "GET" && path === "/me") {
+      return json(route, {
+        id: "user-1",
+        email: "ci@example.invalid",
+        locale: "en",
+        timezone: "UTC",
+        accessibility_profile: {
+          seated: false,
+          wheelchair: false,
+          limited_mobility: false,
+          one_handed: false,
+          speech_difference: false,
+          prefers_no_video_metrics: false,
+          low_vision: false,
+        },
+      });
+    }
+    if (method === "PATCH" && path === "/me") {
+      return json(route, {
+        id: "user-1",
+        email: "ci@example.invalid",
+        locale: "en",
+        timezone: "UTC",
+        accessibility_profile: {
+          seated: false,
+          wheelchair: false,
+          limited_mobility: false,
+          one_handed: false,
+          speech_difference: false,
+          prefers_no_video_metrics: false,
+          low_vision: false,
+        },
+      });
+    }
     if (method === "GET" && path === "/me/consents") {
       return json(route, consents);
     }

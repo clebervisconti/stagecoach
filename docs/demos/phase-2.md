@@ -152,6 +152,98 @@ Phase 2 additions:
   - category 14 (facial_affect) only when expression_analysis is granted; no emotion labels
 ```
 
+## PR #116 — Category 12 gestures & body + accessibility (#40)
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/116
+- Head SHA at green CI: `21faa00dfdf70511934afe254e08ba58ba57a237`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38615305635
+- `gh run view 38615305635 --json conclusion,headSha` → `success` / `21faa00dfdf70511934afe254e08ba58ba57a237`
+
+Jobs on that SHA (all success): API Unit Tests, Web Type Check and Build, Production Dependency Audit, Playwright E2E, Check Generated Code, Lint and Type Check, Validate Scoring Config, Test Suite, Docker Compose Smoke Test, Worker Tests, Secret Scan.
+
+Worker Tests excerpt:
+
+```
+tests/test_gestures.py::test_units_match_scoring_yaml PASSED
+tests/test_gestures.py::test_activity_ratio_on_alternating_windows PASSED
+tests/test_gestures.py::test_frozen_trajectory_is_low_activity PASSED
+tests/test_gestures.py::test_hands_gate_marks_hand_metrics_na PASSED
+tests/test_gestures.py::test_audio_only_and_opt_out_are_none PASSED
+tests/test_gestures.py::test_seated_profile_disables_sway_and_locomotion PASSED
+tests/test_gestures.py::test_one_handed_keeps_activity_with_one_wrist_hidden PASSED
+tests/test_gestures.py::test_webcam_caps_confidence_and_drops_sway PASSED
+tests/test_gestures.py::test_sway_sine_higher_than_still PASSED
+tests/test_gestures.py::test_speech_sync_and_purposeful_movement PASSED
+tests/test_gestures.py::test_vision_stage_writes_gesture_metrics PASSED
+tests/test_gestures.py::test_fusion_scores_gestures_when_vision_present PASSED
+tests/test_gestures.py::test_fusion_na_when_profile_opts_out_of_video PASSED
+tests/test_gestures.py::test_fusion_audio_only_is_na PASSED
+================== 180 passed, 8 skipped, 1 warning in 27.72s ==================
+```
+
+API Unit Tests excerpt:
+
+```
+tests/test_accessibility.py::test_wheelchair_implies_seated PASSED
+tests/test_accessibility.py::test_unknown_key_is_rejected PASSED
+=================== 33 passed, 2 skipped, 2 warnings in 0.96s ===================
+```
+
+Smoke excerpt (issue #40 echo):
+
+```
+Phase 2 additions:
+  - GET/POST /me/consents (defaults off, grant/revoke, unknown purpose 422)
+  - model_registry table seeded with MediaPipe pose/hands/face (Apache-2.0)
+  - vision_events.json / vision_quality.json when video_analysis is granted
+  - category 14 (facial_affect) only when expression_analysis is granted; no emotion labels
+  - category 12 (gestures_body) from pose when video_analysis is granted; accessibility profile can N/A sway/locomotion/gestures
+```
+
+## PR #117 — Category 13 audience-facing / gaze proxies (#41)
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/117
+- Head SHA at green CI: `61b3d2a9a0116933dbaa0ecef027f3c4c97e041d`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38617261030
+- `gh run view 38617261030 --json conclusion,headSha` → `success` / `61b3d2a9a0116933dbaa0ecef027f3c4c97e041d`
+
+Jobs on that SHA (all success): Production Dependency Audit, Web Type Check and Build, Lint and Type Check, Test Suite, Playwright E2E, Secret Scan, Worker Tests, Check Generated Code, API Unit Tests, Docker Compose Smoke Test, Validate Scoring Config.
+
+Worker Tests excerpt:
+
+```
+tests/test_gaze.py::test_units_match_scoring_yaml PASSED
+tests/test_gaze.py::test_to_camera_facing_uses_tight_head_and_gaze PASSED
+tests/test_gaze.py::test_stage_allows_wider_yaw_and_scores_evenness PASSED
+tests/test_gaze.py::test_reading_head_down_ratio PASSED
+tests/test_gaze.py::test_holds_count_long_facing_episodes PASSED
+tests/test_gaze.py::test_wide_shot_disables_eye_gaze_and_caps_confidence PASSED
+tests/test_gaze.py::test_audio_only_and_opt_out PASSED
+tests/test_gaze.py::test_no_l2cs_and_blendshape_gaze_is_heuristic PASSED
+tests/test_gaze.py::test_vision_writes_gaze_metrics PASSED
+tests/test_gaze.py::test_fusion_scores_eye_contact PASSED
+tests/test_gaze.py::test_fusion_na_when_consent_on_but_no_gaze_file PASSED
+================== 191 passed, 8 skipped, 1 warning in 27.63s ==================
+```
+
+API Unit Tests excerpt:
+
+```
+=================== 33 passed, 2 skipped, 2 warnings in 0.97s ===================
+```
+
+Smoke excerpt (issue #41 echo):
+
+```
+Phase 2 additions:
+  - GET/POST /me/consents (defaults off, grant/revoke, unknown purpose 422)
+  - model_registry table seeded with MediaPipe pose/hands/face (Apache-2.0)
+  - vision_events.json / vision_quality.json when video_analysis is granted
+  - category 14 (facial_affect) only when expression_analysis is granted; no emotion labels
+  - category 12 (gestures_body) from pose when video_analysis is granted; accessibility profile can N/A sway/locomotion/gestures
+  - category 13 (eye_contact) is audience-facing time (head orientation), not eye contact; L2CS-Net not used
+```
+
 ## PR #118 — Slides stage: PySceneDetect, keyframes, deck, OCR (#43)
 
 - URL: https://github.com/clebervisconti/stagecoach/pull/118

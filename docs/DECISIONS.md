@@ -1484,6 +1484,86 @@ Issue #42 / SPEC §4.4.14, §5, §10.4. The owner decided (D8) to include catego
 
 ---
 
+## ADR-028: Category 12 gesture metrics from pose trajectories; accessibility gates
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 2
+
+### Context
+
+Issue #40 / SPEC §4.4.12, §10.6, §10.7. Pose events already exist (#39). Scoring ids and units must match `scoring.yaml` v1.0.0. Hands visible in < 40% of frames makes hand-based metrics N/A. Webcam head-and-shoulders framing scores only upper-body activity and self-adaptors at confidence ≤ 0.6. Audio-only is N/A. Accessibility profile flags are user-set, never inferred.
+
+`gb_gesture_speech_sync` has weight 0 in MVP. Prominence times come from audio features after vision, so fusion attaches that metric (and purposeful-movement vs section boundaries) as a late input. Missing prominences or locomotion stay N/A.
+
+### Decision
+
+- Pure functions in `pipeline/vision/gestures.py` over per-frame pose features and vision events. Distances in shoulder-width units. Thresholds labeled heuristic (H).
+- Vision writes `gesture_metrics.json`. Fusion maps only applicable rows onto `gestures_body`. Unavailable inputs never become a numeric score.
+- Snapshot `accessibility.json` from `users.accessibility_profile` at job start (same pattern as consents). Seated/wheelchair disable sway and locomotion; limited mobility also disables gesture-amount metrics; one-handed uses the visible wrist; `prefers_no_video_metrics` N/As the category.
+- Settings UI PATCHes `/me` with the known boolean keys. Unknown keys are 422.
+- No new models. No emotion inference. No L2CS-Net (not this issue).
+
+### Alternatives Considered
+
+1. **Score from encrypted per-second parquet in fusion only**  
+   - ❌ Stroke peaks shorter than 1 s would disappear; events already exist per frame
+
+2. **Treat scoring.yaml `hands_visible_ratio: 0.3` as a category gate**  
+   - ❌ SPEC and the issue gate hand-based metrics at 40% and still allow sway/locomotion
+
+3. **Infer seated vs standing from hip height**  
+   - ❌ Profile is declared, not inferred (§10.7)
+
+### Consequences
+
+- ✅ Category 12 can score when video consent is on and a person is visible
+- ✅ Accessibility flags change applicability, not invented penalties
+- ⚠️ Speech-sync stays N/A until audio writes `emphasis_times_s`
+- 📌 Category 13 gaze wording and L2CS-Net remain issue #41
+
+---
+
+## ADR-029: Category 13 audience-facing proxies from head orientation; no L2CS-Net
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 2
+
+### Context
+
+Issue #41 / SPEC §4.4.13, §1.2.9, §6.5. Category 13 must not present a proxy as eye contact. To-camera uses head yaw/pitch plus MediaPipe `eyeLook*` blendshapes; stage uses a wider head-orientation window and yaw-histogram evenness. Face visible ≥ 60% and face height ≥ 60 px for full confidence; wide shots cap confidence at 0.6 and disable eye-gaze. Scoring ids must match `scoring.yaml` v1.0.0 (`ec_audience_facing_ratio`, `ec_gaze_distribution_evenness`, `ec_gaze_holds_per_min`, `ec_reading_head_down_ratio`) — not the extra SPEC names that are not in the config.
+
+L2CS-Net is optional in §6.5 and listed in §6.9 as MIT *if* pretrained-weight training-data terms are checked before shipping. ADR-025 already skipped it for that reason. Those terms were not re-checked here.
+
+### Decision
+
+- Pure functions in `pipeline/vision/gaze.py` over per-frame face features. Thresholds labeled heuristic (H).
+- Vision writes `gaze_metrics.json` with `proxy_label: "audience-facing time (head orientation)"`, `eye_contact: false`, `l2cs_net: false`. Fusion maps only applicable rows onto `eye_contact`. Audio-only, screen recordings, missing faces, and `prefers_no_video_metrics` stay N/A — never a numeric score.
+- To-camera facing: `|yaw| ≤ 15°`, `|pitch| ≤ 12°`, and when eye-gaze is enabled `|gaze| ≤ 10°`. Stage facing: `|yaw| ≤ 35°`, pitch ≥ −15°. Reading: pitch < −20°. Holds: facing episodes ≥ 2 s.
+- UI copy (en and pt-BR) uses "audience-facing time (head orientation)" for the key metric and enable hint. Category id stays `eye_contact` (taxonomy).
+- Do **not** add L2CS-Net or any other gaze network. Blendshape `eyeLook*` is the only eye-direction proxy.
+
+### Alternatives Considered
+
+1. **Ship L2CS-Net for to-camera faces ≥ 120 px**  
+   - ❌ §6.9 requires checking pretrained-weight training-data terms; not re-checked; would add a new model file
+
+2. **Rename the category id away from `eye_contact`**  
+   - ❌ scoring.yaml / taxonomy are the single source of truth; §1.2 forbids changing the scoring taxonomy without an owner ask
+
+3. **Treat unknown camera setup as N/A**  
+   - ❌ SPEC asks for to-camera vs stage definitions; unknown is inferred from face size (webcam-like vs stage)
+
+### Consequences
+
+- ✅ Category 13 can score when video consent is on and a face is visible
+- ✅ UI and artifacts stay honest that this is head orientation, not eye contact
+- ⚠️ Blendshape gaze is coarse; wide shots disable it
+- 📌 L2CS-Net remains unused unless the owner later confirms pretrained-weight terms
+
+---
+
 ## ADR-030: Slides stage uses PySceneDetect + Tesseract; structural antivirus in sandbox
 
 **Date:** 2026-10-14  
@@ -1568,6 +1648,8 @@ Issue #44 / SPEC §4.4.8, §6.6 step 7, §6.7.3 `slides_v1`. Metric ids must mat
 
 - **2026-10-14**: ADR-031 (Phase 2: category 8 visual aids, issue #44)
 - **2026-10-14**: ADR-030 (Phase 2: slides stage, issue #43)
+- **2026-10-14**: ADR-029 (Phase 2: category 13 audience-facing proxies, issue #41)
+- **2026-10-14**: ADR-028 (Phase 2: category 12 gestures & accessibility, issue #40)
 - **2026-10-14**: ADR-027 (D8: category 14 facial expressiveness opt-in, issue #42)
 - **2026-10-14**: ADR-026 (Phase 2: vision events and camera-setup mismatch, issue #39)
 - **2026-10-14**: ADR-025 (Phase 2: CPU MediaPipe vision stage, issue #38)

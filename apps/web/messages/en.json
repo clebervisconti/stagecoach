@@ -83,6 +83,30 @@
     "locale": "Locale",
     "signOut": "Sign Out"
   },
+  "accessibility": {
+    "heading": "Accessibility profile",
+    "intro": "These options change which body metrics are scored. They are stored as a preference you set, never inferred from video. Unavailable metrics are shown as N/A rather than a penalty.",
+    "loadError": "Could not load accessibility preferences.",
+    "saveError": "Could not save accessibility preferences.",
+    "keys": {
+      "seated": "Seated presentation",
+      "wheelchair": "Wheelchair user",
+      "limited_mobility": "Limited mobility",
+      "one_handed": "One-handed gesturing",
+      "speech_difference": "Speech difference",
+      "prefers_no_video_metrics": "Do not score video body metrics",
+      "low_vision": "Low vision"
+    },
+    "hints": {
+      "seated": "Turns off sway and walking metrics.",
+      "wheelchair": "Treated as seated for sway and walking metrics.",
+      "limited_mobility": "Turns off sway, walking, and gesture-amount metrics.",
+      "one_handed": "Uses the visible hand only; a hidden hand is not treated as a closed posture.",
+      "speech_difference": "Reserved for fluency options; it does not change gesture scoring.",
+      "prefers_no_video_metrics": "Gestures, gaze, and related video categories stay N/A.",
+      "low_vision": "Does not change gesture scoring; reserved for display preferences."
+    }
+  },
   "report": {
     "loadError": "Could not load this session.",
     "back": "Sessions",
@@ -181,7 +205,7 @@
     "enableHint": {
       "visual_aids": "Record slides in view or attach a deck to enable this category.",
       "gestures_body": "Record with your hands visible to get gesture feedback.",
-      "eye_contact": "Record with your face visible to camera to enable gaze metrics.",
+      "eye_contact": "Record with your face visible. Scores are audience-facing time (head orientation), not eye contact.",
       "facial_affect": "Expression analysis is opt-in and describes visible signals only, never inner states.",
       "qa": "Declare Q&A in the slot, or include question-and-answer turns in the recording."
     },
@@ -190,7 +214,7 @@
       "pp_wpm": "Words per minute",
       "fl_filler_sounds_per_min": "Filler sounds per minute",
       "pp_unplanned_long_pauses_per_10min": "Long pauses per 10 min",
-      "audience_facing_ratio": "Audience-facing",
+      "ec_audience_facing_ratio": "Audience-facing time (head orientation)",
       "vv_pvq_median": "Pitch variation (PVQ)"
     },
     "keyMetricDefinitions": {
@@ -198,7 +222,7 @@
       "pp_wpm": "Lexical words per minute of speech. The shaded band is a practitioner range; speech-rate norms depend on the type of talk (heuristic informed by S13).",
       "fl_filler_sounds_per_min": "Filled pauses such as um and uh per minute of speech. At or below 5/min shows no penalty in the cited study; 12/min is clearly harmful (S12).",
       "pp_unplanned_long_pauses_per_10min": "Unplanned pauses longer than the mid-sentence threshold, scaled per 10 minutes (heuristic).",
-      "audience_facing_ratio": "Share of speaking time facing the audience or camera. This needs the vision stage, so it is unavailable on audio/text reports.",
+      "ec_audience_facing_ratio": "Share of speaking time with the head oriented toward the audience or camera. This is a head-orientation proxy, not eye contact (heuristic).",
       "vv_pvq_median": "Pitch variation quotient: standard deviation of F0 divided by mean F0 (S24)."
     },
     "keyMetricUnits": {
@@ -206,7 +230,7 @@
       "pp_wpm": "WPM",
       "fl_filler_sounds_per_min": "/min",
       "pp_unplanned_long_pauses_per_10min": "/10 min",
-      "audience_facing_ratio": "facing",
+      "ec_audience_facing_ratio": "facing",
       "vv_pvq_median": "PVQ"
     },
     "fillerBenchmarks": "Reference lines: 5/min (no penalty) and 12/min (harmful) from S12.",
