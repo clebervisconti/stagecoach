@@ -46,6 +46,20 @@ test("partial_ready shows the report while analysis is still processing", async 
   await expect(page.getByText(/audio and text categories appear first/i)).toBeVisible();
 });
 
+test("body and slides tabs render from report artifacts", async ({ page }) => {
+  await mockStagecoachApi(page, { language: "en", title: "Body slides talk" });
+  await page.goto("/sessions", { waitUntil: "domcontentloaded" });
+  await uploadTalk(page, "Body slides talk", "en");
+  await expect(page.getByTestId("report")).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("tab", { name: /^body$/i }).click();
+  await expect(page.getByTestId("body-tab")).toBeVisible();
+  await expect(page.getByTestId("data-quality")).toBeVisible();
+  await page.getByRole("tab", { name: /^slides$/i }).click();
+  await expect(page.getByTestId("slides-tab")).toBeVisible();
+  await expect(page.getByTestId("slide-card")).toBeVisible();
+  await expect(page.getByTestId("ai-suggestion")).toContainText(/AI suggestion/i);
+});
+
 test("pt-BR upload shows né/tipo/então disambiguation then delete", async ({ page }) => {
   const api = await mockStagecoachApi(page, { language: "pt-BR", title: "Fala de saída" });
   await page.goto("/pt-BR/sessions", { waitUntil: "domcontentloaded" });

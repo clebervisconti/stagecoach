@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Body tab and Slides tab (issue #48)
+- Body: gesture heat strip, wrist-space silhouette, events list, sway, yaw histogram, notes-down, opt-in expressivity, data-quality panel
+- Slides: filmstrip with dwell, words, title type, Glance level, reading %, facing-screen seconds; click seeks
+- Suggested assertion titles appear only from `slides_v1`, labeled AI
+- Missing vision or slides stay N/A; no invented scores
+
 ##### Added - Video-synced timeline lanes (issue #47)
 - Lanes: sections, slides, fillers, long pauses, rushing, monotone, gestures, audience-facing, smiles (opt-in), CLT/story, Q&A
 - Toggleable lanes, sprite hover (ingest 5 s / 160px), click-to-seek, two-way playhead

@@ -23,6 +23,7 @@ Return `title_type`: `assertion` (full-sentence takeaway), `topic` (noun label),
 Return `one_idea` true if the slide has a single takeaway.
 Return `glance_level` 1–5 (half steps allowed): one idea, clear hierarchy, readable size, highlighted insight.
 Return `issues` as short observable notes (too many words, topic title, no hierarchy). Empty if none.
+When `title_type` is `topic` or `none`, return `suggested_assertion_title` as a full-sentence takeaway rewritten from the given title and word count. Omit it when the title is already an assertion or evidence is insufficient.
 
 Use at most the slides given (N ≤ 20). If there is not enough evidence for a slide, set `insufficient_evidence` on that row.
 

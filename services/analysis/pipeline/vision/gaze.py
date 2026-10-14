@@ -150,6 +150,30 @@ def yaw_histogram_entropy(yaws: Sequence[float], *, lo: float, hi: float, bin_de
     return h / math.log(n_bins) if n_bins > 1 else 0.0
 
 
+def yaw_histogram_bins(
+    yaws: Sequence[float], *, lo: float, hi: float, bin_deg: float
+) -> list[dict[str, float]]:
+    """Count bins for the Body-tab yaw histogram. Empty when there are no yaw samples."""
+    if hi <= lo or bin_deg <= 0:
+        return []
+    clipped = [float(y) for y in yaws if lo <= y <= hi]
+    if not clipped:
+        return []
+    n_bins = max(int(round((hi - lo) / bin_deg)), 1)
+    hist, edges = np.histogram(clipped, bins=n_bins, range=(lo, hi))
+    out: list[dict[str, float]] = []
+    for count, left, right in zip(hist, edges[:-1], edges[1:]):
+        out.append(
+            {
+                "center": round(float((left + right) / 2.0), 2),
+                "lo": round(float(left), 2),
+                "hi": round(float(right), 2),
+                "count": int(count),
+            }
+        )
+    return out
+
+
 def compute_gaze_metrics(
     face_rows: list[dict[str, Any]],
     *,
@@ -206,15 +230,24 @@ def compute_gaze_metrics(
 
     evenness: Optional[float] = None
     evenness_applicable = setup_norm == "stage"
+    all_yaws = [
+        float(row["yaw_deg"])
+        for row in visible
+        if row.get("yaw_deg") is not None
+        and not (isinstance(row.get("yaw_deg"), float) and math.isnan(row.get("yaw_deg")))
+    ]
+    yaw_bins = yaw_histogram_bins(all_yaws, lo=-STAGE_YAW, hi=STAGE_YAW, bin_deg=YAW_BIN_DEG)
     if evenness_applicable:
-        yaws = [
+        facing_yaws = [
             float(row["yaw_deg"])
             for row, flag in zip(visible, facing)
-            if flag and row.get("yaw_deg") is not None and not (
-                isinstance(row.get("yaw_deg"), float) and math.isnan(row.get("yaw_deg"))
-            )
+            if flag
+            and row.get("yaw_deg") is not None
+            and not (isinstance(row.get("yaw_deg"), float) and math.isnan(row.get("yaw_deg")))
         ]
-        evenness = yaw_histogram_entropy(yaws, lo=-STAGE_YAW, hi=STAGE_YAW, bin_deg=YAW_BIN_DEG)
+        evenness = yaw_histogram_entropy(
+            facing_yaws, lo=-STAGE_YAW, hi=STAGE_YAW, bin_deg=YAW_BIN_DEG
+        )
 
     metrics = {
         "ec_audience_facing_ratio": _metric(
@@ -245,5 +278,6 @@ def compute_gaze_metrics(
         "face_visible_ratio": round(face_ratio, 4),
         "face_px_median": round(face_px, 2),
         "hold_count": len(holds),
+        "yaw_histogram": yaw_bins,
         "metrics": metrics,
     }

@@ -1396,7 +1396,9 @@ def run_fusion_scoring(
     jsonschema.validate(instance=result, schema=schema)
     dest = output_dir / "analysis_result.json"
     dest.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
+    from pipeline.body_slides import persist_body_slides
     from pipeline.timeline import persist_timeline
 
     persist_timeline(output_dir, duration_s=duration_s)
+    persist_body_slides(output_dir, duration_s=duration_s)
     return result

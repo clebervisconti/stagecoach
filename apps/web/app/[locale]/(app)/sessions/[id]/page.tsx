@@ -11,8 +11,11 @@ import { KeyMetrics } from "@/components/report/key-metrics";
 import { ReportPlayer } from "@/components/report/player";
 import { RadarChart } from "@/components/report/radar-chart";
 import { SummaryCard } from "@/components/report/summary-card";
+import { BodyTab } from "@/components/report/body-tab";
+import { SlidesTab } from "@/components/report/slides-tab";
 import { TranscriptTab } from "@/components/report/transcript-tab";
 import { VoiceTab } from "@/components/report/voice-tab";
+import type { BodyPayload, SlidesPayload } from "@/lib/body-slides";
 import { formatTimestamp } from "@/lib/player";
 import { eventsUrl, parseProgressData, shouldReloadReport } from "@/lib/progress";
 import { radarPoints } from "@/lib/report-view";
@@ -70,7 +73,11 @@ export default function SessionPage() {
   const [transcript, setTranscript] = useState<TranscriptPayload | null>(null);
   const [series, setSeries] = useState<Record<string, SeriesPayload | null>>({});
   const [timeline, setTimeline] = useState<TimelinePayload | null>(null);
-  const [tab, setTab] = useState<"categories" | "transcript" | "voice" | "timeline">("categories");
+  const [body, setBody] = useState<BodyPayload | null>(null);
+  const [slides, setSlides] = useState<SlidesPayload | null>(null);
+  const [tab, setTab] = useState<"categories" | "transcript" | "voice" | "timeline" | "body" | "slides">(
+    "categories",
+  );
   const seekRef = useRef<(tStart: number) => void>(() => undefined);
   const [error, setError] = useState("");
   const terminal = session?.status === "ready" || session?.status === "partial" || session?.status === "failed";
@@ -105,6 +112,18 @@ export default function SessionPage() {
       });
       if (timelineResponse.ok && active) {
         setTimeline((await timelineResponse.json()) as TimelinePayload);
+      }
+      const bodyResponse = await fetch(`/api/stagecoach/sessions/${params.id}/body`, {
+        cache: "no-store",
+      });
+      if (bodyResponse.ok && active) {
+        setBody((await bodyResponse.json()) as BodyPayload);
+      }
+      const slidesResponse = await fetch(`/api/stagecoach/sessions/${params.id}/slides`, {
+        cache: "no-store",
+      });
+      if (slidesResponse.ok && active) {
+        setSlides((await slidesResponse.json()) as SlidesPayload);
       }
     }
     async function refresh() {
@@ -275,7 +294,7 @@ export default function SessionPage() {
           <InsightsPanel report={report} onSeek={(time) => seekRef.current(time)} />
           <div>
             <div role="tablist" aria-label={t("tabs")} className="mb-4 flex flex-wrap gap-2">
-              {(["categories", "transcript", "voice", "timeline"] as const).map((id) => (
+              {(["categories", "transcript", "voice", "timeline", "body", "slides"] as const).map((id) => (
                 <button
                   key={id}
                   type="button"
@@ -293,7 +312,11 @@ export default function SessionPage() {
                         ? "transcript"
                         : id === "voice"
                           ? "voiceTab"
-                          : "timeline",
+                          : id === "timeline"
+                            ? "timeline"
+                            : id === "body"
+                              ? "bodyTab"
+                              : "slidesTab",
                   )}
                 </button>
               ))}
@@ -312,6 +335,14 @@ export default function SessionPage() {
                 pitch={series.pitch ?? null}
                 loudness={series.loudness ?? null}
                 energy={series.energy ?? null}
+                onSeek={(time) => seekRef.current(time)}
+              />
+            )}
+            {tab === "body" && <BodyTab payload={body} onSeek={(time) => seekRef.current(time)} />}
+            {tab === "slides" && (
+              <SlidesTab
+                sessionId={params.id}
+                payload={slides}
                 onSeek={(time) => seekRef.current(time)}
               />
             )}
