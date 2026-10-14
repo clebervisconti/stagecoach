@@ -207,4 +207,28 @@ ok 14 - unavailable series are not treated as zeros
 # pass 15
 ```
 
+## PR #110 — Golden fixtures and metric validation start (#35)
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/110
+- Impl SHA: `fb45c95cec8de905f3942e31ae0d892f5440d676`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38592701585
+- Branched from `main` (`478e91a`)
+
+Jobs on `fb45c95cec8de905f3942e31ae0d892f5440d676` (all success): Web Type Check and Build, Validate Scoring Config, API Unit Tests, Lint and Type Check, Docker Compose Smoke Test, Test Suite, Production Dependency Audit, Check Generated Code, Worker Tests, Secret Scan.
+
+Worker Tests excerpt (`gh run view 38592701585 --log`):
+
+```
+tests/golden/test_golden.py::test_golden_comparison_tolerances[en_clean] PASSED
+tests/golden/test_golden.py::test_golden_comparison_tolerances[ptbr_clean] PASSED
+tests/golden/test_golden.py::test_golden_comparison_tolerances[noisy_low_snr] PASSED
+tests/golden/test_golden.py::test_noisy_fixture_is_low_confidence_and_excluded_from_overall PASSED
+tests/golden/test_validation_start.py::test_en_and_ptbr_corpora_are_at_least_twenty_minutes PASSED
+PASS en_clean language=en kind=clean overall=92 confidence=0.8499999999999999
+PASS ptbr_clean language=pt-BR kind=clean overall=91 confidence=0.8499999999999999
+PASS noisy_low_snr language=en kind=noisy overall=None confidence=0.0
+all golden fixtures passed (±2 scores, ±5% metrics)
+```
+
+
 
