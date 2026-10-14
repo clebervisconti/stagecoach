@@ -120,3 +120,34 @@ Phase 2 additions:
   - model_registry table seeded with MediaPipe pose/hands/face (Apache-2.0)
   - vision_events.json / vision_quality.json when video_analysis is granted
 ```
+
+## PR #115 — Category 14 facial expressiveness, opt-in (D8, #42)
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/115
+- Head SHA at green CI: `d942eb0e138a529cf022308fa204be0995496eda`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38611949981
+- `gh run view 38611949981 --json conclusion,headSha` → `success` / `d942eb0e138a529cf022308fa204be0995496eda`
+
+Jobs on that SHA (all success): Lint and Type Check, Web Type Check and Build, Validate Scoring Config, Docker Compose Smoke Test, API Unit Tests, Check Generated Code, Playwright E2E, Secret Scan, Production Dependency Audit, Test Suite, Worker Tests.
+
+Worker Tests excerpt:
+
+```
+tests/test_expressiveness.py::test_expression_metrics_written_only_with_consent PASSED
+tests/test_expressiveness.py::test_facial_affect_scored_only_when_opted_in PASSED
+tests/test_expressiveness.py::test_default_off_keeps_category_14_na PASSED
+tests/test_expressiveness.py::test_incongruence_flag_is_observation_not_emotion PASSED
+tests/test_expressiveness.py::test_no_ser_models_in_requirements PASSED
+tests/test_expressiveness.py::test_source_and_ui_have_no_forbidden_emotion_labels PASSED
+================== 166 passed, 8 skipped, 1 warning in 27.42s ==================
+```
+
+Smoke excerpt (issue #42 echo):
+
+```
+Phase 2 additions:
+  - GET/POST /me/consents (defaults off, grant/revoke, unknown purpose 422)
+  - model_registry table seeded with MediaPipe pose/hands/face (Apache-2.0)
+  - vision_events.json / vision_quality.json when video_analysis is granted
+  - category 14 (facial_affect) only when expression_analysis is granted; no emotion labels
+```
