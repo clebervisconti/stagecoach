@@ -207,4 +207,33 @@ ok 14 - unavailable series are not treated as zeros
 # pass 15
 ```
 
+## PR #109 — Delete session hard delete + audit (#34)
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/109
+- Impl SHA: `1258bac3e98babcb3799df4bde4e53d4ee70ca76`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38502355460
+- `gh pr view 109 --json mergeable,mergeStateStatus` → `MERGEABLE` / `CLEAN`
+- Branched from `main` (`a7929b7`); independent of #32 / #33
+
+Jobs on `1258bac3e98babcb3799df4bde4e53d4ee70ca76` (all success): Check Generated Code, Secret Scan, Lint and Type Check, Production Dependency Audit, Docker Compose Smoke Test, Web Type Check and Build, Worker Tests, API Unit Tests, Test Suite, Validate Scoring Config.
+
+API Unit Tests excerpt (`gh run view 38502355460 --log`):
+
+```
+tests/test_deletion.py::test_delete_local_prefix_removes_session_files_only PASSED
+tests/test_deletion.py::test_dict_object_store_deletes_only_matching_prefix PASSED
+tests/test_deletion.py::test_audit_details_are_counts_only PASSED
+=================== 26 passed, 2 skipped, 1 warning in 0.64s ===================
+```
+
+Smoke excerpt (session prefix files and CASCADE rows gone; audit counts only; fixture kept):
+
+```
+planted 3 files under /data/stagecoach/0206900d-14a0-40c0-bb74-afdca5c53a27 and result rows for job 44b21d01-d380-4db6-a718-3e15d517ef38
+   DELETE HTTP Status: 204
+   GET after delete HTTP Status: 404
+audit object_count=3 db_rows={'insights': 1, 'sessions': 1, 'job_steps': 1, 'transcripts': 1, 'media_assets': 1, 'analysis_jobs': 1, 'metric_values': 1, 'evidence_items': 1, 'overall_scores': 1, 'category_scores': 1} verification={'db_left': {'insights': 0, 'sessions': 0, 'job_steps': 0, 'transcripts': 0, 'media_assets': 0, 'analysis_jobs': 0, 'metric_values': 0, 'evidence_items': 0, 'overall_scores': 0, 'category_scores': 0}, 'db_rows': {'insights': 1, 'sessions': 1, 'job_steps': 1, 'transcripts': 1, 'media_assets': 1, 'analysis_jobs': 1, 'metric_values': 1, 'evidence_items': 1, 'overall_scores': 1, 'category_scores': 1}, 'db_remaining': 0, 'object_count': 3, 'search_index': 'not_deployed', 'local_remaining': 0, 'object_store_remaining': 0}
+   ✅ DELETE removed session files and DB rows; audit has counts only
+✅ Phase 0 + Phase 1 smoke test complete
+```
 

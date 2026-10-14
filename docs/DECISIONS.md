@@ -1198,3 +1198,42 @@ Issue #33 needs clickable evidence, transcript highlights, and voice graphs. The
 - ⚠️ Pitch and loudness graphs are often unavailable until fusion writes F0/intensity series
 - 📌 Do not invent CLT highlights without impact evidence
 
+---
+
+## ADR-021: Session delete is a hard prefix wipe plus a content-free audit
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Issue #34 / SPEC §10.3 requires `DELETE /sessions/{id}` to remove objects under the session prefix, DB rows, and search-index entries, then write an audit record with an object count and no content. Phase 1 CI skips the MinIO profile. Private-beta runtime stores uploads on the shared `MEDIA_ROOT` volume (ADR-0001). A search index is not deployed.
+
+### Decision
+
+- Local files live at `MEDIA_ROOT/{session_id}/`. Delete uses `shutil.rmtree` on that directory only after resolving it inside `MEDIA_ROOT`.
+- Object-store keys follow SPEC §7.4: `users/{user_id}/sessions/{session_id}/`. When `boto3` is installed and MinIO answers `head_bucket`, delete that prefix. Otherwise skip (CI and current private beta).
+- Postgres `ON DELETE CASCADE` from `sessions` removes `media_assets`, `analysis_jobs`, `job_steps`, and result tables. No ORM relationship cascades.
+- `audit_log.details` holds `object_count`, per-table `db_rows`, and prefix labels `["local", "object_store"]`. Content keys (title, transcript, quote, storage URIs, object keys) are rejected before commit.
+- `deletion_requests.verification` records remaining counts. The handler returns 204 only when local files, object-store keys, and DB rows are all gone.
+- `search_index` is recorded as `not_deployed`. There are no index entries to delete until a search backend exists.
+- Backups are not deployed in Phase 1 CI. When they exist, the aging window is 7 days (the low end of SPEC §10.3's 7–30 day example) until operations sets another value.
+
+### Alternatives Considered
+
+1. **Soft-delete the session row**  
+   - ❌ Spec requires hard delete of media and derived artifacts
+
+2. **Always call MinIO**  
+   - ❌ CI smoke skips the MinIO profile; compose still sets `MINIO_ENDPOINT`
+
+3. **Put object keys in the audit row**  
+   - ❌ Spec: audit_log has no content
+
+### Consequences
+
+- ✅ Smoke can plant files under the session dir, DELETE, and prove `smoke-fixture` and sibling dirs survive
+- ⚠️ Enabling MinIO in production still needs `boto3` on the API image
+- 📌 Do not delete `/data/stagecoach/smoke-fixture` from a session DELETE
+

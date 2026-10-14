@@ -78,7 +78,7 @@ jobs:
         working-directory: services/api
         run: |
           pip install -r requirements.txt pytest
-          pytest tests/test_auth_and_sessions.py -v --tb=short
+          pytest tests/ -v --tb=short
 
   lint-and-type-check:
     name: Lint and Type Check
@@ -513,8 +513,8 @@ jobs:
           curl -f -s http://localhost:8000/health | python3 -m json.tool
           echo ""
           
-          echo "4. Database Tables (baseline + result tables):"
-          docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "\dt" | grep -E "table|users|consents|sessions|media_assets|analysis_jobs|job_steps|scoring_configs|transcripts|metric_values|category_scores|overall_scores|evidence_items|insights"
+          echo "4. Database Tables (baseline + result + audit tables):"
+          docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "\dt" | grep -E "table|users|consents|sessions|media_assets|analysis_jobs|job_steps|scoring_configs|transcripts|metric_values|category_scores|overall_scores|evidence_items|insights|audit_log|deletion_requests"
           echo ""
           
           echo "5. Seeded Config:"
@@ -620,7 +620,240 @@ jobs:
             exit 1
           fi
           echo "   ✅ GET /report returned the synthetic fixture report.json"
-          
+
+          echo ""
+          echo "9. DELETE /api/v1/sessions/{id} (issue #34 — leftover files and rows gone):"
+          docker compose exec -T -e SESSION_ID="$SESSION_ID" api python << 'PY'
+          import os
+          from datetime import datetime, timedelta
+          from pathlib import Path
+          from app.database import SessionLocal
+          from app.models.analysis_job import AnalysisJob
+          from app.models.category_score import CategoryScore
+          from app.models.evidence_item import EvidenceItem
+          from app.models.insight import Insight
+          from app.models.media_asset import MediaAsset
+          from app.models.metric_value import MetricValue
+          from app.models.overall_score import OverallScore
+          from app.models.session import Session as SessionModel
+          from app.models.transcript import Transcript
+
+          session_id = os.environ["SESSION_ID"]
+          media_root = Path("/data/stagecoach")
+          session_dir = media_root / session_id
+          (session_dir / "upload").mkdir(parents=True, exist_ok=True)
+          (session_dir / "derived").mkdir(parents=True, exist_ok=True)
+          (session_dir / "upload" / "original.bin").write_bytes(b"not-a-recording")
+          (session_dir / "derived" / "report.json").write_text("{}")
+          (session_dir / "derived" / "transcript.json").write_text('{"segments":[]}')
+          other = media_root / "keep-other"
+          other.mkdir(parents=True, exist_ok=True)
+          (other / "keep.bin").write_bytes(b"keep")
+          fixture = media_root / "smoke-fixture" / "report.json"
+          if not fixture.is_file():
+              raise SystemExit("smoke-fixture/report.json missing; refusing to plant delete fixtures")
+          db = SessionLocal()
+          try:
+              session = db.query(SessionModel).filter(SessionModel.id == session_id).one()
+              job = (
+                  db.query(AnalysisJob)
+                  .filter(AnalysisJob.session_id == session.id)
+                  .order_by(AnalysisJob.created_at.desc())
+                  .one()
+              )
+              db.add(
+                  MediaAsset(
+                      session_id=session.id,
+                      kind="original",
+                      storage_uri=str(session_dir / "upload" / "original.bin"),
+                      bytes=15,
+                      sha256="0" * 64,
+                      retention_until=datetime.utcnow() + timedelta(days=30),
+                  )
+              )
+              db.add(
+                  Transcript(
+                      job_id=job.id,
+                      language="en",
+                      asr_model="smoke",
+                      words_uri=str(session_dir / "derived" / "transcript.json"),
+                      mean_word_prob=0.9,
+                  )
+              )
+              db.add(
+                  MetricValue(
+                      job_id=job.id,
+                      metric_id="pp_wpm",
+                      raw_value=120.0,
+                      unit="words_per_minute",
+                      score=80.0,
+                      confidence=0.5,
+                      source_key="heuristic",
+                  )
+              )
+              db.add(
+                  CategoryScore(
+                      job_id=job.id,
+                      category_id="pace",
+                      score=None,
+                      applicable=False,
+                      na_reason="smoke",
+                  )
+              )
+              db.add(
+                  OverallScore(
+                      job_id=job.id,
+                      overall=None,
+                      coverage=0.0,
+                      context_type="keynote",
+                      config_version="1.0.0",
+                  )
+              )
+              db.add(
+                  EvidenceItem(
+                      job_id=job.id,
+                      category_id="pace",
+                      metric_id="pp_wpm",
+                      t_start=0.0,
+                      t_end=1.0,
+                      modality="audio",
+                      kind="observation",
+                      quote=None,
+                      confidence=0.4,
+                  )
+              )
+              db.add(
+                  Insight(
+                      job_id=job.id,
+                      type="opportunity",
+                      rank=1,
+                      category_id="pace",
+                      title="placeholder",
+                      body_md=None,
+                  )
+              )
+              db.commit()
+              Path("/tmp/stagecoach-delete-job-id").write_text(str(job.id))
+              print(f"planted 3 files under {session_dir} and result rows for job {job.id}")
+          finally:
+              db.close()
+          PY
+
+          DELETE_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X DELETE \
+            -H "Authorization: Bearer $TEST_JWT" \
+            http://localhost:8000/api/v1/sessions/$SESSION_ID)
+          echo "   DELETE HTTP Status: $DELETE_RESPONSE"
+          if [ "$DELETE_RESPONSE" != "204" ]; then
+            echo "   ❌ Expected 204 from DELETE /sessions/{id}, got $DELETE_RESPONSE"
+            exit 1
+          fi
+
+          GET_AFTER=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $TEST_JWT" \
+            http://localhost:8000/api/v1/sessions/$SESSION_ID)
+          echo "   GET after delete HTTP Status: $GET_AFTER"
+          if [ "$GET_AFTER" != "404" ]; then
+            echo "   ❌ Expected 404 after delete, got $GET_AFTER"
+            exit 1
+          fi
+
+          docker compose exec -T -e SESSION_ID="$SESSION_ID" api python << 'PY'
+          import json
+          import os
+          from pathlib import Path
+          from uuid import UUID
+          from app.database import SessionLocal
+          from app.deletion import CONTENT_KEYS
+          from app.models.analysis_job import AnalysisJob
+          from app.models.audit_log import AuditLog
+          from app.models.category_score import CategoryScore
+          from app.models.deletion_request import DeletionRequest
+          from app.models.evidence_item import EvidenceItem
+          from app.models.insight import Insight
+          from app.models.media_asset import MediaAsset
+          from app.models.metric_value import MetricValue
+          from app.models.overall_score import OverallScore
+          from app.models.session import Session as SessionModel
+          from app.models.transcript import Transcript
+
+          session_id = os.environ["SESSION_ID"]
+          media_root = Path("/data/stagecoach")
+          session_dir = media_root / session_id
+          leftover = list(session_dir.rglob("*")) if session_dir.exists() else []
+          if leftover:
+              raise SystemExit(f"session files remain: {leftover}")
+          keep = media_root / "keep-other" / "keep.bin"
+          fixture = media_root / "smoke-fixture" / "report.json"
+          if not keep.is_file():
+              raise SystemExit("sibling keep-other/keep.bin was removed")
+          if not fixture.is_file():
+              raise SystemExit("smoke-fixture/report.json was removed")
+
+          db = SessionLocal()
+          try:
+              job_id = UUID(Path("/tmp/stagecoach-delete-job-id").read_text().strip())
+              sessions = db.query(SessionModel).filter(SessionModel.id == session_id).count()
+              assets = db.query(MediaAsset).filter(MediaAsset.session_id == session_id).count()
+              jobs = db.query(AnalysisJob).filter(AnalysisJob.session_id == session_id).count()
+              leftovers = {
+                  "sessions": sessions,
+                  "media_assets": assets,
+                  "analysis_jobs": jobs,
+                  "transcripts": db.query(Transcript).filter(Transcript.job_id == job_id).count(),
+                  "metric_values": db.query(MetricValue).filter(MetricValue.job_id == job_id).count(),
+                  "category_scores": db.query(CategoryScore).filter(CategoryScore.job_id == job_id).count(),
+                  "overall_scores": db.query(OverallScore).filter(OverallScore.job_id == job_id).count(),
+                  "evidence_items": db.query(EvidenceItem).filter(EvidenceItem.job_id == job_id).count(),
+                  "insights": db.query(Insight).filter(Insight.job_id == job_id).count(),
+              }
+              if any(leftovers.values()):
+                  raise SystemExit(f"db leftovers {leftovers}")
+              audit = (
+                  db.query(AuditLog)
+                  .filter(AuditLog.action == "session.delete", AuditLog.target_id == session_id)
+                  .one()
+              )
+              details = audit.details or {}
+              payload = json.dumps(details)
+              for key in CONTENT_KEYS:
+                  if key in details:
+                      raise SystemExit(f"audit details contain content key {key}")
+                  if f'"{key}"' in payload:
+                      raise SystemExit(f"audit details JSON mentions content key {key}")
+              if "object_count" not in details:
+                  raise SystemExit("audit details missing object_count")
+              if details["object_count"] < 3:
+                  raise SystemExit(f"expected at least 3 deleted objects, got {details['object_count']}")
+              if details.get("prefixes") != ["local", "object_store"]:
+                  raise SystemExit(f"unexpected prefixes: {details.get('prefixes')}")
+              proof = (
+                  db.query(DeletionRequest)
+                  .filter(DeletionRequest.scope == "session")
+                  .order_by(DeletionRequest.requested_at.desc())
+                  .first()
+              )
+              if proof is None or proof.completed_at is None:
+                  raise SystemExit("deletion_requests row missing or incomplete")
+              verification = proof.verification or {}
+              if verification.get("local_remaining") != 0:
+                  raise SystemExit(f"local_remaining={verification.get('local_remaining')}")
+              if verification.get("db_remaining") != 0:
+                  raise SystemExit(f"db_remaining={verification.get('db_remaining')}")
+              if verification.get("search_index") != "not_deployed":
+                  raise SystemExit("search_index should be not_deployed")
+              left = verification.get("db_left") or {}
+              if any(left.values()):
+                  raise SystemExit(f"db_left not empty: {left}")
+              print(
+                  f"audit object_count={details['object_count']} "
+                  f"db_rows={details.get('db_rows')} verification={verification}"
+              )
+          finally:
+              db.close()
+          PY
+          echo "   ✅ DELETE removed session files and DB rows; audit has counts only"
+
           echo ""
           echo "✅ Phase 0 + Phase 1 smoke test complete"
           echo ""
@@ -630,6 +863,7 @@ jobs:
           echo "  - ASR stage transcribes audio (faster-whisper tiny model)"
           echo "  - Pipeline produces artifacts and metadata"
           echo "  - Transcript.json written to disk"
+          echo "  - DELETE /sessions/{id} removes session files and rows and writes a content-free audit"
       
       - name: MinIO status
         run: |
