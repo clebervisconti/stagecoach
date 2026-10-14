@@ -42,7 +42,7 @@
   "dependencies": [
     {
       "name": "mediapipe",
-      "version": "0.10.14",
+      "version": "0.10.31",
       "license": "Apache-2.0",
       "evidence": "PyPI classifiers License :: OSI Approved :: Apache Software License; package license field Apache 2.0. github.com/google-ai-edge/mediapipe LICENSE fetched 2026-10-14."
     },
