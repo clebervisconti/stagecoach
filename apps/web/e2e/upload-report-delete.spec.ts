@@ -28,6 +28,7 @@ test("upload → progress → report → delete (en)", async ({ page }) => {
   await expect(page).toHaveURL(/\/sessions\/11111111-1111-4111-8111-111111111136/);
   await expect(page.getByTestId("processing")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByTestId("report")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("timeline")).toBeVisible();
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByTestId("delete-session").click();
   await expect(page).toHaveURL(/\/sessions\/?$/);

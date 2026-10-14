@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Video-synced timeline lanes (issue #47)
+- Lanes: sections, slides, fillers, long pauses, rushing, monotone, gestures, audience-facing, smiles (opt-in), CLT/story, Q&A
+- Toggleable lanes, sprite hover (ingest 5 s / 160px), click-to-seek, two-way playhead
+- J/L jump markers in the focused lane; Space and ←/→ stay on the player
+
 ##### Added - Partial results and graceful vision degradation (issue #46)
 - SSE `partial_ready` events list scored category ids; `done` marks the terminal report
 - Audio/text fusion runs before vision so the report page can render live cards while processing

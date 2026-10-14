@@ -620,6 +620,46 @@ async def get_series(
     raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"{name} series is not ready")
 
 
+@router.get("/{session_id}/timeline")
+async def get_timeline(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """SPEC §8.4 lane payload written beside report artifacts (issue #47)."""
+    session = _owned_session(session_id, current_user, db)
+    _, outputs = _outputs_or_conflict(session, db)
+    raw = outputs.get("timeline")
+    if raw:
+        return json.loads(_safe_artifact_path(raw).read_text())
+    directory = _artifact_dir(outputs)
+    if directory:
+        candidate = (directory / "timeline.json").resolve()
+        if candidate.is_file() and candidate.is_relative_to(MEDIA_ROOT):
+            return json.loads(candidate.read_text())
+    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Timeline is not ready")
+
+
+@router.get("/{session_id}/sprite")
+async def get_sprite(
+    session_id: str,
+    t: float = Query(default=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Sprite thumbnail every 5 s for timeline hover (SPEC §8.4)."""
+    session = _owned_session(session_id, current_user, db)
+    _, outputs = _outputs_or_conflict(session, db)
+    directory = _artifact_dir(outputs)
+    if not directory:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Sprite is not ready")
+    idx = int(max(0.0, float(t)) // 5)
+    candidate = (directory / "sprites" / f"sprite_{idx:04d}.jpg").resolve()
+    if not candidate.is_file() or not candidate.is_relative_to(MEDIA_ROOT):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sprite is not ready")
+    return FileResponse(candidate, media_type="image/jpeg")
+
+
 @router.get("/{session_id}/media/playback")
 async def get_playback_url(
     session_id: str,

@@ -12,24 +12,37 @@ import {
   previousMarker,
   SKIP_S,
 } from "@/lib/player";
+import { laneMarkers, type TimelinePayload } from "@/lib/timeline";
+import { ReportTimeline } from "@/components/report/timeline";
 
 type PlayerProps = {
   sessionId: string;
   evidence: ReportEvidence[];
   captionsVtt?: string;
   seekRef: MutableRefObject<(tStart: number) => void>;
+  timeline?: TimelinePayload | null;
 };
 
-export function ReportPlayer({ sessionId, evidence, captionsVtt, seekRef }: PlayerProps) {
+export function ReportPlayer({
+  sessionId,
+  evidence,
+  captionsVtt,
+  seekRef,
+  timeline = null,
+}: PlayerProps) {
   const t = useTranslations("report");
   const mediaRef = useRef<HTMLVideoElement>(null);
   const [src, setSrc] = useState(`/api/stagecoach/sessions/${sessionId}/media`);
   const [error, setError] = useState("");
+  const [currentTime, setCurrentTime] = useState(0);
+  const [focusedLaneId, setFocusedLaneId] = useState<string | null>(null);
 
-  const markers = useMemo(
+  const evidenceMarkers = useMemo(
     () => evidence.map((item) => ({ id: item.id, t: item.t_start })),
     [evidence],
   );
+  const focusedLane = timeline?.lanes.find((lane) => lane.id === focusedLaneId);
+  const markers = focusedLane ? laneMarkers(focusedLane) : evidenceMarkers;
 
   function applySeek(time: number) {
     const el = mediaRef.current;
@@ -119,6 +132,8 @@ export function ReportPlayer({ sessionId, evidence, captionsVtt, seekRef }: Play
           preload="metadata"
           className="w-full rounded-md bg-black"
           src={src}
+          onTimeUpdate={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
+          onSeeked={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
           onError={() => setError(t("playbackError"))}
         >
           {captionUrl && (
@@ -127,6 +142,14 @@ export function ReportPlayer({ sessionId, evidence, captionsVtt, seekRef }: Play
         </video>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">{t("playerHelp")}</p>
+      <ReportTimeline
+        sessionId={sessionId}
+        payload={timeline}
+        currentTime={currentTime}
+        focusedLaneId={focusedLaneId}
+        onFocusLane={setFocusedLaneId}
+        onSeek={(time) => applySeek(time)}
+      />
       {error && (
         <p role="status" className="mt-2 text-sm text-muted-foreground">
           {error}

@@ -13,9 +13,11 @@ import { RadarChart } from "@/components/report/radar-chart";
 import { SummaryCard } from "@/components/report/summary-card";
 import { TranscriptTab } from "@/components/report/transcript-tab";
 import { VoiceTab } from "@/components/report/voice-tab";
+import { formatTimestamp } from "@/lib/player";
 import { eventsUrl, parseProgressData, shouldReloadReport } from "@/lib/progress";
 import { radarPoints } from "@/lib/report-view";
 import { exportVtt, type TranscriptPayload } from "@/lib/transcript";
+import type { TimelinePayload } from "@/lib/timeline";
 import type { SeriesPayload } from "@/lib/voice-charts";
 
 type SessionDetail = {
@@ -67,7 +69,8 @@ export default function SessionPage() {
   const [report, setReport] = useState<AnalysisReport | null>(null);
   const [transcript, setTranscript] = useState<TranscriptPayload | null>(null);
   const [series, setSeries] = useState<Record<string, SeriesPayload | null>>({});
-  const [tab, setTab] = useState<"categories" | "transcript" | "voice">("categories");
+  const [timeline, setTimeline] = useState<TimelinePayload | null>(null);
+  const [tab, setTab] = useState<"categories" | "transcript" | "voice" | "timeline">("categories");
   const seekRef = useRef<(tStart: number) => void>(() => undefined);
   const [error, setError] = useState("");
   const terminal = session?.status === "ready" || session?.status === "partial" || session?.status === "failed";
@@ -97,6 +100,12 @@ export default function SessionPage() {
         }),
       );
       if (active) setSeries(loaded);
+      const timelineResponse = await fetch(`/api/stagecoach/sessions/${params.id}/timeline`, {
+        cache: "no-store",
+      });
+      if (timelineResponse.ok && active) {
+        setTimeline((await timelineResponse.json()) as TimelinePayload);
+      }
     }
     async function refresh() {
       try {
@@ -259,13 +268,14 @@ export default function SessionPage() {
               evidence={report.evidence ?? []}
               captionsVtt={transcript ? exportVtt(transcript) : undefined}
               seekRef={seekRef}
+              timeline={timeline}
             />
             <KeyMetrics report={report} />
           </div>
           <InsightsPanel report={report} onSeek={(time) => seekRef.current(time)} />
           <div>
             <div role="tablist" aria-label={t("tabs")} className="mb-4 flex flex-wrap gap-2">
-              {(["categories", "transcript", "voice"] as const).map((id) => (
+              {(["categories", "transcript", "voice", "timeline"] as const).map((id) => (
                 <button
                   key={id}
                   type="button"
@@ -276,7 +286,15 @@ export default function SessionPage() {
                     tab === id ? "bg-primary text-primary-foreground" : "bg-muted"
                   }`}
                 >
-                  {t(id === "categories" ? "categories" : id === "transcript" ? "transcript" : "voiceTab")}
+                  {t(
+                    id === "categories"
+                      ? "categories"
+                      : id === "transcript"
+                        ? "transcript"
+                        : id === "voice"
+                          ? "voiceTab"
+                          : "timeline",
+                  )}
                 </button>
               ))}
             </div>
@@ -296,6 +314,38 @@ export default function SessionPage() {
                 energy={series.energy ?? null}
                 onSeek={(time) => seekRef.current(time)}
               />
+            )}
+            {tab === "timeline" && (
+              <div data-testid="timeline-tab">
+                <p className="mb-3 text-sm text-muted-foreground">{t("timelineTabHint")}</p>
+                <table className="w-full text-sm">
+                  <caption className="sr-only">{t("timeline")}</caption>
+                  <thead>
+                    <tr>
+                      <th className="text-left">{t("timeline")}</th>
+                      <th className="text-left">{t("evidence")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(timeline?.lanes ?? []).flatMap((lane) =>
+                      lane.items.map((item, index) => (
+                        <tr key={`${lane.id}-${index}`}>
+                          <td>{lane.id.replaceAll("_", " ")}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="text-primary underline"
+                              onClick={() => seekRef.current(item.t_start)}
+                            >
+                              ▶ {formatTimestamp(item.t_start)} {item.label}
+                            </button>
+                          </td>
+                        </tr>
+                      )),
+                    )}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
