@@ -1399,13 +1399,55 @@ Licenses re-checked 2026-10-14:
 - ✅ Commercially usable Apache-2.0 models with recorded SHAs
 - ✅ Consent gate from ADR-024 still the only way into this stage
 - ⚠️ First vision run downloads ~20 MB of `.task` files and verifies SHA-256
-- 📌 Category 14 scoring and smile/flat-face *events* are issue #39 / #42, not this stage
+- 📌 Category 14 scoring is issue #42, not this stage
 - 📌 Benchmark wall time on a 10-minute clip remains unmeasured until recorded
+
+---
+
+## ADR-026: Vision events, quality JSON, and camera-setup mismatch scale
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 2
+
+### Context
+
+Issue #39 / SPEC §6.5 steps 5–6 require timestamped vision events and `vision_quality.json`. Declared camera setup (stage / to-camera / screen recording) must be checked against detection (face size, person size, presence). Mismatches warn and adjust thresholds. Smile and flat-face windows need `expression_analysis`; they describe observable movement, not emotions (§5, §4.4.14). No new model files or paid services.
+
+### Decision
+
+- Detect events from **per-frame** normalized features (not the per-second parquet): `gesture_stroke` (local wrist-speed peaks ≥ 0.4 shoulder-widths/s, H), `self_adaptor` (hand–face distance < 0.45 sw for ≥ 0.5 s), `crossed_arms` (each wrist near the opposite elbow ≥ 0.4 s), `notes_down` (pitch < −20° ≥ 2 s), `screen_turn` (|yaw| > 50° ≥ 0.4 s), `locomotion` (hip displacement > 0.5 sw in a 2 s window), plus `smile` / `flat_face` only when expression metrics are on (smile blendshape mean > 0.4; ≥ 60 s below the 15th percentile of the expressivity subset).
+- Write `vision_events.json` and `vision_quality.json` next to `vision_metrics.json`. Quality fields: person/face visible ratios, mean face and person pixel height, mean luma, camera motion (mean absolute frame difference as a CPU stand-in for dense optical flow), occlusion ratio (low landmark visibility), and declared vs detected setup.
+- Detected setup heuristic (H): no/low person → `screen_recording` (or `audio_only` without video); large face (≥ 80 px) and person height ≥ 0.35 of frame → `to_camera`; else `stage`.
+- Mismatch `threshold_scale` (H): to-camera/stage declared but almost no person → 1.8 (relax / desensitize speed peaks); to-camera declared but stage-like framing → 1.35; stage declared but to-camera framing → 0.85. The worker passes `sessions.camera_setup` into the vision stage.
+- No emotion labels in events or quality. `emotion_inference` is always false.
+
+### Alternatives Considered
+
+1. **Events only on per-second aggregates**  
+   - ❌ Stroke peaks shorter than 1 s would disappear
+
+2. **Lucas–Kanade / Farneback optical flow for camera_motion**  
+   - ❌ Extra OpenCV dependency; mean absolute luma difference is enough for a quality prior on CPU
+
+3. **Emit smile/flat_face without expression_analysis**  
+   - ❌ SPEC §5.4 / ADR-024: facial metrics require the separate opt-in
+
+4. **Fail the job on setup mismatch**  
+   - ❌ Spec says warn and adjust thresholds, not abort
+
+### Consequences
+
+- ✅ Issue #39 AC covered with synthetic (not recorded) fixtures
+- ✅ Camera-setup mismatch is observable in `vision_quality.json` and changes event sensitivity
+- 📌 Category 14 scoring, incongruence flags, and the bilingual forbidden-terms sweep of *report* copy remain issue #42
+- 📌 Dense optical flow can replace the luma-difference motion estimate later if validation needs it
 
 ---
 
 ## Change Log (continued)
 
+- **2026-10-14**: ADR-026 (Phase 2: vision events and camera-setup mismatch, issue #39)
 - **2026-10-14**: ADR-025 (Phase 2: CPU MediaPipe vision stage, issue #38)
 - **2026-10-14**: ADR-024 (Phase 2: consent UI and vision gate, issue #37)
 

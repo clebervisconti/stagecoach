@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Vision events, quality JSON, camera-setup check (issue #39)
+- Timestamped `vision_events.json`: gesture strokes, self-adaptors, crossed arms, notes-down, screen turns, locomotion; smile and flat-face only with `expression_analysis`
+- `vision_quality.json`: visibility ratios, pixel sizes, luma, camera motion, occlusion, declared vs detected camera setup
+- Setup mismatch writes a warning and scales event thresholds; worker receives `camera_setup` from the session
+- No emotion labels; synthetic fixtures only
+
 ##### Added - Vision stage: MediaPipe pose/hands/face (issue #38)
 - CPU-only MediaPipe Tasks VIDEO mode: pose every 15 fps frame, face and hands at 10 fps
 - Primary-person IoU tracking, One-Euro then Savitzky-Golay smoothing

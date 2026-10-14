@@ -106,6 +106,8 @@ class FrameDetections:
     faces: list[FaceInstance]
     hands: list[HandInstance]
     run_face_hands: bool
+    luma: Optional[float] = None
+    motion: Optional[float] = None
 
 
 def shoulder_width(xyz: np.ndarray, vis: np.ndarray) -> Optional[float]:
@@ -149,6 +151,14 @@ def pose_frame_features(pose: PoseInstance, prev_wrists: Optional[np.ndarray], d
         if dists:
             hand_face = min(dists)
     bbox = pose.bbox
+    crossed = float("nan")
+    if vis[L_WRIST] >= 0.5 and vis[R_ELBOW] >= 0.5 and vis[R_WRIST] >= 0.5 and vis[L_ELBOW] >= 0.5:
+        d1 = float(np.linalg.norm(xyz[L_WRIST, :2] - xyz[R_ELBOW, :2]) / sw)
+        d2 = float(np.linalg.norm(xyz[R_WRIST, :2] - xyz[L_ELBOW, :2]) / sw)
+        crossed = 1.0 if d1 < 0.35 and d2 < 0.35 else 0.0
+    person_h = float("nan")
+    if bbox is not None:
+        person_h = float((bbox[3] - bbox[1]) * 1.0)
     return {
         "shoulder_width": sw if sw > 1e-5 else float("nan"),
         "wrist_l_x": wrists[0][0],
@@ -164,8 +174,11 @@ def pose_frame_features(pose: PoseInstance, prev_wrists: Optional[np.ndarray], d
         "bbox_cy": float((bbox[1] + bbox[3]) / 2) if bbox is not None else float("nan"),
         "bbox_w": float(bbox[2] - bbox[0]) if bbox is not None else float("nan"),
         "bbox_h": float(bbox[3] - bbox[1]) if bbox is not None else float("nan"),
+        "person_height_norm": person_h,
         "visibility_mean": float(np.mean(vis)),
         "wrist_l_vis": float(vis[L_WRIST]),
         "wrist_r_vis": float(vis[R_WRIST]),
+        "crossed_arms": crossed,
+        "nose_visible": 1.0 if vis[NOSE] >= 0.5 else 0.0,
         "person_visible": 1.0,
     }

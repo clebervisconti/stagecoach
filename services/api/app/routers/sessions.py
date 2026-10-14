@@ -423,6 +423,7 @@ async def upload_and_analyze(
             "language": session.language,
             "slot_min": session.slot_min,
             "consents": snapshot_for_user(db, current_user.id),
+            "camera_setup": session.camera_setup,
         },
         queue="cpu",
     )

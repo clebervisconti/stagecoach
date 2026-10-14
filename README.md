@@ -91,7 +91,7 @@ The application will be available at:
 
 - ✅ **Phase 0** (Week 1): Foundations - monorepo, DB, config, scoring engine
 - 🚧 **Phase 1** (Weeks 2-4): Audio + text MVP - ASR, LLM analysis, basic report
-- 🚧 **Phase 2** (Weeks 5-7): Video + slides — consents (`GET/POST /me/consents`) first, then vision analysis, full report, PDF export
+- 🚧 **Phase 2** (Weeks 5-7): Video + slides — consents, CPU MediaPipe vision (pose/hands/face), vision events + `vision_quality.json`, then slides, full report, PDF export
 - 📅 **Phase 3** (Weeks 8-10): Talk-prep coach - objectives, trends, personal baselines
 - 📅 **Phase 4** (v2): Practice loop - in-browser recording, live feedback, drills
 - 📅 **Phase 5** (v3): Teams - organizations, coaches, cohort analytics, benchmarks
