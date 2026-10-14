@@ -747,6 +747,7 @@ Per SPEC §6.2 and issue #17.
 - **2026-10-09**: ADR-011 (Phase 1: ingest stage implementation)
 - **2026-10-09**: ADR-012 (Phase 1: DAG orchestration and SSE progress #18, #19)
 - **2026-10-10**: ADR-013 (Phase 1: parselmouth GPL server-only for audio features #24)
+- **2026-10-14**: ADR-014 (Phase 1: pure metric functions with scoring.yaml units #25)
 
 ---
 
@@ -867,4 +868,37 @@ openSMILE / eGeMAPS [S44] would give standardized GeMAPS features but needs a co
 - ⚠️ Energy VAD is a heuristic until Silero is wired from #21
 - 📌 Keep parselmouth out of `apps/web` and any client package; a CI grep can enforce this later
 
+---
+
+## ADR-014: Pure metric functions, units from scoring.yaml
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Issue #25 requires pace, vocal-variety, fluency, and time-management sub-metrics as **pure functions** (SPEC §1.4): dataclasses out, no hidden global state, each docstring listing definition, units, source or heuristic, and failure modes. Metric names and units must match `packages/scoring-config/v1.0.0/scoring.yaml` exactly so the scoring engine can consume them later.
+
+### Decision
+
+- Put functions in `services/analysis/metrics/{pace,prosody,fluency,timing}.py`.
+- Persist a `metrics.json` artifact after `audio_features` (cpu queue) so the smoke fixture writes both audio features and metrics.
+- Confidence follows SPEC §4.6.2: ASR = mean word probability × coverage; prosody = voiced-frame ratio × SNR factor (10 dB → 0.3, 20 dB → 1.0) × (1 − octave-error ratio).
+- Combined filler rate is shown next to the 5/min and 12/min [S12] anchors. Grammar remains an optional LLM level (N/A until a later stage).
+- No new third-party libraries. No openSMILE, SER, or emotion models.
+
+### Alternatives Considered
+
+1. **Inline formulas in `mvp_report.py`**  
+   - ❌ Hidden thresholds; hard to unit-test; drifts from scoring.yaml units
+
+2. **Put functions in `packages/scoring`**  
+   - ❌ Scoring engine maps raw values to scores; extraction belongs with the worker (Appendix D)
+
+### Consequences
+
+- ✅ Synthetic tests can assert known WPM, PVQ, filler rates, and SNR confidence without audio libraries
+- ✅ Units stay in lockstep with scoring.yaml via a dedicated unit-match test
+- ⚠️ `fl_grammar_llm` stays N/A until the content-LLM stage supplies a level
 
