@@ -111,10 +111,24 @@ def compute_expression_metrics(
     peaks = np.max(vectors, axis=0)
     variety = int(np.sum(peaks > VARIETY_THRESH))
     face_h = [float(row.get("face_height_px") or 0.0) for row in visible]
+    expressivity_windows: list[dict[str, float]] = []
+    t0 = float(times[0]) if times.size else 0.0
+    t1 = float(times[-1]) if times.size else 0.0
+    start = t0
+    while start < t1:
+        end = start + 1.0
+        mask = (times >= start) & (times < end)
+        if np.any(mask):
+            expressivity_windows.append(
+                {"start": round(start, 3), "value": round(float(np.std(vectors[mask])), 6)}
+            )
+        start = end
     payload = {
         "emotion_inference": False,
+        "ser": False,
         "face_visible_ratio": round(len(visible) / max(len(face_rows), 1), 4),
         "face_px_median": round(float(np.median(face_h)) if face_h else 0.0, 2),
+        "expressivity_windows": expressivity_windows,
         "metrics": {
             "fa_smile_presence_ratio": {
                 "value": round(smile_ratio, 4),

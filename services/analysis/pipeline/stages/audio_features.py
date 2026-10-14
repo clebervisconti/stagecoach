@@ -47,6 +47,9 @@ BOUNDARY_PAUSE_MIN_S = 0.5
 BOUNDARY_PAUSE_MAX_S = 2.0
 LONG_PAUSE_S = 3.0
 
+# Energy & presence — too-soft threshold (H, SPEC §4.4.15)
+SOFT_BELOW_DB = 12.0
+
 # de Jong & Wempe [S25] syllable nuclei (Praat-script defaults, H)
 SYLLABLE_MIN_DIP_DB = 2.0
 SYLLABLE_SILENCE_DB = 25.0
@@ -508,6 +511,17 @@ def extract_audio_features(
         intensity_db = intensity_db - float(np.median(voiced_intensity))
         voiced_intensity = intensity_db[voiced_mask & np.isfinite(intensity_db)]
     intensity_sd = float(np.std(voiced_intensity, ddof=1)) if voiced_intensity.size > 1 else None
+    too_soft_ratio = (
+        float(np.mean(voiced_intensity < -SOFT_BELOW_DB)) if voiced_intensity.size else None
+    )
+    intensity_windows = window_series(
+        times,
+        intensity_db,
+        PVQ_WINDOW_S,
+        5.0,
+        PVQ_MIN_VOICED_S,
+        lambda x: float(np.mean(x)) if x.size else None,
+    )
 
     nuclei = detect_syllable_nuclei(times, intensity_db, voiced_mask)
     phonation_s = voiced_s
@@ -571,6 +585,8 @@ def extract_audio_features(
         "octave_jump_ratio": round(jump_ratio, 4),
         "pvq_median": None if pvq_median is None else round(pvq_median, 4),
         "pvq_windows": pvq_windows,
+        "too_soft_ratio": None if too_soft_ratio is None else round(too_soft_ratio, 4),
+        "intensity_windows": intensity_windows,
         "pitch_range_st_median": None if pitch_range_st_median is None else round(pitch_range_st_median, 3),
         "monotone_windows_ratio": round(monotone_windows_ratio(pvq_windows, range_windows), 4),
         "intensity_sd_db_median": None if intensity_sd is None else round(intensity_sd, 3),

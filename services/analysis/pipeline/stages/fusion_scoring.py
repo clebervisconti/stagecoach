@@ -489,34 +489,38 @@ def _energy_from_audio(
     config: dict[str, Any],
     confidence: float,
 ) -> list[dict[str, Any]]:
-    """Audio-only energy metrics from existing audio_metrics. No emotion terms."""
-    metrics: list[dict[str, Any]] = []
-    too_soft = audio.get("too_soft_ratio")
-    if too_soft is None and audio.get("intensity_sd_db_median") is not None:
-        # Not the same measurement — do not invent ep_too_soft_ratio.
-        too_soft = None
-    if isinstance(too_soft, (int, float)):
-        metrics.append(
+    """Backward-compatible wrapper; prefer compute_energy_metrics."""
+    from pipeline.energy import compute_energy_metrics
+
+    payload = compute_energy_metrics(audio=audio)
+    return _energy_metrics_from_payload(payload, config, confidence)
+
+
+def _energy_metrics_from_payload(
+    payload: Optional[dict[str, Any]],
+    config: dict[str, Any],
+    confidence: float,
+) -> list[dict[str, Any]]:
+    """Map energy_metrics.json onto scoring-config energy_presence ids. No SER."""
+    if not payload:
+        return []
+    out: list[dict[str, Any]] = []
+    allowed = config["categories"]["energy_presence"]["metrics"]
+    for metric_id, row in (payload.get("metrics") or {}).items():
+        if metric_id not in allowed:
+            continue
+        if not row or row.get("applicable") is False or row.get("value") is None:
+            continue
+        out.append(
             _metric_payload(
-                metric_id="ep_too_soft_ratio",
+                metric_id=metric_id,
                 category_id="energy_presence",
-                raw_value=float(too_soft),
-                confidence=confidence,
+                raw_value=row["value"],
+                confidence=min(confidence, float(row.get("confidence") or 0.5)),
                 config=config,
             )
         )
-    trajectory = audio.get("energy_trajectory")
-    if isinstance(trajectory, (int, float)):
-        metrics.append(
-            _metric_payload(
-                metric_id="ep_energy_trajectory",
-                category_id="energy_presence",
-                raw_value=float(trajectory),
-                confidence=confidence,
-                config=config,
-            )
-        )
-    return metrics
+    return out
 
 
 def _visual_aids_from_payload(payload: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
@@ -865,7 +869,12 @@ def _evidence_from_inputs(
     return evidence
 
 
-def _write_series(output_dir: Path, audio: Optional[dict[str, Any]], transcript: dict[str, Any]) -> dict[str, str]:
+def _write_series(
+    output_dir: Path,
+    audio: Optional[dict[str, Any]],
+    transcript: dict[str, Any],
+    energy_points: Optional[list[dict[str, Any]]] = None,
+) -> dict[str, str]:
     duration = int(math.ceil(float(transcript.get("duration") or audio.get("duration_s") if audio else 0) or 0))
     duration = max(duration, 1)
     empty = [{"t": float(i), "value": None} for i in range(duration)]
@@ -875,12 +884,11 @@ def _write_series(output_dir: Path, audio: Optional[dict[str, Any]], transcript:
         "loudness": list(empty),
         "energy": list(empty),
     }
-    windows = (audio or {}).get("pvq_windows") or []
-    for window in windows:
-        start = int(float(window.get("start") or 0))
-        value = window.get("value")
-        if 0 <= start < duration and value is not None:
-            series["energy"][start] = {"t": float(start), "value": float(value)}
+    for point in energy_points or []:
+        t = int(float(point.get("t") or 0))
+        value = point.get("value")
+        if 0 <= t < duration and value is not None:
+            series["energy"][t] = {"t": float(t), "value": float(value)}
     refs = {}
     for name, points in series.items():
         path = output_dir / f"series_{name}.json"
@@ -946,7 +954,28 @@ def run_fusion_scoring(
     if content:
         for cid, items in _content_metrics(content, transcript, stats, asr_c, config).items():
             grouped[cid].extend(items)
-    grouped["energy_presence"].extend(_energy_from_audio(audio, config, prosody_c or asr_c))
+
+    from pipeline.energy import compute_energy_metrics
+
+    consents_early = _read_json(output_dir / "consents.json")
+    expr_opt_in = bool(consents_early and decide_vision(consents_early).run_expression_metrics)
+    energy_payload = compute_energy_metrics(
+        audio=audio,
+        gesture=_read_json(output_dir / "gesture_metrics.json"),
+        expression=_read_json(output_dir / "expression_metrics.json"),
+        content=content,
+        transcript=transcript,
+        pauses=_read_json(output_dir / "pauses.json"),
+        duration_s=float(transcript.get("duration") or audio.get("duration_s") or 0),
+        expression_opt_in=expr_opt_in,
+    )
+    if energy_payload:
+        (output_dir / "energy_metrics.json").write_text(
+            json.dumps(energy_payload, indent=2) + "\n", encoding="utf-8"
+        )
+    grouped["energy_presence"].extend(
+        _energy_metrics_from_payload(energy_payload, config, prosody_c or asr_c)
+    )
 
     extras = {
         "voiced_s": float(audio.get("voiced_s") or 0),
@@ -1121,9 +1150,12 @@ def run_fusion_scoring(
             if category_id == "qa" and not extras["qa_detected"]:
                 applicable = False
                 na_reason = "Q&A analysis has no detected question/answer pairs."
-            if category_id == "energy_presence" and not grouped["energy_presence"] and not content:
+            if category_id == "energy_presence" and not grouped["energy_presence"]:
                 applicable = False
-                na_reason = "Energy & presence needs audio intensity trajectory or content-language inputs that are not available."
+                na_reason = (
+                    "Energy & presence needs loudness, pitch-variation, gesture, "
+                    "expressivity, or language inputs; missing modalities stay N/A."
+                )
 
         raw_items = grouped.get(category_id, []) if applicable else []
         prepared = []
@@ -1248,7 +1280,12 @@ def run_fusion_scoring(
             }
         )
 
-    series = _write_series(output_dir, audio, transcript)
+    series = _write_series(
+        output_dir,
+        audio,
+        transcript,
+        energy_points=(energy_payload or {}).get("energy_series"),
+    )
     models = []
     if transcript.get("model") or transcript.get("asr_model"):
         models.append(
