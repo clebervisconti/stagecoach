@@ -155,6 +155,58 @@ summary: This is a partial audio/text report. 0 categories have scores and 17 ar
 ✅ Phase 0 + Phase 1 smoke test complete
 ```
 
+## PR #107 — Report v1 UI (#32)
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/107
+- Impl SHA: `0d2920ed5ecf2a2ad53ea8876031af8f83efc4b7`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38499678585
+- `gh pr view 107 --json mergeable,mergeStateStatus` → `MERGEABLE` / `CLEAN`
+
+Jobs on `0d2920ed5ecf2a2ad53ea8876031af8f83efc4b7` (all success): Web Type Check and Build, Validate Scoring Config, Worker Tests, Test Suite, Production Dependency Audit, API Unit Tests, Lint and Type Check, Secret Scan, Check Generated Code, Docker Compose Smoke Test.
+
+Web tests excerpt (`gh run view 38499678585 --log`):
+
+```
+ok 1 - en and pt-BR UI strings do not use emotion-inference terms
+ok 2 - overall headline is 71 ± 4 with partial coverage
+ok 3 - unavailable pillars are gaps, never scored as zero
+ok 4 - missing key metrics are labelled unavailable, not zero
+ok 5 - N/A category scores stay null
+# tests 5
+# pass 5
+# fail 0
+```
+
+Smoke excerpt (fixture report has no invented pillar zeros):
+
+```
+unavailable pillars: ['message', 'story_impact', 'visuals', 'voice', 'body', 'presence_time'] scored: []
+   ✅ GET /report returned the synthetic fixture report.json
+✅ Phase 0 + Phase 1 smoke test complete
+```
+
+## PR #108 — Player, transcript, Voice tab (#33), stacked on #107
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/108
+- Impl SHA: `22d089693e2eb4c4235b06b63ce4babe13deb21d`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38501030248
+- Base: `cursor/p1-report-v1-ui-32-1b22`
+
+Jobs on `22d089693e2eb4c4235b06b63ce4babe13deb21d` (all success): Worker Tests, API Unit Tests, Docker Compose Smoke Test, Production Dependency Audit, Validate Scoring Config, Check Generated Code, Web Type Check and Build, Secret Scan, Lint and Type Check, Test Suite.
+
+Web tests excerpt (`gh run view 38501030248 --log`):
+
+```
+ok 2 - evidence chips seek to t_start minus 2 seconds
+ok 3 - keyboard map covers space, arrows, and J/L markers
+ok 10 - transcript highlights fillers, pauses, and API core-message spans
+ok 12 - exports txt, srt, and vtt from existing segments
+ok 13 - pace windows use null when a window has no speech
+ok 14 - unavailable series are not treated as zeros
+# tests 15
+# pass 15
+```
+
 ## PR #109 — Delete session hard delete + audit (#34)
 
 - URL: https://github.com/clebervisconti/stagecoach/pull/109

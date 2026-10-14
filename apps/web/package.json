@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "type-check": "next typegen && tsc --noEmit"
+    "type-check": "next typegen && tsc --noEmit",
+    "test": "node --experimental-strip-types --experimental-default-type=module --test lib/report-view.test.ts lib/forbidden-terms.test.ts lib/player.test.ts lib/transcript.test.ts lib/voice-charts.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.0",

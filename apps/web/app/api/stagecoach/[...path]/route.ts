@@ -28,6 +28,15 @@ async function proxy(
     return Response.json({ detail: "Invalid path" }, { status: 400 });
   }
 
+  const incoming = new URL(request.url);
+  const forwarded = new URLSearchParams();
+  const exp = incoming.searchParams.get("exp");
+  const sig = incoming.searchParams.get("sig");
+  if (exp && /^\d+$/.test(exp)) forwarded.set("exp", exp);
+  if (sig && /^[a-fA-F0-9]+$/.test(sig)) forwarded.set("sig", sig);
+  const query = forwarded.toString();
+  if (query) path = `${path}?${query}`;
+
   const headers = new Headers();
   const contentType = request.headers.get("content-type");
   const contentLength = request.headers.get("content-length");
