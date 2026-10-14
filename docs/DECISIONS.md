@@ -1527,8 +1527,46 @@ Issue #43 / SPEC §6.6 steps 1–6 and `POST /sessions/{id}/deck`. PySceneDetect
 
 ---
 
+## ADR-031: Category 8 from slides.json; slides_v1 Glance Test ≤ 20 images
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 2
+
+### Context
+
+Issue #44 / SPEC §4.4.8, §6.6 step 7, §6.7.3 `slides_v1`. Metric ids must match scoring.yaml. No slides and no deck is N/A. Deck without a visible screen aligns by transcript windows and multiplies `va_reading_ratio` confidence by 0.6 (H). Glance Test uses the approved provider (`LLMClient` / xAI). CI has no LLM key.
+
+### Decision
+
+- Pure functions in `pipeline/slides/visual_aids.py` over `slides.json`, transcript, and `screen_turn` events. Reading overlap is the time-weighted share of slides whose content-word 3-gram overlap exceeds 0.6 (H).
+- `slides_v1` sends at most 20 slide titles/word counts through `LLMClient`. Binary keyframes are counted but not uploaded unless a vision-capable client is injected (CI never does). Missing `LLM_API_KEY` leaves `va_glance_llm` N/A.
+- Assertion headlines: `slides_v1.title_type` when present, otherwise a small heuristic (H).
+- Fusion maps `visual_aids_metrics.json` onto `visual_aids`. Unavailable metrics are omitted so weights renormalize. Scores are never invented.
+- Golden fixture is a synthetic ffmpeg screen recording plus a python-pptx deck (CC0-style, no personal media).
+
+### Alternatives Considered
+
+1. **Require live Glance Test in CI**  
+   - ❌ No LLM key in GitHub Actions; would invent a level
+
+2. **Always attach 20 JPEG payloads**  
+   - ❌ Cost and provider-vision uncertainty; text inputs still satisfy the call contract in tests
+
+3. **Score visual_aids from OCR zeros when nothing was detected**  
+   - ❌ SPEC N/A rule
+
+### Consequences
+
+- ✅ Category 8 scores when slides or a deck exist
+- ⚠️ Glance Test is absent in CI; assertion ratio then uses the heuristic
+- 📌 Body/slides report tabs remain later issues
+
+---
+
 ## Change Log (continued)
 
+- **2026-10-14**: ADR-031 (Phase 2: category 8 visual aids, issue #44)
 - **2026-10-14**: ADR-030 (Phase 2: slides stage, issue #43)
 - **2026-10-14**: ADR-027 (D8: category 14 facial expressiveness opt-in, issue #42)
 - **2026-10-14**: ADR-026 (Phase 2: vision events and camera-setup mismatch, issue #39)

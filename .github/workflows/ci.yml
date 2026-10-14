@@ -995,6 +995,7 @@ jobs:
           echo "  - vision_events.json / vision_quality.json when video_analysis is granted"
           echo "  - category 14 (facial_affect) only when expression_analysis is granted; no emotion labels"
           echo "  - slides stage: PySceneDetect (BSD), keyframes, python-pptx/pdftotext, Tesseract OCR; deck antivirus in sandbox"
+          echo "  - category 8 (visual_aids) from slides.json; slides_v1 Glance Test ≤20 images; no slides/deck stays N/A"
           echo ""
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"

@@ -280,7 +280,7 @@
       "id": "visual_aids",
       "pillar": "visuals",
       "applicable": false,
-      "na_reason": "Vision and slides stages were not run (Phase 1 is audio/text only).",
+      "na_reason": "No slides were detected and no deck was uploaded.",
       "score": null,
       "level": null,
       "confidence": null,
