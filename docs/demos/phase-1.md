@@ -154,3 +154,34 @@ summary: This is a partial audio/text report. 0 categories have scores and 17 ar
    ✅ GET /report returned the synthetic fixture report.json
 ✅ Phase 0 + Phase 1 smoke test complete
 ```
+
+## PR #107 — Report v1 UI (#32)
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/107
+- Impl SHA: `0d2920ed5ecf2a2ad53ea8876031af8f83efc4b7`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38499678585
+- `gh pr view 107 --json mergeable,mergeStateStatus` → `MERGEABLE` / `CLEAN`
+
+Jobs on `0d2920ed5ecf2a2ad53ea8876031af8f83efc4b7` (all success): Web Type Check and Build, Validate Scoring Config, Worker Tests, Test Suite, Production Dependency Audit, API Unit Tests, Lint and Type Check, Secret Scan, Check Generated Code, Docker Compose Smoke Test.
+
+Web tests excerpt (`gh run view 38499678585 --log`):
+
+```
+ok 1 - en and pt-BR UI strings do not use emotion-inference terms
+ok 2 - overall headline is 71 ± 4 with partial coverage
+ok 3 - unavailable pillars are gaps, never scored as zero
+ok 4 - missing key metrics are labelled unavailable, not zero
+ok 5 - N/A category scores stay null
+# tests 5
+# pass 5
+# fail 0
+```
+
+Smoke excerpt (fixture report has no invented pillar zeros):
+
+```
+unavailable pillars: ['message', 'story_impact', 'visuals', 'voice', 'body', 'presence_time'] scored: []
+   ✅ GET /report returned the synthetic fixture report.json
+✅ Phase 0 + Phase 1 smoke test complete
+```
+
