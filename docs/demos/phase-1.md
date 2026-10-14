@@ -90,3 +90,67 @@ audio_features keys: ['session_id', 'stage_version', 'artifacts', 'metrics']
 ```
 
 Earlier impl SHA before the main merge (still green, superseded): `676e27b069b0641f836bd02b3608c1d0a05b6734` / run 38493376302.
+
+## PR #105 — Fusion scoring + report (#30)
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/105
+- Head SHA: `bc5f5d69703dca7ab9dd6584a5ad1c5feb824ab5`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38497537834
+- `gh pr view 105 --json mergeable,mergeStateStatus` → `MERGEABLE` / `CLEAN`
+- First smoke on `d78315a705923b8bcd1fe7bf8e49629525683fd3` (run 38496992520) failed: worker path `/app/pipeline/stages/fusion_scoring.py` made `Path.parents[4]` raise `IndexError: 4`. Fixed by walking ancestors and preferring `/packages`.
+
+Jobs on `bc5f5d69703dca7ab9dd6584a5ad1c5feb824ab5` (all success): Worker Tests, Check Generated Code, API Unit Tests, Web Type Check and Build, Test Suite, Validate Scoring Config, Production Dependency Audit, Secret Scan, Lint and Type Check, Docker Compose Smoke Test.
+
+Worker Tests excerpt (`gh run view 38497537834 --log`):
+
+```
+tests/test_fusion_scoring.py::test_packages_lookup_does_not_assume_repo_depth PASSED
+tests/test_fusion_scoring.py::test_missing_content_marks_text_categories_unavailable PASSED
+tests/test_fusion_scoring.py::test_content_and_metrics_score_audio_text_categories PASSED
+tests/test_fusion_scoring.py::test_report_phrases_only_fact_numbers_and_attaches_drills PASSED
+tests/test_fusion_scoring.py::test_never_invents_video_or_missing_llm_metrics PASSED
+================== 125 passed, 8 skipped, 1 warning in 15.33s ==================
+```
+
+Smoke excerpt (synthetic 3s sine produced `report.json`; most categories N/A, no invented scores):
+
+```
+✅ Ingest passed: /tmp/tmpp76m705h/output/audio16k.wav
+✅ ASR passed: /tmp/tmpp76m705h/output/smoke-test_transcript.json
+✅ audio_features + metrics persisted: /tmp/tmpp76m705h/output/metrics.json
+✅ fusion_scoring + report produced: /tmp/tmpp76m705h/output/report.json
+✅ Ingest + ASR + audio_features + metrics + fusion + report pipeline test passed
+✅ Phase 0 + Phase 1 smoke test complete
+```
+
+## PR #106 — Report API (#31), stacked on #105
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/106
+- Head SHA: `276d4e7aacdd29f2b37ad5de49b7f70a5045cf60`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38497892855
+- `gh pr view 106 --json mergeable,mergeStateStatus` → `MERGEABLE` / `CLEAN`
+- Base: `cursor/p1-fusion-scoring-30-c0e2`. First smoke on pre-rebase `03e8794` (run 38497300240) failed with the same `IndexError: 4`; rebased onto the #105 fix.
+
+Jobs on `276d4e7aacdd29f2b37ad5de49b7f70a5045cf60` (all success): API Unit Tests, Worker Tests, Web Type Check and Build, Validate Scoring Config, Lint and Type Check, Test Suite, Check Generated Code, Production Dependency Audit, Docker Compose Smoke Test, Secret Scan.
+
+API Unit Tests excerpt (`gh run view 38497892855 --log`):
+
+```
+tests/test_auth_and_sessions.py::test_playback_signature_roundtrip_and_reject_tamper PASSED
+tests/test_auth_and_sessions.py::test_highlights_come_only_from_existing_evidence PASSED
+tests/test_auth_and_sessions.py::test_video_series_placeholder_is_one_second PASSED
+tests/test_auth_and_sessions.py::test_token_bucket_denies_after_burst PASSED
+========================= 8 passed, 1 warning in 0.46s =========================
+```
+
+Smoke excerpt (`GET /report` returned the fixture `report.json`):
+
+```
+✅ Ingest passed: /data/stagecoach/smoke-fixture/audio16k.wav
+✅ ASR passed: /data/stagecoach/smoke-fixture/smoke-test_transcript.json
+✅ audio_features + metrics persisted: /data/stagecoach/smoke-fixture/metrics.json
+✅ fusion_scoring + report produced: /data/stagecoach/smoke-fixture/report.json
+summary: This is a partial audio/text report. 0 categories have scores and 17 are unavailable because their inputs were missing. No category was given an invented score.
+   ✅ GET /report returned the synthetic fixture report.json
+✅ Phase 0 + Phase 1 smoke test complete
+```
