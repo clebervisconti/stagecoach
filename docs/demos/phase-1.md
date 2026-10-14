@@ -239,9 +239,23 @@ audit object_count=3 db_rows={'insights': 1, 'sessions': 1, 'job_steps': 1, 'tra
 
 ## PR #111 — Phase 1 exit e2e + CPU bench (#36)
 
-- URL: (filled after the PR opens)
+- URL: https://github.com/clebervisconti/stagecoach/pull/111
+- Impl SHA: `7609c679144b2e9ae6e085488317f5274c906653`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38598347916
 - Branched from `main` (`7bb7164`)
 - Local Playwright (this agent, Chromium): both specs passed in 9.8s (`upload → progress → report → delete` and pt-BR né/tipo/então rows)
+
+Jobs on `7609c679144b2e9ae6e085488317f5274c906653` (all success): Production Dependency Audit, Validate Scoring Config, Test Suite, Docker Compose Smoke Test, Web Type Check and Build, Check Generated Code, Secret Scan, API Unit Tests, Worker Tests, Lint and Type Check, Playwright E2E.
+
+Playwright E2E excerpt (`gh run view 38598347916 --log`):
+
+```
+✓  1 [chromium] › e2e/upload-report-delete.spec.ts:20:5 › upload → progress → report → delete (en) (3.4s)
+✓  2 [chromium] › e2e/upload-report-delete.spec.ts:36:5 › pt-BR upload shows né/tipo/então disambiguation then delete (3.3s)
+2 passed (9.0s)
+```
+
+Worker Tests excerpt: `127 passed, 8 skipped, 1 warning in 26.06s`. Web unit tests include `ok 12 - pt-BR né/tipo/então disambiguation rows stay on the payload`.
 
 ### CPU bench (observed on this agent VM, 2026-10-14)
 
