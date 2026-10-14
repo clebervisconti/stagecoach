@@ -155,6 +155,7 @@ export default function SessionPage() {
         </div>
         <button
           type="button"
+          data-testid="delete-session"
           onClick={remove}
           className="inline-flex items-center gap-2 rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
@@ -169,7 +170,7 @@ export default function SessionPage() {
       )}
 
       {!terminal && (
-        <section className="rounded-lg border bg-card p-6">
+        <section className="rounded-lg border bg-card p-6" data-testid="processing">
           <div className="mb-5 flex items-center gap-3">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
             <h2 className="text-xl font-semibold">{t("processing")}</h2>
@@ -207,7 +208,7 @@ export default function SessionPage() {
       )}
 
       {report && (
-        <>
+        <div data-testid="report">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
             <SummaryCard report={report} />
             <section className="rounded-lg border bg-card p-6">
@@ -259,7 +260,7 @@ export default function SessionPage() {
               />
             )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 1: Audio + text MVP report (In Progress)
 
+##### Added - Phase 1 exit e2e, CPU bench, and filler disambiguation (issue #36)
+- Playwright e2e covers upload → progress → report → delete (en) and the same path in pt-BR
+- Transcript tab shows né/tipo/então (and like/so) heuristic readings; only confirmed fillers count toward `fl_filler_words_per_min`
+- `scripts/bench_phase1_cpu.py` times ingest → ASR → audio-features → fusion → report on a 10-minute synthetic clip
+- Observed wall times are recorded in `docs/demos/phase-1.md` (unmeasured claims are labelled as such)
+
 ##### Added - Fusion scoring and report (issue #30)
 - `fusion_scoring` stage maps existing `metrics.json` / `content.json` / transcript / audio features onto scoring-config v1.0.0
 - Missing inputs mark a category N/A; video categories 8 and 12–14 are N/A with reasons

@@ -609,6 +609,29 @@ def _evidence_from_inputs(
             }
         )
 
+    disambig = (content or {}).get("fluency_disambig") if content else None
+    added_disambig = 0
+    for hit in (disambig or {}).get("disambiguations") or []:
+        token = str(hit.get("word") or hit.get("token") or "")
+        if not token:
+            continue
+        reading = "filler" if hit.get("is_filler") else "lexical"
+        method = str(hit.get("method") or "heuristic")
+        add(
+            category_id="fluency",
+            metric_id="fl_filler_words_per_min",
+            text=f"{method} reading: '{token}' counted as {reading}.",
+            quote=token[:400],
+            t_start=float(hit.get("t_start") or 0),
+            t_end=float(hit.get("t_end") or hit.get("t_start") or 0),
+            kind="observation",
+            modality="text",
+            confidence=float(hit.get("confidence") or 0.5),
+        )
+        added_disambig += 1
+        if added_disambig >= 12:
+            break
+
     filler = next((m for m in metrics if m["id"] == "fl_filler_sounds_per_min" and m.get("raw_value")), None)
     if filler:
         add(
@@ -724,6 +747,12 @@ def run_fusion_scoring(
     audio = _read_json(audio_metrics_path) or _read_json(output_dir / "audio_metrics.json") or {}
     bundle = _read_json(metrics_path) or _read_json(output_dir / "metrics.json") or {"metrics": {}}
     content = _read_json(content_path) or _read_json(output_dir / "content.json")
+    sidecar = _read_json(output_dir / "fluency_disambig.json")
+    if sidecar and sidecar.get("disambiguations"):
+        content = dict(content or {})
+        existing = (content.get("fluency_disambig") or {}).get("disambiguations") or []
+        if not existing:
+            content["fluency_disambig"] = sidecar
     ingest = ingest or {}
 
     language = _normalize_language(language or transcript.get("language"))

@@ -66,6 +66,40 @@ jobs:
           PRIVATE_BETA_EMAIL: ci@example.invalid
         run: npm run build
 
+  playwright-e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install
+        run: npm ci
+        working-directory: apps/web
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - name: Build
+        working-directory: apps/web
+        env:
+          AUTH_SECRET: ci-build-placeholder-not-a-runtime-secret
+          PRIVATE_BETA_MODE: "true"
+          PRIVATE_BETA_EMAIL: ci@example.invalid
+          OTEL_ENABLED: "false"
+        run: npm run build
+      - name: Run e2e
+        working-directory: apps/web
+        env:
+          CI: "true"
+          AUTH_SECRET: ci-build-placeholder-not-a-runtime-secret
+          PRIVATE_BETA_MODE: "true"
+          PRIVATE_BETA_EMAIL: ci@example.invalid
+          OTEL_ENABLED: "false"
+        run: npm run test:e2e
+
   test-api:
     name: API Unit Tests
     runs-on: ubuntu-latest

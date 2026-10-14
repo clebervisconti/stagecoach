@@ -491,12 +491,21 @@ async def get_transcript(
                         or transcript.get("mean_word_prob"),
                     }
                 )
+    sidecar = []
+    if transcript_path is not None:
+        disambig_file = transcript_path.parent / "fluency_disambig.json"
+        if disambig_file.is_file():
+            try:
+                sidecar = json.loads(disambig_file.read_text()).get("disambiguations") or []
+            except json.JSONDecodeError:
+                sidecar = []
     return {
         "language": transcript.get("language"),
         "duration": transcript.get("duration"),
         "segments": transcript.get("segments") or [],
         "words": words,
         "highlights": _highlights_from_artifacts(transcript, report),
+        "disambiguations": sidecar,
     }
 
 

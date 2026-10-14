@@ -1237,3 +1237,39 @@ Issue #34 / SPEC §10.3 requires `DELETE /sessions/{id}` to remove objects under
 - ⚠️ Enabling MinIO in production still needs `boto3` on the API image
 - 📌 Do not delete `/data/stagecoach/smoke-fixture` from a session DELETE
 
+---
+
+## ADR-022: Phase 1 exit uses Playwright against a mocked API and a measured CPU bench
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Issue #36 / SPEC §12 Phase 1 AC requires a Playwright e2e for upload → report → delete, a 10-minute talk finishing in ≤ 15 minutes on the dev CPU profile (en and pt-BR), and visible né/tipo/então disambiguation. Compose smoke already runs ingest→ASR→fusion→DELETE without the web profile. The public repo still has no licensed 10-minute talks (D13). CI has no LLM key.
+
+### Decision
+
+- Playwright drives the Next.js UI under `PRIVATE_BETA_MODE`. Browser calls to `/api/stagecoach/*` are intercepted. That tests the real upload, progress, report, and delete screens without starting Compose + Whisper in the e2e job.
+- `fluency_disambig.json` is written by `heuristic_v1` during `persist_session_metrics`. né/tipo/então (pt-BR) and like/so (en) are labelled filler vs lexical from ±8-token clause context. Only `is_filler=true` hits feed `fl_filler_words_per_min`. The Transcript tab lists every hit.
+- `scripts/bench_phase1_cpu.py` generates a 10-minute 16 kHz mono WAV (CC0 sine, or espeak-ng when `--speech` is available) and times ingest → faster-whisper `tiny` → audio-features → fusion → report. That is the Phase 1 "dev CPU profile" (same model CI uses). Numbers go in `docs/demos/phase-1.md` only if they were actually observed.
+
+### Alternatives Considered
+
+1. **Playwright against Compose with the web profile**  
+   - ❌ Duplicates the smoke pipeline; adds 10+ minutes and a second Docker stack to CI
+
+2. **Count every lexicon hit as a filler**  
+   - ❌ SPEC Appendix A: ambiguous words must be disambiguated first
+
+3. **Claim the 3-second CI sine meets the 10-minute ≤ 15 minute bar**  
+   - ❌ Different duration; not a measured 10-minute talk
+
+### Consequences
+
+- ✅ CI e2e stays short and does not need Whisper weights
+- ⚠️ Heuristic readings are not LLM judgments; the UI says so
+- ⚠️ A sine or espeak clip is not a consented human talk; D13 still blocks personal recordings
+- 📌 Do not write a 10-minute ≤ 15 minute claim unless `bench_phase1_cpu.py` was run and the wall time recorded
+

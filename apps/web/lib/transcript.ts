@@ -20,6 +20,19 @@ export type TranscriptSegment = {
   words?: TranscriptWord[];
 };
 
+export type FluencyDisambiguation = {
+  hit_id?: string;
+  word?: string;
+  token?: string;
+  t_start?: number;
+  t_end?: number;
+  context_before?: string;
+  context_after?: string;
+  is_filler?: boolean;
+  confidence?: number;
+  method?: string;
+};
+
 export type TranscriptPayload = {
   language?: string | null;
   duration?: number;
@@ -34,6 +47,7 @@ export type TranscriptPayload = {
     text?: string;
     quote?: string | null;
   }>;
+  disambiguations?: FluencyDisambiguation[];
 };
 
 export type WordHighlight = {

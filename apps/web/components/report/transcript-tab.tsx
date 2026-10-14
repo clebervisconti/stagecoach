@@ -168,19 +168,62 @@ export function TranscriptTab({ payload, onSeek }: TranscriptTabProps) {
           </button>
         </div>
       </div>
-      <aside className="rounded-lg border bg-muted/40 p-4 text-sm">
-        <h3 className="font-medium">{t("fillerBreakdown")}</h3>
-        {breakdown.length ? (
-          <ul className="mt-3 space-y-1">
-            {breakdown.map((item) => (
-              <li key={item.token}>
-                {item.token} ×{item.count}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-muted-foreground">{t("noFillers")}</p>
-        )}
+      <aside className="space-y-4">
+        <div className="rounded-lg border bg-muted/40 p-4 text-sm">
+          <h3 className="font-medium">{t("fillerBreakdown")}</h3>
+          {breakdown.length ? (
+            <ul className="mt-3 space-y-1">
+              {breakdown.map((item) => (
+                <li key={item.token}>
+                  {item.token} ×{item.count}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-muted-foreground">{t("noFillers")}</p>
+          )}
+        </div>
+        <section
+          className="rounded-lg border bg-muted/40 p-4 text-sm"
+          data-testid="fluency-disambig"
+          aria-labelledby="fluency-disambig-heading"
+        >
+          <h3 id="fluency-disambig-heading" className="font-medium">
+            {t("disambiguationTitle")}
+          </h3>
+          <p className="mt-2 text-xs text-muted-foreground">{t("disambiguationHint")}</p>
+          {(payload?.disambiguations ?? []).length ? (
+            <ul className="mt-3 space-y-2">
+              {(payload?.disambiguations ?? []).map((hit, index) => {
+                const token = String(hit.word || hit.token || "").trim();
+                return (
+                  <li
+                    key={hit.hit_id || `${token}-${index}`}
+                    data-testid="disambig-row"
+                    data-word={token.toLocaleLowerCase()}
+                    className="rounded-md border bg-background p-2"
+                  >
+                    <button
+                      type="button"
+                      className="font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => onSeek(Number(hit.t_start ?? 0))}
+                    >
+                      {token}
+                    </button>
+                    <span className="ml-2 text-xs">
+                      {hit.is_filler ? t("disambiguationFiller") : t("disambiguationLexical")}
+                    </span>
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">
+                      {hit.context_before} <strong>{token}</strong> {hit.context_after}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="mt-3 text-muted-foreground">{t("disambiguationEmpty")}</p>
+          )}
+        </section>
       </aside>
     </div>
   );
