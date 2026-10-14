@@ -292,6 +292,25 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
     if (method === "GET" && path.startsWith(`/sessions/${SESSION_ID}/series/`)) {
       return json(route, { name: path.split("/").pop(), resolution_s: 1, points: [], unavailable: true });
     }
+    if (method === "GET" && path === `/sessions/${SESSION_ID}/timeline`) {
+      return json(route, {
+        duration_s: 12,
+        sprite_interval_s: 5,
+        sprite_count: 0,
+        lanes: [
+          {
+            id: "fillers",
+            available: true,
+            default_on: true,
+            items: [{ t_start: 0.4, t_end: 0.7, label: "Um", kind: "filler" }],
+          },
+          { id: "smiles", available: false, opt_in: true, default_on: false, items: [] },
+        ],
+      });
+    }
+    if (method === "GET" && path === `/sessions/${SESSION_ID}/sprite`) {
+      return route.fulfill({ status: 404, body: "" });
+    }
     if (method === "DELETE" && path === `/sessions/${SESSION_ID}`) {
       deleted = true;
       return route.fulfill({ status: 204, body: "" });

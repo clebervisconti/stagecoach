@@ -902,6 +902,7 @@ def run_mvp_analysis_task(
                 "analysis_result": str(destination / "analysis_result.json"),
                 "transcript": str(transcript_path),
                 "playback": playback,
+                "timeline": str(destination / "timeline.json"),
             },
             metrics={
                 "categories": live_categories,
@@ -1089,6 +1090,7 @@ def run_mvp_analysis_task(
                 "analysis_result": str(destination / "analysis_result.json"),
                 "transcript": str(transcript_path),
                 "playback": playback,
+                "timeline": str(destination / "timeline.json"),
             },
             metrics={
                 "overall": (report.get("overall") or {}).get("score"),
