@@ -40,7 +40,7 @@ test("unavailable pillars are gaps, never scored as zero", () => {
 
 test("missing key metrics are labelled unavailable, not zero", () => {
   const rows = keyMetricRows(sampleReport);
-  const facing = rows.find((row) => row.id === "audience_facing_ratio");
+  const facing = rows.find((row) => row.id === "ec_audience_facing_ratio");
   const fillers = rows.find((row) => row.id === "fl_filler_sounds_per_min");
   const slot = rows.find((row) => row.id === "tm_pct_of_slot");
   assert.equal(facing?.available, false);

@@ -549,6 +549,27 @@ def _body_metrics_from_payload(payload: dict[str, Any], config: dict[str, Any]) 
     return out
 
 
+def _gaze_metrics_from_payload(payload: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map gaze_metrics.json onto scoring-config eye_contact ids. Head-orientation proxy only."""
+    out: list[dict[str, Any]] = []
+    allowed = config["categories"]["eye_contact"]["metrics"]
+    for metric_id, row in (payload.get("metrics") or {}).items():
+        if metric_id not in allowed:
+            continue
+        if not row or row.get("applicable") is False or row.get("value") is None:
+            continue
+        out.append(
+            _metric_payload(
+                metric_id=metric_id,
+                category_id="eye_contact",
+                raw_value=row["value"],
+                confidence=float(row.get("confidence") or 0.5),
+                config=config,
+            )
+        )
+    return out
+
+
 def _facial_metrics_from_payload(payload: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
     """Map expression_metrics.json onto scoring-config facial_affect ids. No emotion labels."""
     out: list[dict[str, Any]] = []
@@ -783,6 +804,18 @@ def _evidence_from_inputs(
                     confidence=0.6,
                 )
                 added_vision += 1
+            elif kind == "notes_down":
+                add(
+                    category_id="eye_contact",
+                    metric_id="ec_reading_head_down_ratio",
+                    text="Head-down episode (pitch below the notes-down threshold). Audience-facing time is a head-orientation proxy, not eye contact.",
+                    t_start=float(event.get("t_start") or 0),
+                    t_end=float(event.get("t_end") or event.get("t_start") or 0),
+                    kind="observation",
+                    modality="video",
+                    confidence=0.6,
+                )
+                added_vision += 1
             if added_vision >= 8:
                 break
         for obs in ((expr.get("metrics") or {}).get("fa_congruence") or {}).get("observations") or []:
@@ -981,6 +1014,45 @@ def run_fusion_scoring(
                 else:
                     applicable = False
                     na_reason = reason
+            elif category_id == "eye_contact":
+                from pipeline.accessibility import (
+                    gesture_na_reason,
+                    load_accessibility,
+                    video_metrics_opted_out,
+                )
+
+                profile = load_accessibility(output_dir)
+                gaze = _read_json(output_dir / "gaze_metrics.json")
+                if audio_only:
+                    applicable = False
+                    na_reason = "Audio-only media has no face landmarks, so audience-facing time is unavailable."
+                elif video_metrics_opted_out(profile):
+                    applicable = False
+                    na_reason = gesture_na_reason(profile)
+                elif consents and decide_vision(consents).run_face_landmarks and gaze:
+                    extras["face_visible_ratio"] = float(gaze.get("face_visible_ratio") or 0.0)
+                    extras["face_px_median"] = float(gaze.get("face_px_median") or 0.0)
+                    ok, reason = _min_evidence_ok(category_id, config, stats, extras)
+                    if ok:
+                        applicable = True
+                        na_reason = None
+                        grouped["eye_contact"].extend(_gaze_metrics_from_payload(gaze, config))
+                    else:
+                        applicable = False
+                        na_reason = reason
+                elif consents and decide_vision(consents).run_face_landmarks:
+                    applicable = False
+                    na_reason = (
+                        "Audience-facing time needs a visible face; "
+                        "screen recordings and missing faces stay N/A."
+                    )
+                else:
+                    applicable = False
+                    na_reason = (
+                        video_category_na_reason(category_id, consents)
+                        if consents
+                        else VIDEO_CATEGORIES[category_id]
+                    )
             else:
                 applicable = False
                 na_reason = (
@@ -1107,6 +1179,7 @@ def run_fusion_scoring(
         has_video = False
     quality_payload = _read_json(output_dir / "vision_quality.json") or {}
     gesture_payload = _read_json(output_dir / "gesture_metrics.json") or {}
+    gaze_payload = _read_json(output_dir / "gaze_metrics.json") or {}
     expr_payload = _read_json(output_dir / "expression_metrics.json") or {}
 
     evidence = _evidence_from_inputs(transcript, scored_metrics, content, output_dir=output_dir)
@@ -1191,11 +1264,13 @@ def run_fusion_scoring(
             "asr_mean_word_prob": stats["mean_word_prob"],
             "snr_db": audio.get("snr_db"),
             "face_visible_ratio": quality_payload.get("face_visible_ratio")
+            or gaze_payload.get("face_visible_ratio")
             or expr_payload.get("face_visible_ratio"),
             "person_visible_ratio": quality_payload.get("person_visible_ratio")
             or gesture_payload.get("person_visible_ratio"),
             "hands_visible_ratio": gesture_payload.get("hands_visible_ratio"),
-            "face_px_median": expr_payload.get("face_px_median")
+            "face_px_median": gaze_payload.get("face_px_median")
+            or expr_payload.get("face_px_median")
             or quality_payload.get("mean_face_height_px"),
             "warnings": warnings,
         },

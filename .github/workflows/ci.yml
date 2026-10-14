@@ -991,6 +991,7 @@ jobs:
           echo "  - vision_events.json / vision_quality.json when video_analysis is granted"
           echo "  - category 14 (facial_affect) only when expression_analysis is granted; no emotion labels"
           echo "  - category 12 (gestures_body) from pose when video_analysis is granted; accessibility profile can N/A sway/locomotion/gestures"
+          echo "  - category 13 (eye_contact) is audience-facing time (head orientation), not eye contact; L2CS-Net not used"
           echo ""
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"

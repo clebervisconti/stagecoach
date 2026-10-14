@@ -180,7 +180,7 @@ def test_missing_content_marks_text_categories_unavailable(tmp_path: Path):
     for cid, reason in VIDEO_CATEGORIES.items():
         assert by_id[cid]["applicable"] is False
         assert by_id[cid]["score"] is None
-        if cid == "gestures_body":
+        if cid in {"gestures_body", "eye_contact"}:
             assert "audio-only" in (by_id[cid]["na_reason"] or "").lower()
         else:
             assert by_id[cid]["na_reason"] == reason

@@ -281,7 +281,6 @@ def test_fusion_scores_gestures_when_vision_present(tmp_path: Path):
     assert by_id["gestures_body"]["score"] is not None
     present = {m["id"] for m in result["metrics"]}
     assert "gb_gesture_activity_ratio" in present
-    assert by_id["eye_contact"]["applicable"] is False
     assert by_id["visual_aids"]["applicable"] is False
 
 

@@ -104,7 +104,7 @@ export function slotTrafficLight(ratio: number | null): SlotLight {
 }
 
 export function formatKeyMetricValue(id: KeyMetricId, raw: number): string {
-  if (id === "tm_pct_of_slot" || id === "audience_facing_ratio") {
+  if (id === "tm_pct_of_slot" || id === "ec_audience_facing_ratio") {
     return `${Math.round(raw * 100)}%`;
   }
   if (id === "pp_wpm") {
