@@ -15,7 +15,7 @@ cd "$ROOT_DIR"
 if ! command -v datamodel-codegen &> /dev/null; then
     if [ ! -f "$HOME/.local/bin/datamodel-codegen" ]; then
         echo "    Installing datamodel-code-generator..."
-        pip install -q "datamodel-code-generator[http]==0.25.1"
+        pip install -q "datamodel-code-generator[http]==0.83.0"
     fi
 fi
 

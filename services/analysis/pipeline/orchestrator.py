@@ -61,6 +61,7 @@ class PipelineOrchestrator:
         "asr": "1.0.0",
         "alignment": "1.0.0",
         "diarization": "1.0.0",
+        "audio_features": "1.0.0",
     }
 
     def __init__(self, celery_app, redis_url: str):
@@ -116,13 +117,12 @@ class PipelineOrchestrator:
         language: Optional[str] = None,
     ):
         """
-        Build Celery pipeline DAG for Phase 1 (ingest → ASR only).
+        Build Celery pipeline DAG for Phase 1 (ingest → ASR → audio_features).
         
         Returns a Celery chain that can be applied with .apply_async()
         """
-        from worker import ingest_task, asr_task
+        from worker import ingest_task, asr_task, audio_features_task
 
-        # Build simple chain: ingest → asr
         pipeline = chain(
             ingest_task.s(
                 input_path=input_path,
@@ -133,6 +133,10 @@ class PipelineOrchestrator:
                 output_dir=output_dir,
                 session_id=session_id,
                 language=language,
+            ),
+            audio_features_task.s(
+                output_dir=output_dir,
+                session_id=session_id,
             ),
         )
 

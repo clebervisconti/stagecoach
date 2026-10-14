@@ -1,0 +1,27 @@
+# Copy into the cyberlabs infra tree before enabling the LaunchAgent.
+# Canonical live inventory: architecture/services.yaml (and dataflows.yaml).
+
+service:
+  id: stagecoach
+  host: lion
+  kind: webapp
+  port: 3107
+  bind: 127.0.0.1
+  supervisor: launchagent
+  label: com.cyberlabs.stagecoach
+  health: /api/health
+  public_hostname: stagecoach.cybersphere.com.br
+  runtime: docker-compose
+  compose_file: docker-compose.prod.yml
+  containers:
+    - stagecoach-web-1
+    - stagecoach-api-1
+    - stagecoach-worker-1
+    - stagecoach-postgres-1
+    - stagecoach-redis-1
+
+dataflow:
+  from: internet
+  via: cloudflared-lion
+  to: http://127.0.0.1:3107
+  notes: API, worker, postgres, and redis are Compose-network only. No host publish except web loopback.

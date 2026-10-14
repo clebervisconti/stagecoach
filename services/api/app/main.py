@@ -1,24 +1,18 @@
 """Stage Coach API - Main FastAPI application."""
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
+import os
+import redis
+from sqlalchemy import text
 
 from app.routers import users, sessions, progress
+from app.database import engine
 
 app = FastAPI(
     title="Stage Coach API",
     description="Evidence-based presentation coaching platform",
-    version="0.1.0",
-)
-
-# CORS middleware for local development
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    version="0.2.0",
 )
 
 # Include routers
@@ -32,8 +26,8 @@ async def root():
     """Root endpoint."""
     return {
         "name": "Stage Coach API",
-        "version": "0.1.0",
-        "phase": "1",
+        "version": "0.2.0",
+        "phase": "mvp",
     }
 
 
@@ -47,8 +41,13 @@ async def health():
     return {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "services": {
-            "api": "up",
-            # Phase 0: DB check would go here
-        },
     }
+
+
+@app.get("/ready")
+async def ready():
+    """Readiness verifies dependencies without exposing connection details."""
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
+    redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379")).ping()
+    return {"status": "ready", "version": app.version}

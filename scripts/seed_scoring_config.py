@@ -29,10 +29,9 @@ def seed_scoring_config():
     sha256 = hashlib.sha256(yaml_content.encode("utf-8")).hexdigest()
     
     # Get database URL from environment
-    database_url = os.getenv(
-        "DATABASE_URL",
-        "postgresql://stagecoach:dev_password_change_in_prod@localhost:5432/stagecoach"
-    )
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL is required")
     
     # Create engine and session
     engine = create_engine(database_url)

@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
+import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
-import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 export default async function AppLayout({
@@ -8,10 +8,14 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  const privateBeta = process.env.PRIVATE_BETA_MODE === "true";
+  const session = privateBeta ? null : await auth();
+  const locale = await getLocale();
+  const t = await getTranslations("nav");
+  const prefix = locale === "en" ? "" : `/${locale}`;
 
-  if (!session) {
-    redirect("/sign-in");
+  if (!session && !privateBeta) {
+    redirect(`${prefix}/sign-in`);
   }
 
   return (
@@ -19,40 +23,28 @@ export default async function AppLayout({
       <header className="border-b">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-8">
-            <Link href="/sessions" className="text-xl font-bold">
+            <Link href={`${prefix}/sessions`} className="text-xl font-bold">
               Stage Coach
             </Link>
             <nav className="flex gap-6">
               <Link
-                href="/sessions"
+                href={`${prefix}/sessions`}
                 className="text-sm font-medium hover:text-primary"
               >
-                Sessions
-              </Link>
-              <Link
-                href="/prep"
-                className="text-sm font-medium hover:text-primary"
-              >
-                Prep
-              </Link>
-              <Link
-                href="/trends"
-                className="text-sm font-medium hover:text-primary"
-              >
-                Trends
+                {t("sessions")}
               </Link>
             </nav>
           </div>
           
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
-              {session.user?.email}
+              {session?.user?.email || process.env.PRIVATE_BETA_EMAIL}
             </span>
             <Link
-              href="/settings"
+              href={locale === "en" ? "/pt-BR/sessions" : "/sessions"}
               className="text-sm font-medium hover:text-primary"
             >
-              Settings
+              {locale === "en" ? "PT-BR" : "EN"}
             </Link>
           </div>
         </div>

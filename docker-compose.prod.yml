@@ -1,0 +1,141 @@
+name: stagecoach
+
+services:
+  postgres:
+    image: mirror.gcr.io/library/postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: stagecoach
+      POSTGRES_USER: stagecoach
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stagecoach"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  redis:
+    image: mirror.gcr.io/library/redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://stagecoach:${POSTGRES_PASSWORD}@postgres:5432/stagecoach
+      REDIS_URL: redis://redis:6379
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      JWT_ISSUER: stagecoach-web
+      JWT_AUDIENCE: stagecoach-api
+      MEDIA_ROOT: /data/stagecoach
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-83886080}
+      OTEL_SERVICE_NAME: stagecoach
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://host.docker.internal:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=production,service.namespace=cybersphere,stagecoach.component=api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - media_data:/data/stagecoach
+    command: >
+      sh -c "alembic upgrade head &&
+             opentelemetry-instrument uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  worker:
+    build:
+      context: ./services/analysis
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://stagecoach:${POSTGRES_PASSWORD}@postgres:5432/stagecoach
+      REDIS_URL: redis://redis:6379
+      MEDIA_ROOT: /data/stagecoach
+      ASR_MODEL: ${ASR_MODEL:-tiny}
+      HF_HOME: /models/huggingface
+      OTEL_SERVICE_NAME: stagecoach
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://host.docker.internal:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=production,service.namespace=cybersphere,stagecoach.component=worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - media_data:/data/stagecoach
+      - model_cache:/models
+      - ./packages:/packages:ro
+    command: celery -A worker.app worker -Q cpu --loglevel=info --concurrency=2
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        NEXT_PUBLIC_SPLUNK_RUM_TOKEN: ${SPLUNK_RUM_TOKEN:-}
+    restart: unless-stopped
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      AUTH_URL: https://stagecoach.cybersphere.com.br
+      AUTH_TRUST_HOST: "true"
+      NEXTAUTH_URL: https://stagecoach.cybersphere.com.br
+      INTERNAL_API_URL: http://api:8000
+      PRIVATE_BETA_MODE: "true"
+      PRIVATE_BETA_EMAIL: ${PRIVATE_BETA_EMAIL:?PRIVATE_BETA_EMAIL is required}
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      OTEL_SERVICE_NAME: stagecoach
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://host.docker.internal:4318
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=production,service.namespace=cybersphere,stagecoach.component=web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${STAGECOACH_PORT:-3107}:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_data:
+  model_cache:

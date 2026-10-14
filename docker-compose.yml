@@ -6,30 +6,32 @@ services:
     environment:
       POSTGRES_DB: stagecoach
       POSTGRES_USER: stagecoach
-      POSTGRES_PASSWORD: dev_password_change_in_prod
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U stagecoach"]
-      interval: 5s
+      interval: 2s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
 
   redis:
     # Use mirror to avoid Docker Hub rate limits in CI
     image: mirror.gcr.io/library/redis:7-alpine
     container_name: stagecoach-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 2s
       timeout: 3s
-      retries: 5
+      retries: 10
+      start_period: 5s
 
   minio:
     # MinIO S3-compatible storage - pinned to specific release tag
@@ -39,11 +41,11 @@ services:
     container_name: stagecoach-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -61,14 +63,15 @@ services:
       dockerfile: Dockerfile
     container_name: stagecoach-api
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
-      DATABASE_URL: postgresql://stagecoach:dev_password_change_in_prod@postgres:5432/stagecoach
+      DATABASE_URL: postgresql://stagecoach:${POSTGRES_PASSWORD}@postgres:5432/stagecoach
       REDIS_URL: redis://redis:6379
       MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      AUTH_SECRET: dev_secret_change_in_prod_use_openssl_rand_base64_32
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
+      MEDIA_ROOT: /data/stagecoach
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,6 +83,7 @@ services:
       - ./services/api:/app
       - ./packages:/packages
       - ./scripts:/scripts
+      - media_data:/data/stagecoach
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   worker:
@@ -89,7 +93,8 @@ services:
     container_name: stagecoach-worker
     environment:
       REDIS_URL: redis://redis:6379
-      DATABASE_URL: postgresql://stagecoach:dev_password_change_in_prod@postgres:5432/stagecoach
+      DATABASE_URL: postgresql://stagecoach:${POSTGRES_PASSWORD}@postgres:5432/stagecoach
+      MEDIA_ROOT: /data/stagecoach
     depends_on:
       postgres:
         condition: service_healthy
@@ -99,6 +104,7 @@ services:
       - ./services/analysis:/app
       - ./packages:/packages
       - worker_temp:/tmp/stagecoach
+      - media_data:/data/stagecoach
     command: celery -A worker.app worker -Q cpu --loglevel=info --concurrency=2
     profiles:
       - workers  # Use --profile workers to start this service
@@ -108,8 +114,8 @@ services:
     image: ghcr.io/axllent/mailpit:latest
     container_name: stagecoach-mailpit
     ports:
-      - "8025:8025"  # Web UI
-      - "1025:1025"  # SMTP
+      - "127.0.0.1:8025:8025"  # Web UI
+      - "127.0.0.1:1025:1025"  # SMTP
     environment:
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
@@ -120,13 +126,15 @@ services:
       dockerfile: Dockerfile
     container_name: stagecoach-web
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
-      AUTH_SECRET: dev_secret_change_in_prod_use_openssl_rand_base64_32
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
       NEXTAUTH_URL: http://localhost:3000
       EMAIL_SERVER: smtp://mailpit:1025
       EMAIL_FROM: noreply@stagecoach.example.com
-      NEXT_PUBLIC_API_URL: http://api:8000
+      INTERNAL_API_URL: http://api:8000
+      PRIVATE_BETA_MODE: ${PRIVATE_BETA_MODE:-true}
+      PRIVATE_BETA_EMAIL: ${PRIVATE_BETA_EMAIL:-local@example.invalid}
     depends_on:
       - api
       - mailpit
@@ -143,3 +151,4 @@ volumes:
   redis_data:
   minio_data:
   worker_temp:
+  media_data:

@@ -37,3 +37,11 @@ opentelemetry-instrumentation==0.49b2
 # Dev/Test
 pytest==7.4.3
 pytest-asyncio==0.21.1
+requests==2.31.0
+jsonschema==4.20.0
+
+# Audio features (issue #24) — parselmouth is GPL, server-side only (ADR-013)
+praat-parselmouth==0.4.5
+librosa==0.10.2.post1
+soundfile==0.12.1
+pyarrow==16.1.0
