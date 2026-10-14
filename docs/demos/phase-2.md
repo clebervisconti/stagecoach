@@ -8,6 +8,7 @@ Recorded from `gh run view` / downloaded job logs. Only output that was actually
 - Head SHA at green CI: `7aa2c577c34f52913c6e9dde96da266674c0afcd`
 - CI: https://github.com/clebervisconti/stagecoach/actions/runs/38602602267
 - `gh run view 38602602267 --json conclusion,headSha` → `success` / `7aa2c577c34f52913c6e9dde96da266674c0afcd`
+- Docs commit SHA `085fc2c93b349d7b17061bd6280d54702bec113d` also green: https://github.com/clebervisconti/stagecoach/actions/runs/38603296124 (`gh run view` conclusion `success`, same 11 jobs)
 
 Jobs on that SHA (all success): Check Generated Code, Worker Tests, API Unit Tests, Validate Scoring Config, Test Suite, Production Dependency Audit, Web Type Check and Build, Playwright E2E, Lint and Type Check, Docker Compose Smoke Test, Secret Scan.
 
