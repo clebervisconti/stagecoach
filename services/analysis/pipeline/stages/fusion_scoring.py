@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from pipeline.consent import decide_vision, video_category_na_reason
+from pipeline.partial import vision_failed_na_reason, vision_failed_warning
 
 logger = logging.getLogger(__name__)
 
@@ -1023,17 +1024,18 @@ def run_fusion_scoring(
 
                 profile = load_accessibility(output_dir)
                 gesture = _read_json(output_dir / "gesture_metrics.json")
+                failed = vision_failed_na_reason(output_dir, category_id)
+                pose_allowed = bool(consents and decide_vision(consents).run_pose)
                 if audio_only:
                     applicable = False
                     na_reason = "Audio-only media has no pose landmarks, so gestures & body is unavailable."
                 elif video_metrics_opted_out(profile):
                     applicable = False
                     na_reason = gesture_na_reason(profile)
-                elif (
-                    consents
-                    and decide_vision(consents).run_pose
-                    and gesture
-                ):
+                elif failed and pose_allowed:
+                    applicable = False
+                    na_reason = failed
+                elif pose_allowed and gesture:
                     gesture = attach_late_inputs(
                         gesture,
                         prominence_times_s=(audio or {}).get("emphasis_times_s"),
@@ -1057,31 +1059,39 @@ def run_fusion_scoring(
                         if consents
                         else VIDEO_CATEGORIES[category_id]
                     )
-            elif (
-                category_id == "facial_affect"
-                and consents
-                and decide_vision(consents).run_expression_metrics
-                and expr
-            ):
-                from pipeline.vision.expressiveness import attach_incongruence
+            elif category_id == "facial_affect":
+                failed = vision_failed_na_reason(output_dir, category_id)
+                expr_allowed = bool(consents and decide_vision(consents).run_expression_metrics)
+                if failed and expr_allowed:
+                    applicable = False
+                    na_reason = failed
+                elif expr_allowed and expr:
+                    from pipeline.vision.expressiveness import attach_incongruence
 
-                events_payload = _read_json(output_dir / "vision_events.json") or {}
-                expr = attach_incongruence(
-                    expr,
-                    events_payload.get("events") or [],
-                    transcript,
-                    float(stats.get("duration_s") or 1.0),
-                )
-                extras["face_visible_ratio"] = float(expr.get("face_visible_ratio") or 0.0)
-                extras["face_px_median"] = float(expr.get("face_px_median") or 0.0)
-                ok, reason = _min_evidence_ok(category_id, config, stats, extras)
-                if ok:
-                    applicable = True
-                    na_reason = None
-                    grouped["facial_affect"].extend(_facial_metrics_from_payload(expr, config))
+                    events_payload = _read_json(output_dir / "vision_events.json") or {}
+                    expr = attach_incongruence(
+                        expr,
+                        events_payload.get("events") or [],
+                        transcript,
+                        float(stats.get("duration_s") or 1.0),
+                    )
+                    extras["face_visible_ratio"] = float(expr.get("face_visible_ratio") or 0.0)
+                    extras["face_px_median"] = float(expr.get("face_px_median") or 0.0)
+                    ok, reason = _min_evidence_ok(category_id, config, stats, extras)
+                    if ok:
+                        applicable = True
+                        na_reason = None
+                        grouped["facial_affect"].extend(_facial_metrics_from_payload(expr, config))
+                    else:
+                        applicable = False
+                        na_reason = reason
                 else:
                     applicable = False
-                    na_reason = reason
+                    na_reason = (
+                        video_category_na_reason(category_id, consents)
+                        if consents
+                        else VIDEO_CATEGORIES[category_id]
+                    )
             elif category_id == "eye_contact":
                 from pipeline.accessibility import (
                     gesture_na_reason,
@@ -1091,13 +1101,18 @@ def run_fusion_scoring(
 
                 profile = load_accessibility(output_dir)
                 gaze = _read_json(output_dir / "gaze_metrics.json")
+                failed = vision_failed_na_reason(output_dir, category_id)
+                face_allowed = bool(consents and decide_vision(consents).run_face_landmarks)
                 if audio_only:
                     applicable = False
                     na_reason = "Audio-only media has no face landmarks, so audience-facing time is unavailable."
                 elif video_metrics_opted_out(profile):
                     applicable = False
                     na_reason = gesture_na_reason(profile)
-                elif consents and decide_vision(consents).run_face_landmarks and gaze:
+                elif failed and face_allowed:
+                    applicable = False
+                    na_reason = failed
+                elif face_allowed and gaze:
                     extras["face_visible_ratio"] = float(gaze.get("face_visible_ratio") or 0.0)
                     extras["face_px_median"] = float(gaze.get("face_px_median") or 0.0)
                     ok, reason = _min_evidence_ok(category_id, config, stats, extras)
@@ -1307,6 +1322,9 @@ def run_fusion_scoring(
         warnings.append("Background music makes vocal-variety scoring unavailable.")
     if asr_c < 0.6:
         warnings.append("Transcription confidence is low; verify the transcript.")
+    failed_warning = vision_failed_warning(output_dir)
+    if failed_warning:
+        warnings.append(failed_warning)
 
     result = {
         "schema_version": SCHEMA_VERSION,

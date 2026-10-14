@@ -27,6 +27,7 @@ export function silentWav(seconds = 0.25, sampleRate = 16000): Buffer {
 type MockOptions = {
   language: "en" | "pt-BR";
   title: string;
+  stayProcessing?: boolean;
 };
 
 function ptTranscript() {
@@ -135,7 +136,8 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
   let created = false;
   let deleted = false;
   let firstSessionGet = 0;
-  const ready = () => firstSessionGet > 0 && Date.now() - firstSessionGet > 1200;
+  const ready = () =>
+    !options.stayProcessing && firstSessionGet > 0 && Date.now() - firstSessionGet > 1200;
   const session = () => ({
     id: SESSION_ID,
     title: options.title,
@@ -264,6 +266,22 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
     if (method === "GET" && path === `/sessions/${SESSION_ID}`) {
       if (!firstSessionGet) firstSessionGet = Date.now();
       return json(route, session());
+    }
+    if (method === "GET" && path === `/sessions/${SESSION_ID}/events`) {
+      const body = [
+        `data: ${JSON.stringify({ type: "connected", job_id: "job-1" })}`,
+        `data: ${JSON.stringify({
+          type: "partial_ready",
+          categories: ["pace_pausing", "fluency", "vocal_variety"],
+        })}`,
+        `data: ${JSON.stringify({ type: "stage", stage: "asr", status: "succeeded", pct: 60 })}`,
+      ].join("\n\n");
+      return route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        headers: { "cache-control": "no-cache", connection: "keep-alive" },
+        body: `${body}\n\n`,
+      });
     }
     if (method === "GET" && path === `/sessions/${SESSION_ID}/report`) {
       return json(route, reportFor(options.language));

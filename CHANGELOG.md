@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Partial results and graceful vision degradation (issue #46)
+- SSE `partial_ready` events list scored category ids; `done` marks the terminal report
+- Audio/text fusion runs before vision so the report page can render live cards while processing
+- Vision failure continues the job: categories 12–14 stay N/A with “Vision stage failed…”, never invented scores
+- Consent-off and accessibility reasons still take precedence over a failed-vision reason
+
 ##### Added - Category 15 energy & presence fusion (issue #45)
 - Composite E(t) = mean of z-scores of loudness, PVQ, gesture activity, and expressivity when each exists
 - Trajectory is last-third minus first-third; missing modalities stay N/A, never a made-up score
