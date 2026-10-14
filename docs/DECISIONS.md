@@ -1096,3 +1096,36 @@ Issue #30 requires `fusion_scoring` and `report` for categories 1–7, 9–11, a
 - ⚠️ Category 15 is often N/A until intensity-trajectory fields exist in `audio_metrics.json`
 - 📌 Do not add emotion labels to coach text (enforced in tests)
 
+---
+
+## ADR-018: Report API is owner-scoped with signed playback and token-bucket limits
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Issue #31 adds the report read API from SPEC §7.5. MinIO is not in the CI smoke profile, so playback cannot depend on an S3 presign. Every resource must be owner-checked.
+
+### Decision
+
+- All report endpoints load the latest job for a session the JWT user owns. Other users receive 404.
+- `GET /media/playback` returns an HMAC-signed URL (AUTH_SECRET) with a 15-minute expiry. The player fetches `GET /media?exp=&sig=` without a JWT.
+- Series `pace`/`pitch`/`loudness`/`energy` are 1-s JSON written by fusion. Video series (`gesture`, `gaze`, `expressivity`) return an explicit unavailable series rather than invented values.
+- Disputes persist `user_disputed` and `dispute_note` on `evidence_items`.
+- Rate limits are Redis token buckets (per bearer token prefix and per IP) on `/api/v1`.
+
+### Alternatives Considered
+
+1. **S3 presign only**  
+   - ❌ CI smoke skips MinIO
+
+2. **Return FileResponse from /media/playback**  
+   - ❌ Spec asks for a short-lived URL the player can load
+
+### Consequences
+
+- ✅ GET /report in smoke returns the same `report.json` the worker wrote
+- ⚠️ Playback URLs are valid for anyone who has the link until expiry — treat like a presigned object URL
+

@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Provenance records scoring-config 1.0.0 and model versions
 - Smoke fixture now produces `analysis_result.json` and `report.json`
 
+##### Added - Report API (issue #31)
+- `GET /sessions/{id}/report`, `/analysis`, `/transcript`, `/series/{name}`, `/media`, `/media/playback`
+- `POST /evidence/{id}/dispute` stores a note and sets `user_disputed`
+- Ownership checks: a user can read only their own sessions
+- Playback URL is HMAC-signed and expires in 15 minutes
+- Redis token-bucket rate limits on `/api/v1` (per user and per IP)
+- Smoke: `GET /report` returns the synthetic fixture `report.json`
+
 ##### Added - Audio-features stage
 - `audio_features` stage (issue #24, SPEC §6.4) writing `prosody.parquet` (10 ms), `pauses.json`, `syllables.json`, `audio_metrics.json`
 - Two-pass Praat F0 with speaker-adaptive floor/ceiling and octave-jump removal
