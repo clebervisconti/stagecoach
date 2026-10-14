@@ -51,3 +51,11 @@ pyarrow==16.1.0
 mediapipe==0.10.31
 cryptography==43.0.3
 scipy==1.14.1
+
+# Slides (issue #43) — licenses re-checked 2026-10-14
+# PySceneDetect BSD-3-Clause [S47]; opencv-python-headless Apache-2.0; python-pptx MIT;
+# pytesseract Apache-2.0 (Tesseract engine Apache-2.0). PaddleOCR is not used.
+scenedetect==0.6.6
+opencv-python-headless==4.10.0.84
+python-pptx==1.0.2
+pytesseract==0.3.13

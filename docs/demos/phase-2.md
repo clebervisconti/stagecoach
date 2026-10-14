@@ -244,39 +244,42 @@ Phase 2 additions:
   - category 13 (eye_contact) is audience-facing time (head orientation), not eye contact; L2CS-Net not used
 ```
 
-## PR #117 — Category 13 audience-facing / gaze proxies (#41)
+## PR #118 — Slides stage: PySceneDetect, keyframes, deck, OCR (#43)
 
-- URL: https://github.com/clebervisconti/stagecoach/pull/117
-- Head SHA at green CI: `61b3d2a9a0116933dbaa0ecef027f3c4c97e041d`
-- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38617261030
-- `gh run view 38617261030 --json conclusion,headSha` → `success` / `61b3d2a9a0116933dbaa0ecef027f3c4c97e041d`
+- URL: https://github.com/clebervisconti/stagecoach/pull/118
+- Head SHA at green CI: `f9daff7092ecf1a8f1ac0a2db72642e91d66c5d3`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38619748706
+- `gh run view 38619748706 --json conclusion,headSha` → `success` / `f9daff7092ecf1a8f1ac0a2db72642e91d66c5d3`
 
-Jobs on that SHA (all success): Production Dependency Audit, Web Type Check and Build, Lint and Type Check, Test Suite, Playwright E2E, Secret Scan, Worker Tests, Check Generated Code, API Unit Tests, Docker Compose Smoke Test, Validate Scoring Config.
+Jobs on that SHA (all success): Lint and Type Check, Production Dependency Audit, Playwright E2E, Docker Compose Smoke Test, Check Generated Code, Validate Scoring Config, Web Type Check and Build, Secret Scan, API Unit Tests, Test Suite, Worker Tests.
 
 Worker Tests excerpt:
 
 ```
-tests/test_gaze.py::test_units_match_scoring_yaml PASSED
-tests/test_gaze.py::test_to_camera_facing_uses_tight_head_and_gaze PASSED
-tests/test_gaze.py::test_stage_allows_wider_yaw_and_scores_evenness PASSED
-tests/test_gaze.py::test_reading_head_down_ratio PASSED
-tests/test_gaze.py::test_holds_count_long_facing_episodes PASSED
-tests/test_gaze.py::test_wide_shot_disables_eye_gaze_and_caps_confidence PASSED
-tests/test_gaze.py::test_audio_only_and_opt_out PASSED
-tests/test_gaze.py::test_no_l2cs_and_blendshape_gaze_is_heuristic PASSED
-tests/test_gaze.py::test_vision_writes_gaze_metrics PASSED
-tests/test_gaze.py::test_fusion_scores_eye_contact PASSED
-tests/test_gaze.py::test_fusion_na_when_consent_on_but_no_gaze_file PASSED
-================== 191 passed, 8 skipped, 1 warning in 27.63s ==================
+tests/test_slides.py::test_merge_scenes_under_two_seconds PASSED
+tests/test_slides.py::test_antivirus_accepts_pptx_rejects_macro_and_exe_magic PASSED
+tests/test_slides.py::test_antivirus_scan_file PASSED
+tests/test_slides.py::test_stage_region_full_frame_for_screen_recording PASSED
+tests/test_slides.py::test_stage_region_finds_bright_quad PASSED
+tests/test_slides.py::test_tfidf_and_reading_overlap PASSED
+tests/test_slides.py::test_ahash_hamming PASSED
+tests/test_slides.py::test_pptx_extract PASSED
+tests/test_slides.py::test_run_slides_on_synthetic_scenes PASSED
+tests/test_slides.py::test_audio_only_without_deck_is_skipped PASSED
+tests/test_slides.py::test_no_pyscenedetect_in_forbidden_models PASSED
+================== 177 passed, 8 skipped, 1 warning in 20.84s ==================
 ```
 
 API Unit Tests excerpt:
 
 ```
-=================== 33 passed, 2 skipped, 2 warnings in 0.97s ===================
+tests/test_deck.py::test_pptx_ok_macro_rejected PASSED
+tests/test_deck.py::test_pdf_javascript_rejected PASSED
+tests/test_deck.py::test_wrong_extension_rejected PASSED
+=================== 34 passed, 2 skipped, 1 warning in 0.92s ===================
 ```
 
-Smoke excerpt (issue #41 echo):
+Smoke excerpt (issue #43 echo):
 
 ```
 Phase 2 additions:
@@ -284,7 +287,5 @@ Phase 2 additions:
   - model_registry table seeded with MediaPipe pose/hands/face (Apache-2.0)
   - vision_events.json / vision_quality.json when video_analysis is granted
   - category 14 (facial_affect) only when expression_analysis is granted; no emotion labels
-  - category 12 (gestures_body) from pose when video_analysis is granted; accessibility profile can N/A sway/locomotion/gestures
-  - category 13 (eye_contact) is audience-facing time (head orientation), not eye contact; L2CS-Net not used
+  - slides stage: PySceneDetect (BSD), keyframes, python-pptx/pdftotext, Tesseract OCR; deck antivirus in sandbox
 ```
-

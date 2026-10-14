@@ -9,6 +9,7 @@ Celery workers implementing the analysis pipeline.
 - **ASR**: faster-whisper + WhisperX alignment
 - **Audio**: parselmouth (Praat), librosa
 - **Vision**: MediaPipe Pose/Hand/Face (Phase 2)
+- **Slides**: PySceneDetect, python-pptx / pdftotext, Tesseract (Phase 2)
 - **LLM**: Provider-agnostic client with structured outputs
 
 ## Structure

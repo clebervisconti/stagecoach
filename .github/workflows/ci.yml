@@ -195,7 +195,11 @@ jobs:
             libgl1 \
             libsm6 \
             libxext6 \
-            libxrender1
+            libxrender1 \
+            tesseract-ocr \
+            tesseract-ocr-eng \
+            tesseract-ocr-por \
+            poppler-utils
       
       - name: Install Python dependencies
         run: |
@@ -992,6 +996,7 @@ jobs:
           echo "  - category 14 (facial_affect) only when expression_analysis is granted; no emotion labels"
           echo "  - category 12 (gestures_body) from pose when video_analysis is granted; accessibility profile can N/A sway/locomotion/gestures"
           echo "  - category 13 (eye_contact) is audience-facing time (head orientation), not eye contact; L2CS-Net not used"
+          echo "  - slides stage: PySceneDetect (BSD), keyframes, python-pptx/pdftotext, Tesseract OCR; deck antivirus in sandbox"
           echo ""
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"

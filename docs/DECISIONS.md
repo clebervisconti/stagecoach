@@ -1564,8 +1564,52 @@ L2CS-Net is optional in §6.5 and listed in §6.9 as MIT *if* pretrained-weight 
 
 ---
 
+## ADR-030: Slides stage uses PySceneDetect + Tesseract; structural antivirus in sandbox
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 2
+
+### Context
+
+Issue #43 / SPEC §6.6 steps 1–6 and `POST /sessions/{id}/deck`. PySceneDetect is BSD-3-Clause [S47]. OCR may be PaddleOCR (Apache-2.0, large paddlepaddle + PP-OCRv5 weights) or Tesseract (Apache-2.0, `eng`/`por`). Decks need an antivirus scan in the sandbox (§10.5). Category 8 scoring is issue #44.
+
+`pdftotext` comes from poppler-utils (GPL). Same server-side-only pattern as parselmouth (ADR-013): not shipped in client code.
+
+### Decision
+
+- Detect the slide region: full frame for screen recordings; on stage, a large bright low-motion rectangle (H).
+- Scene cuts: PySceneDetect `ContentDetector(threshold=27.0)` (BSD-3-Clause). Merge segments shorter than 2 s. ffmpeg `gt(scene,0.3)` if PySceneDetect fails. AdaptiveDetector is in the same package but needs more history than short clips give.
+- Keyframe = max Laplacian variance in the **first half** of the segment.
+- Deck text: `python-pptx` (MIT) for PPTX; `pdftotext -layout` for PDF. No deck + no video → no `slides.json`.
+- OCR: Tesseract via `pytesseract` with `eng`/`por`. **PaddleOCR is not a dependency** (wheel + model-file size; CPU budget).
+- Match video slides to deck pages with TF-IDF cosine; average-hash when OCR has fewer than 8 content words.
+- Antivirus: always sniff magic bytes, reject macros/JS/executables and zip bombs. Run `clamscan`/`clamdscan` when present. ClamAV is **not** installed in the CI image (signatures + size). Direct multipart upload matches the existing media path; MinIO presign stays behind the minio profile.
+- Slides run without `video_analysis` consent: they read the analysis proxy for screen content and user-uploaded decks, not pose/face landmarks. Consent gates for body metrics are unchanged.
+- Do not score `visual_aids` here (issue #44). Raw `reading_overlap` may be stored on each slide.
+
+### Alternatives Considered
+
+1. **PaddleOCR PP-OCRv5**  
+   - ❌ Heavy CPU wheel and extra model files; SPEC allows Tesseract as the alternative
+
+2. **Always require ClamAV in the worker image**  
+   - ❌ Large signature DB and extra image pull in CI; structural scan covers the AC in this environment
+
+3. **Presigned S3-only deck upload**  
+   - ❌ CI smoke skips MinIO; media upload is already local multipart
+
+### Consequences
+
+- ✅ Slide segmentation and deck text work on CPU with BSD/MIT/Apache-2.0 Python deps
+- ⚠️ Tesseract accuracy on dense slides is limited; missing binary yields empty OCR, not a made-up score
+- 📌 Category 8 fusion of `va_*` remains issue #44
+
+---
+
 ## Change Log (continued)
 
+- **2026-10-14**: ADR-030 (Phase 2: slides stage, issue #43)
 - **2026-10-14**: ADR-029 (Phase 2: category 13 audience-facing proxies, issue #41)
 - **2026-10-14**: ADR-028 (Phase 2: category 12 gestures & accessibility, issue #40)
 - **2026-10-14**: ADR-027 (D8: category 14 facial expressiveness opt-in, issue #42)
