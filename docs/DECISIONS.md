@@ -1364,7 +1364,7 @@ Issue #38 / SPEC §6.5 requires pose every frame on the 15 fps analysis proxy, f
 
 Licenses re-checked 2026-10-14:
 - `github.com/google-ai-edge/mediapipe` LICENSE: Apache-2.0 (fetched).
-- PyPI `mediapipe` 0.10.14 (Tasks VIDEO API; Apache 2.0). Transitive jax/opencv-contrib are unused; inference uses the CPU Tasks landmarker only.
+- PyPI `mediapipe` 0.10.31 (Tasks VIDEO API; Apache 2.0). 0.10.14 pins `protobuf<5`, which conflicts with `splunk-opentelemetry` (`protobuf>=6`); 0.10.31 drops that pin and jax.
 - `pose_landmarker_full/float16/1/*.task`: Apache 2, Google maintainer on mediapipe#6306 (2026-06-10).
 - Face and hand `.task` bundles: maintainer on mediapipe#6355 (2026-10-05): "Our source and the models (unless otherwise noted) are licensed under Apache2." Face/Hand Landmarker pages do not note a different license.
 - SHA-256 of the three float16/1 files recorded in `services/analysis/models/model_registry.json` after download on 2026-10-14.

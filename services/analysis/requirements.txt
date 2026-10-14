@@ -47,7 +47,7 @@ soundfile==0.12.1
 pyarrow==16.1.0
 
 # Vision (issue #38) — MediaPipe Tasks CPU only; Apache-2.0 (see models/model_registry.json)
-# 0.10.14: Tasks VIDEO mode, cp311 wheels. Transitive jax/opencv-contrib are unused by our stage.
-mediapipe==0.10.14
+# 0.10.31: Tasks VIDEO mode, no protobuf<5 pin (conflicts with splunk-otel protobuf>=6), no jax.
+mediapipe==0.10.31
 cryptography==43.0.3
 scipy==1.14.1
