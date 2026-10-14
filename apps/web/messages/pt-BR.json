@@ -83,6 +83,30 @@
     "locale": "Idioma",
     "signOut": "Sair"
   },
+  "accessibility": {
+    "heading": "Perfil de acessibilidade",
+    "intro": "Estas opções alteram quais métricas corporais são pontuadas. Elas são uma preferência que você define, nunca inferida do vídeo. Métricas indisponíveis aparecem como N/D, sem penalidade.",
+    "loadError": "Não foi possível carregar as preferências de acessibilidade.",
+    "saveError": "Não foi possível salvar as preferências de acessibilidade.",
+    "keys": {
+      "seated": "Apresentação sentada",
+      "wheelchair": "Uso de cadeira de rodas",
+      "limited_mobility": "Mobilidade reduzida",
+      "one_handed": "Gestos com uma mão",
+      "speech_difference": "Diferença de fala",
+      "prefers_no_video_metrics": "Não pontuar métricas corporais de vídeo",
+      "low_vision": "Baixa visão"
+    },
+    "hints": {
+      "seated": "Desliga métricas de oscilação e deslocamento.",
+      "wheelchair": "Tratado como apresentação sentada para oscilação e deslocamento.",
+      "limited_mobility": "Desliga oscilação, deslocamento e quantidade de gestos.",
+      "one_handed": "Usa só a mão visível; uma mão oculta não conta como postura fechada.",
+      "speech_difference": "Reservado para opções de fluência; não altera a pontuação de gestos.",
+      "prefers_no_video_metrics": "Gestos, olhar e categorias de vídeo relacionadas ficam N/D.",
+      "low_vision": "Não altera a pontuação de gestos; reservado para preferências de exibição."
+    }
+  },
   "report": {
     "loadError": "Não foi possível carregar esta sessão.",
     "back": "Sessões",

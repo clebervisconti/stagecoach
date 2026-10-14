@@ -248,14 +248,17 @@ def vision_task(
     session_id: str,
     consents: Optional[dict] = None,
     camera_setup: str = "unknown",
+    accessibility_profile: Optional[dict] = None,
     job_id: Optional[str] = None,
 ):
     """Vision stage: CPU MediaPipe pose/hands/face (issue #38). Consent-gated."""
+    from pipeline.accessibility import persist_accessibility
     from pipeline.consent import persist_consent_snapshot, run_vision_if_allowed
     from pipeline.stages.vision import run_vision_stage
 
     logger = logging.getLogger(__name__)
     dest = Path(output_dir)
+    persist_accessibility(dest, accessibility_profile)
     snapshot = persist_consent_snapshot(dest, consents)
     artifacts = (ingest_result or {}).get("artifacts") or {}
     proxy = artifacts.get("analysis") or str(dest / "analysis.mp4")
@@ -628,8 +631,10 @@ def run_mvp_analysis_task(
     slot_min: Optional[int] = None,
     consents: Optional[dict] = None,
     camera_setup: str = "unknown",
+    accessibility_profile: Optional[dict] = None,
 ):
     """Run ingest → vision (if consented) → ASR → audio → fusion_scoring → report."""
+    from pipeline.accessibility import persist_accessibility
     from pipeline.consent import persist_consent_snapshot, run_vision_if_allowed
     from pipeline.persist import persist_analysis_result
     from pipeline.stages.asr import transcribe_audio
@@ -645,6 +650,7 @@ def run_mvp_analysis_task(
     _set_job_state(job_id, session_id, "running")
 
     try:
+        persist_accessibility(destination, accessibility_profile)
         snapshot = persist_consent_snapshot(destination, consents)
         vision_decision_early = run_vision_if_allowed(snapshot, runner=None)
         skip_vision_now = vision_decision_early["status"] == "skipped"

@@ -198,8 +198,17 @@ def _min_evidence_ok(category_id: str, config: dict[str, Any], stats: dict[str, 
             return False, "No Q&A was detected."
         if key == "question_count" and extras.get("question_count", 0) < threshold:
             return False, "Fewer than one question was detected."
-        if key in {"slides_detected", "person_visible_ratio", "hands_visible_ratio"}:
-            return False, "Required video evidence is not available."
+        if key == "slides_detected":
+            found = extras.get("slides_detected") or 0
+            if found < threshold:
+                return False, "No slides were detected and no deck was uploaded."
+        if key == "person_visible_ratio":
+            ratio = float(extras.get("person_visible_ratio") or 0.0)
+            if ratio < float(threshold):
+                return False, f"Person visible in {ratio:.0%} of frames; need {float(threshold):.0%}."
+        if key == "hands_visible_ratio":
+            # Hand-based gb_* metrics use the 40% gate in gesture functions (SPEC §4.4.12).
+            continue
         if key == "face_visible_ratio":
             ratio = float(extras.get("face_visible_ratio") or 0.0)
             if ratio < float(threshold):
@@ -509,6 +518,37 @@ def _energy_from_audio(
     return metrics
 
 
+def _section_boundaries(content: Optional[dict[str, Any]], transcript: dict[str, Any]) -> list[float]:
+    outline = (content or {}).get("outline") or {}
+    bounds: list[float] = []
+    for section in outline.get("sections") or []:
+        t = _seg_time(transcript, section.get("start_seg"))
+        if t is not None:
+            bounds.append(t)
+    return bounds
+
+
+def _body_metrics_from_payload(payload: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map gesture_metrics.json onto scoring-config gestures_body ids."""
+    out: list[dict[str, Any]] = []
+    allowed = config["categories"]["gestures_body"]["metrics"]
+    for metric_id, row in (payload.get("metrics") or {}).items():
+        if metric_id not in allowed:
+            continue
+        if not row or row.get("applicable") is False or row.get("value") is None:
+            continue
+        out.append(
+            _metric_payload(
+                metric_id=metric_id,
+                category_id="gestures_body",
+                raw_value=row["value"],
+                confidence=float(row.get("confidence") or 0.5),
+                config=config,
+            )
+        )
+    return out
+
+
 def _facial_metrics_from_payload(payload: dict[str, Any], config: dict[str, Any]) -> list[dict[str, Any]]:
     """Map expression_metrics.json onto scoring-config facial_affect ids. No emotion labels."""
     out: list[dict[str, Any]] = []
@@ -706,20 +746,44 @@ def _evidence_from_inputs(
         expr = _read_json(Path(output_dir) / "expression_metrics.json") or {}
         added_vision = 0
         for event in events_payload.get("events") or []:
-            if event.get("type") != "smile":
-                continue
-            add(
-                category_id="facial_affect",
-                metric_id="fa_smile_presence_ratio",
-                text="Smile signal (blendshape mouthSmile mean above the configured threshold).",
-                t_start=float(event.get("t_start") or 0),
-                t_end=float(event.get("t_end") or event.get("t_start") or 0),
-                kind="observation",
-                modality="video",
-                confidence=0.6,
-            )
-            added_vision += 1
-            if added_vision >= 6:
+            kind = event.get("type")
+            if kind == "smile":
+                add(
+                    category_id="facial_affect",
+                    metric_id="fa_smile_presence_ratio",
+                    text="Smile signal (blendshape mouthSmile mean above the configured threshold).",
+                    t_start=float(event.get("t_start") or 0),
+                    t_end=float(event.get("t_end") or event.get("t_start") or 0),
+                    kind="observation",
+                    modality="video",
+                    confidence=0.6,
+                )
+                added_vision += 1
+            elif kind == "self_adaptor":
+                add(
+                    category_id="gestures_body",
+                    metric_id="gb_self_adaptor_per_min",
+                    text="Self-adaptor episode (wrist near the face/neck box).",
+                    t_start=float(event.get("t_start") or 0),
+                    t_end=float(event.get("t_end") or event.get("t_start") or 0),
+                    kind="observation",
+                    modality="video",
+                    confidence=0.6,
+                )
+                added_vision += 1
+            elif kind == "crossed_arms":
+                add(
+                    category_id="gestures_body",
+                    metric_id="gb_closed_posture_ratio",
+                    text="Closed-posture episode (wrists near opposite elbows).",
+                    t_start=float(event.get("t_start") or 0),
+                    t_end=float(event.get("t_end") or event.get("t_start") or 0),
+                    kind="observation",
+                    modality="video",
+                    confidence=0.6,
+                )
+                added_vision += 1
+            if added_vision >= 8:
                 break
         for obs in ((expr.get("metrics") or {}).get("fa_congruence") or {}).get("observations") or []:
             add(
@@ -845,7 +909,54 @@ def run_fusion_scoring(
         if category_id in VIDEO_CATEGORIES:
             consents = _read_json(output_dir / "consents.json")
             expr = _read_json(output_dir / "expression_metrics.json")
-            if (
+            audio_only = camera_setup == "audio_only" or bool(
+                ((ingest or {}).get("modality") or {}).get("is_audio_only")
+            )
+            if category_id == "gestures_body":
+                from pipeline.accessibility import (
+                    gesture_na_reason,
+                    load_accessibility,
+                    video_metrics_opted_out,
+                )
+                from pipeline.vision.gestures import attach_late_inputs
+
+                profile = load_accessibility(output_dir)
+                gesture = _read_json(output_dir / "gesture_metrics.json")
+                if audio_only:
+                    applicable = False
+                    na_reason = "Audio-only media has no pose landmarks, so gestures & body is unavailable."
+                elif video_metrics_opted_out(profile):
+                    applicable = False
+                    na_reason = gesture_na_reason(profile)
+                elif (
+                    consents
+                    and decide_vision(consents).run_pose
+                    and gesture
+                ):
+                    gesture = attach_late_inputs(
+                        gesture,
+                        prominence_times_s=(audio or {}).get("emphasis_times_s"),
+                        section_boundaries_s=_section_boundaries(content, transcript),
+                        accessibility=profile,
+                    )
+                    extras["person_visible_ratio"] = float(gesture.get("person_visible_ratio") or 0.0)
+                    extras["hands_visible_ratio"] = float(gesture.get("hands_visible_ratio") or 0.0)
+                    ok, reason = _min_evidence_ok(category_id, config, stats, extras)
+                    if ok:
+                        applicable = True
+                        na_reason = None
+                        grouped["gestures_body"].extend(_body_metrics_from_payload(gesture, config))
+                    else:
+                        applicable = False
+                        na_reason = reason
+                else:
+                    applicable = False
+                    na_reason = (
+                        video_category_na_reason(category_id, consents)
+                        if consents
+                        else VIDEO_CATEGORIES[category_id]
+                    )
+            elif (
                 category_id == "facial_affect"
                 and consents
                 and decide_vision(consents).run_expression_metrics
@@ -994,6 +1105,9 @@ def run_fusion_scoring(
         has_video = not bool((ingest.get("modality") or {}).get("is_audio_only", True))
     if not ingest:
         has_video = False
+    quality_payload = _read_json(output_dir / "vision_quality.json") or {}
+    gesture_payload = _read_json(output_dir / "gesture_metrics.json") or {}
+    expr_payload = _read_json(output_dir / "expression_metrics.json") or {}
 
     evidence = _evidence_from_inputs(transcript, scored_metrics, content, output_dir=output_dir)
     by_cat: dict[str, list[str]] = {}
@@ -1076,10 +1190,13 @@ def run_fusion_scoring(
         "quality": {
             "asr_mean_word_prob": stats["mean_word_prob"],
             "snr_db": audio.get("snr_db"),
-            "face_visible_ratio": None,
-            "person_visible_ratio": None,
-            "hands_visible_ratio": None,
-            "face_px_median": None,
+            "face_visible_ratio": quality_payload.get("face_visible_ratio")
+            or expr_payload.get("face_visible_ratio"),
+            "person_visible_ratio": quality_payload.get("person_visible_ratio")
+            or gesture_payload.get("person_visible_ratio"),
+            "hands_visible_ratio": gesture_payload.get("hands_visible_ratio"),
+            "face_px_median": expr_payload.get("face_px_median")
+            or quality_payload.get("mean_face_height_px"),
             "warnings": warnings,
         },
         "overall": {

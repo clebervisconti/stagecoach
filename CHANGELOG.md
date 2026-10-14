@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Category 12 gestures & body + accessibility profile (issue #40)
+- All `gb_*` scoring.yaml metrics from pose trajectories and vision events (`gb_gesture_speech_sync` weight 0)
+- Hands-visible < 40% → hand-based metrics N/A; webcam framing caps confidence at 0.6; audio-only is N/A
+- Accessibility profile (seated/wheelchair, limited mobility, one-handed, prefers_no_video_metrics) disables or adjusts metrics; never inferred
+- Unit tests on synthetic trajectories; fusion scores only when `gesture_metrics.json` exists
+
 ##### Added - Category 14 facial expressiveness signals, opt-in (issue #42, D8)
 - `facial_affect` is scored only when `expression_analysis` is granted (off by default)
 - Metrics from MediaPipe blendshapes: smile presence, expressivity index, expression variety

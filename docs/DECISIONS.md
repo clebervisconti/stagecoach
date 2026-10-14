@@ -1484,8 +1484,49 @@ Issue #42 / SPEC §4.4.14, §5, §10.4. The owner decided (D8) to include catego
 
 ---
 
+## ADR-028: Category 12 gesture metrics from pose trajectories; accessibility gates
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 2
+
+### Context
+
+Issue #40 / SPEC §4.4.12, §10.6, §10.7. Pose events already exist (#39). Scoring ids and units must match `scoring.yaml` v1.0.0. Hands visible in < 40% of frames makes hand-based metrics N/A. Webcam head-and-shoulders framing scores only upper-body activity and self-adaptors at confidence ≤ 0.6. Audio-only is N/A. Accessibility profile flags are user-set, never inferred.
+
+`gb_gesture_speech_sync` has weight 0 in MVP. Prominence times come from audio features after vision, so fusion attaches that metric (and purposeful-movement vs section boundaries) as a late input. Missing prominences or locomotion stay N/A.
+
+### Decision
+
+- Pure functions in `pipeline/vision/gestures.py` over per-frame pose features and vision events. Distances in shoulder-width units. Thresholds labeled heuristic (H).
+- Vision writes `gesture_metrics.json`. Fusion maps only applicable rows onto `gestures_body`. Unavailable inputs never become a numeric score.
+- Snapshot `accessibility.json` from `users.accessibility_profile` at job start (same pattern as consents). Seated/wheelchair disable sway and locomotion; limited mobility also disables gesture-amount metrics; one-handed uses the visible wrist; `prefers_no_video_metrics` N/As the category.
+- Settings UI PATCHes `/me` with the known boolean keys. Unknown keys are 422.
+- No new models. No emotion inference. No L2CS-Net (not this issue).
+
+### Alternatives Considered
+
+1. **Score from encrypted per-second parquet in fusion only**  
+   - ❌ Stroke peaks shorter than 1 s would disappear; events already exist per frame
+
+2. **Treat scoring.yaml `hands_visible_ratio: 0.3` as a category gate**  
+   - ❌ SPEC and the issue gate hand-based metrics at 40% and still allow sway/locomotion
+
+3. **Infer seated vs standing from hip height**  
+   - ❌ Profile is declared, not inferred (§10.7)
+
+### Consequences
+
+- ✅ Category 12 can score when video consent is on and a person is visible
+- ✅ Accessibility flags change applicability, not invented penalties
+- ⚠️ Speech-sync stays N/A until audio writes `emphasis_times_s`
+- 📌 Category 13 gaze wording and L2CS-Net remain issue #41
+
+---
+
 ## Change Log (continued)
 
+- **2026-10-14**: ADR-028 (Phase 2: category 12 gestures & accessibility, issue #40)
 - **2026-10-14**: ADR-027 (D8: category 14 facial expressiveness opt-in, issue #42)
 - **2026-10-14**: ADR-026 (Phase 2: vision events and camera-setup mismatch, issue #39)
 - **2026-10-14**: ADR-025 (Phase 2: CPU MediaPipe vision stage, issue #38)

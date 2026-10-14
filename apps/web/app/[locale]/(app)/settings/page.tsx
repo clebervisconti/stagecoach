@@ -1,6 +1,7 @@
 import { auth, signOut } from "@/auth";
 import { getTranslations } from "next-intl/server";
 import { ConsentPanel } from "@/components/consents/consent-panel";
+import { AccessibilityPanel } from "@/components/settings/accessibility-panel";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -23,6 +24,8 @@ export default async function SettingsPage() {
         </div>
 
         <ConsentPanel />
+
+        <AccessibilityPanel />
 
         <div className="rounded-lg border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold">Session</h2>

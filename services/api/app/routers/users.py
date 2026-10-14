@@ -16,6 +16,31 @@ from app.models.user import User, uuid7
 
 router = APIRouter(prefix="/me", tags=["users"])
 
+ACCESSIBILITY_KEYS = (
+    "seated",
+    "wheelchair",
+    "limited_mobility",
+    "one_handed",
+    "speech_difference",
+    "prefers_no_video_metrics",
+    "low_vision",
+)
+
+
+def normalize_accessibility(raw: Optional[dict]) -> dict:
+    """Keep known boolean flags only. Wheelchair implies seated (SPEC §10.6)."""
+    src = raw or {}
+    unknown = [key for key in src if key not in ACCESSIBILITY_KEYS]
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Unknown accessibility_profile keys: {unknown}",
+        )
+    out = {key: bool(src.get(key)) for key in ACCESSIBILITY_KEYS}
+    if out["wheelchair"]:
+        out["seated"] = True
+    return out
+
 
 class UserProfile(BaseModel):
     """User profile response."""
@@ -108,7 +133,7 @@ async def update_me(
     if update.timezone is not None:
         current_user.timezone = update.timezone
     if update.accessibility_profile is not None:
-        current_user.accessibility_profile = update.accessibility_profile
+        current_user.accessibility_profile = normalize_accessibility(update.accessibility_profile)
 
     db.commit()
     db.refresh(current_user)
