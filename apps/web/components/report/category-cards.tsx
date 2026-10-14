@@ -30,11 +30,13 @@ const NAMED_CATEGORIES = new Set<string>([
 ]);
 const ENABLE_HINTS = new Set(["visual_aids", "gestures_body", "eye_contact", "facial_affect", "qa"]);
 const KEY_METRIC_SET = new Set<string>(KEY_METRIC_IDS);
-import { categoriesByPillar, metricsById } from "@/lib/report-view";
+import { formatTimestamp } from "@/lib/player";
+import { categoriesByPillar, evidenceById, metricsById } from "@/lib/report-view";
 import { MetricInfo } from "./metric-info";
 
 type CategoryCardsProps = {
   report: AnalysisReport;
+  onSeek?: (tStart: number) => void;
 };
 
 function ConfidenceChip({ label }: { label: ReportCategory["confidence_label"] }) {
@@ -53,12 +55,15 @@ function ConfidenceChip({ label }: { label: ReportCategory["confidence_label"] }
 function CategoryCard({
   category,
   report,
+  onSeek,
 }: {
   category: ReportCategory;
   report: AnalysisReport;
+  onSeek?: (tStart: number) => void;
 }) {
   const t = useTranslations("report");
   const metrics = metricsById(report);
+  const evidence = evidenceById(report);
   const name = NAMED_CATEGORIES.has(category.id)
     ? t(`categoriesNamed.${category.id as CategoryId}`)
     : category.id.replaceAll("_", " ");
@@ -152,6 +157,28 @@ function CategoryCard({
             <span className="font-medium">{t("whatGoodLooksLike")}: </span>
             {t("level5Anchor", { version })}
           </p>
+          {category.evidence_ids.length > 0 && (
+            <div>
+              <p className="font-medium">{t("evidence")}</p>
+              <ul className="mt-2 space-y-1">
+                {category.evidence_ids.map((id) => {
+                  const item = evidence.get(id);
+                  if (!item) return null;
+                  return (
+                    <li key={id}>
+                      <button
+                        type="button"
+                        onClick={() => onSeek?.(item.t_start)}
+                        className="rounded-md border px-2 py-1 font-mono text-xs hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        ▶ {formatTimestamp(item.t_start)} {item.quote || item.text}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
           {category.sources.length > 0 && (
             <p>
               <span className="font-medium">{t("sources")}: </span>
@@ -171,7 +198,7 @@ function CategoryCard({
   );
 }
 
-export function CategoryCards({ report }: CategoryCardsProps) {
+export function CategoryCards({ report, onSeek }: CategoryCardsProps) {
   const t = useTranslations("report");
   const grouped = categoriesByPillar(report);
 
@@ -189,7 +216,7 @@ export function CategoryCards({ report }: CategoryCardsProps) {
               <h3 className="mb-3 text-lg font-medium">{t(`pillars.${pillarId}`)}</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 {cards.map((category) => (
-                  <CategoryCard key={category.id} category={category} report={report} />
+                  <CategoryCard key={category.id} category={category} report={report} onSeek={onSeek} />
                 ))}
               </div>
             </div>

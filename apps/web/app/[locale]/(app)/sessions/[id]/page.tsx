@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
@@ -8,9 +8,14 @@ import type { AnalysisReport } from "@/lib/report-types";
 import { CategoryCards } from "@/components/report/category-cards";
 import { InsightsPanel } from "@/components/report/insights-panel";
 import { KeyMetrics } from "@/components/report/key-metrics";
+import { ReportPlayer } from "@/components/report/player";
 import { RadarChart } from "@/components/report/radar-chart";
 import { SummaryCard } from "@/components/report/summary-card";
+import { TranscriptTab } from "@/components/report/transcript-tab";
+import { VoiceTab } from "@/components/report/voice-tab";
 import { radarPoints } from "@/lib/report-view";
+import { exportVtt, type TranscriptPayload } from "@/lib/transcript";
+import type { SeriesPayload } from "@/lib/voice-charts";
 
 type SessionDetail = {
   id: string;
@@ -44,6 +49,10 @@ export default function SessionPage() {
   const sessionsPath = locale === "en" ? "/sessions" : `/${locale}/sessions`;
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [report, setReport] = useState<AnalysisReport | null>(null);
+  const [transcript, setTranscript] = useState<TranscriptPayload | null>(null);
+  const [series, setSeries] = useState<Record<string, SeriesPayload | null>>({});
+  const [tab, setTab] = useState<"categories" | "transcript" | "voice">("categories");
+  const seekRef = useRef<(tStart: number) => void>(() => undefined);
   const [error, setError] = useState("");
   const terminal = session?.status === "ready" || session?.status === "partial" || session?.status === "failed";
 
@@ -64,6 +73,21 @@ export default function SessionPage() {
             const payload: unknown = await reportResponse.json();
             if (isReport(payload)) setReport(payload);
           }
+          const transcriptResponse = await fetch(`/api/stagecoach/sessions/${params.id}/transcript`, {
+            cache: "no-store",
+          });
+          if (transcriptResponse.ok) setTranscript(await transcriptResponse.json());
+          const seriesNames = ["pace", "pitch", "loudness", "energy"] as const;
+          const loaded: Record<string, SeriesPayload | null> = {};
+          await Promise.all(
+            seriesNames.map(async (name) => {
+              const response = await fetch(`/api/stagecoach/sessions/${params.id}/series/${name}`, {
+                cache: "no-store",
+              });
+              loaded[name] = response.ok ? ((await response.json()) as SeriesPayload) : null;
+            }),
+          );
+          if (active) setSeries(loaded);
         }
       } catch (reason) {
         if (active) setError(reason instanceof Error ? reason.message : t("loadError"));
@@ -190,9 +214,51 @@ export default function SessionPage() {
               <RadarChart points={radarPoints(report)} />
             </section>
           </div>
-          <KeyMetrics report={report} />
-          <InsightsPanel report={report} />
-          <CategoryCards report={report} />
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+            <ReportPlayer
+              sessionId={params.id}
+              evidence={report.evidence ?? []}
+              captionsVtt={transcript ? exportVtt(transcript) : undefined}
+              seekRef={seekRef}
+            />
+            <KeyMetrics report={report} />
+          </div>
+          <InsightsPanel report={report} onSeek={(time) => seekRef.current(time)} />
+          <div>
+            <div role="tablist" aria-label={t("tabs")} className="mb-4 flex flex-wrap gap-2">
+              {(["categories", "transcript", "voice"] as const).map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === id}
+                  onClick={() => setTab(id)}
+                  className={`rounded-full px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    tab === id ? "bg-primary text-primary-foreground" : "bg-muted"
+                  }`}
+                >
+                  {t(id === "categories" ? "categories" : id === "transcript" ? "transcript" : "voiceTab")}
+                </button>
+              ))}
+            </div>
+            {tab === "categories" && (
+              <CategoryCards report={report} onSeek={(time) => seekRef.current(time)} />
+            )}
+            {tab === "transcript" && (
+              <TranscriptTab payload={transcript} onSeek={(time) => seekRef.current(time)} />
+            )}
+            {tab === "voice" && (
+              <VoiceTab
+                transcript={transcript}
+                contextType={session?.context_type ?? report.session?.context_type}
+                pace={series.pace ?? null}
+                pitch={series.pitch ?? null}
+                loudness={series.loudness ?? null}
+                energy={series.energy ?? null}
+                onSeek={(time) => seekRef.current(time)}
+              />
+            )}
+          </div>
         </>
       )}
     </div>

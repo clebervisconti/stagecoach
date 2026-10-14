@@ -190,6 +190,32 @@
     },
     "fillerBenchmarks": "Referências: 5/min (sem penalidade) e 12/min (prejudicial) em S12.",
     "wpmBand": "Faixa do contexto {band} palavras/min (heurística).",
-    "closeInfo": "Fechar detalhes da métrica"
+    "closeInfo": "Fechar detalhes da métrica",
+    "tabs": "Seções do relatório",
+    "voiceTab": "Voz",
+    "playbackError": "A reprodução ainda não está disponível para esta sessão.",
+    "playerRegion": "Player da gravação. Espaço toca ou pausa. Setas avançam 5 segundos. J e L saltam entre evidências.",
+    "playerHelp": "Espaço: tocar/pausar. ←/→: 5 segundos. J/L: evidência anterior/seguinte. Os chips buscam 2 segundos antes do timestamp.",
+    "highlightToggles": "Tipos de destaque da transcrição",
+    "highlights": {
+      "filler_sound": "Sons de preenchimento",
+      "filler_word": "Possíveis palavras de preenchimento",
+      "hedge": "Hedges e desculpas",
+      "vague": "Palavras vagas",
+      "clt": "Linguagem carismática",
+      "core_message": "Mensagem central",
+      "pause": "Pausas longas"
+    },
+    "speakerUnknown": "Falante",
+    "exportTxt": "Exportar TXT",
+    "exportSrt": "Exportar SRT",
+    "exportVtt": "Exportar VTT",
+    "fillerBreakdown": "Detalhamento de preenchimento",
+    "noFillers": "Nenhum som de preenchimento rotulado nesta transcrição.",
+    "paceGraph": "Ritmo (palavras/min a cada 30 s)",
+    "loudnessGraph": "Intensidade e energia",
+    "pauseHistogram": "Histograma de pausas",
+    "fillerPerSection": "Sons de preenchimento por seção",
+    "seriesUnavailable": "Esta série não foi produzida para esta sessão, por isso fica indisponível em vez de aparecer como zero."
   }
 }
