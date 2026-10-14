@@ -1,0 +1,802 @@
+{
+  "schema_version": "1.0.0",
+  "session": {
+    "id": "00000000-0000-4000-8000-000000000037",
+    "context_type": "keynote",
+    "language": "en",
+    "slot_min": null,
+    "qa_in_slot": false,
+    "camera_setup": "audio_only",
+    "talk_plan_id": null
+  },
+  "provenance": {
+    "pipeline_version": "1.0.0",
+    "scoring_config_version": "1.0.0",
+    "stages": [
+      {
+        "name": "fusion_scoring",
+        "version": "1.0.0",
+        "duration_s": 0.0,
+        "status": "ok"
+      }
+    ],
+    "models": [
+      {
+        "component": "asr",
+        "name": "synthetic-golden",
+        "version": "synthetic-golden"
+      },
+      {
+        "component": "scoring",
+        "name": "scoring-config",
+        "version": "1.0.0"
+      }
+    ],
+    "prompts": [],
+    "generated_at": "1970-01-01T00:00:00Z"
+  },
+  "media": {
+    "duration_s": 179.91724137931033,
+    "has_video": false,
+    "has_audio": true,
+    "speech_span_s": 179.91724137931033,
+    "fps_analyzed": null
+  },
+  "quality": {
+    "asr_mean_word_prob": 0.65,
+    "snr_db": 10.0,
+    "face_visible_ratio": null,
+    "person_visible_ratio": null,
+    "hands_visible_ratio": null,
+    "face_px_median": null,
+    "warnings": [
+      "Background noise reduced measurement confidence.",
+      "Transcription confidence is low; verify the transcript."
+    ]
+  },
+  "overall": {
+    "score": null,
+    "level": null,
+    "coverage": 0.0,
+    "confidence": 0.0,
+    "display_band": 10,
+    "partial": true
+  },
+  "pillars": [
+    {
+      "id": "message",
+      "score": null,
+      "confidence": null,
+      "categories": [
+        "core_message",
+        "structure",
+        "opening_close",
+        "clarity"
+      ]
+    },
+    {
+      "id": "story_impact",
+      "score": null,
+      "confidence": null,
+      "categories": [
+        "storytelling",
+        "audience_adaptation",
+        "impact"
+      ]
+    },
+    {
+      "id": "visuals",
+      "score": null,
+      "confidence": null,
+      "categories": [
+        "visual_aids"
+      ]
+    },
+    {
+      "id": "voice",
+      "score": null,
+      "confidence": null,
+      "categories": [
+        "pace_pausing",
+        "vocal_variety",
+        "fluency"
+      ]
+    },
+    {
+      "id": "body",
+      "score": null,
+      "confidence": null,
+      "categories": [
+        "gestures_body",
+        "eye_contact",
+        "facial_affect"
+      ]
+    },
+    {
+      "id": "presence_time",
+      "score": null,
+      "confidence": null,
+      "categories": [
+        "energy_presence",
+        "time_management",
+        "qa"
+      ]
+    }
+  ],
+  "categories": [
+    {
+      "id": "core_message",
+      "pillar": "message",
+      "applicable": false,
+      "na_reason": "Content analysis was not run, so this category has no inputs.",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 9.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S2",
+        "S6",
+        "S7",
+        "S32",
+        "S33"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "structure",
+      "pillar": "message",
+      "applicable": false,
+      "na_reason": "Content analysis was not run, so this category has no inputs.",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 6.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S7",
+        "S8",
+        "S10",
+        "S32",
+        "S33"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "storytelling",
+      "pillar": "story_impact",
+      "applicable": false,
+      "na_reason": "Content analysis was not run, so this category has no inputs.",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 10.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S2",
+        "S3",
+        "S5",
+        "S6",
+        "S26"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "audience_adaptation",
+      "pillar": "story_impact",
+      "applicable": false,
+      "na_reason": "Content analysis was not run, so this category has no inputs.",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 5.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S1",
+        "S2",
+        "S6",
+        "S7",
+        "S8",
+        "S33"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "opening_close",
+      "pillar": "message",
+      "applicable": false,
+      "na_reason": "Content analysis was not run, so this category has no inputs.",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 8.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S2",
+        "S3",
+        "S5",
+        "S32"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "clarity",
+      "pillar": "message",
+      "applicable": false,
+      "na_reason": "Content analysis was not run, so this category has no inputs.",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 4.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S6",
+        "S7",
+        "S8",
+        "S10",
+        "S33"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "impact",
+      "pillar": "story_impact",
+      "applicable": false,
+      "na_reason": "Content analysis was not run, so this category has no inputs.",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 8.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S3",
+        "S6",
+        "S26"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "visual_aids",
+      "pillar": "visuals",
+      "applicable": false,
+      "na_reason": "Vision and slides stages were not run (Phase 1 is audio/text only).",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 5.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S3",
+        "S4",
+        "S10",
+        "S11",
+        "S34"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "pace_pausing",
+      "pillar": "voice",
+      "applicable": true,
+      "na_reason": null,
+      "score": null,
+      "level": null,
+      "confidence": 0.0,
+      "confidence_label": "low",
+      "weight_used": 5.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [
+        "ev-0002"
+      ],
+      "sources": [
+        "S13",
+        "S22",
+        "S25",
+        "S43"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "vocal_variety",
+      "pillar": "voice",
+      "applicable": true,
+      "na_reason": null,
+      "score": null,
+      "level": null,
+      "confidence": 0.0,
+      "confidence_label": "low",
+      "weight_used": 7.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S21",
+        "S22",
+        "S23",
+        "S24",
+        "S26",
+        "S33"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "fluency",
+      "pillar": "voice",
+      "applicable": true,
+      "na_reason": null,
+      "score": null,
+      "level": null,
+      "confidence": 0.0,
+      "confidence_label": "low",
+      "weight_used": 4.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [
+        "ev-0001"
+      ],
+      "sources": [
+        "S12",
+        "S21",
+        "S22",
+        "S33",
+        "S14",
+        "S41"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "gestures_body",
+      "pillar": "body",
+      "applicable": false,
+      "na_reason": "Vision stage was not run; body metrics need a visible person.",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 6.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S1",
+        "S16",
+        "S17",
+        "S18",
+        "S19",
+        "S26",
+        "S33",
+        "S34",
+        "S35",
+        "S36",
+        "S38"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "eye_contact",
+      "pillar": "body",
+      "applicable": false,
+      "na_reason": "Vision stage was not run; gaze metrics need a visible face.",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 5.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S1",
+        "S27",
+        "S33",
+        "S38",
+        "S49"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "facial_affect",
+      "pillar": "body",
+      "applicable": false,
+      "na_reason": "Expression analysis is off and vision was not run.",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 3.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S26",
+        "S28",
+        "S29",
+        "S38"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "energy_presence",
+      "pillar": "presence_time",
+      "applicable": false,
+      "na_reason": "Energy & presence needs audio intensity trajectory or content-language inputs that are not available.",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 8.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S1",
+        "S5",
+        "S9",
+        "S21",
+        "S22",
+        "S26",
+        "S37"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "time_management",
+      "pillar": "presence_time",
+      "applicable": false,
+      "na_reason": "No slot length was provided, so time management is unavailable.",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 4.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S1",
+        "S5",
+        "S8"
+      ],
+      "counterfactual": null
+    },
+    {
+      "id": "qa",
+      "pillar": "presence_time",
+      "applicable": false,
+      "na_reason": "Q&A analysis has no detected question/answer pairs.",
+      "score": null,
+      "level": null,
+      "confidence": null,
+      "confidence_label": null,
+      "weight_used": 3.0,
+      "capped_by_gate": null,
+      "top_contributors": [],
+      "evidence_ids": [],
+      "sources": [
+        "S7",
+        "S8",
+        "S9",
+        "S42"
+      ],
+      "counterfactual": null
+    }
+  ],
+  "metrics": [
+    {
+      "id": "pp_wpm",
+      "category_id": "pace_pausing",
+      "raw_value": 145.0,
+      "unit": "words_per_minute",
+      "score": 95.0,
+      "weight": 0.2,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "heuristic",
+        "source": "H_S13"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "pp_pace_cv",
+      "category_id": "pace_pausing",
+      "raw_value": 0.12,
+      "unit": "coefficient_of_variation",
+      "score": 95.0,
+      "weight": 0.15,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "heuristic",
+        "source": "heuristic"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "pp_rush_index",
+      "category_id": "pace_pausing",
+      "raw_value": 1.02,
+      "unit": "ratio",
+      "score": 95.0,
+      "weight": 0.15,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "heuristic",
+        "source": "heuristic"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "pp_boundary_pause_ratio",
+      "category_id": "pace_pausing",
+      "raw_value": 0.6,
+      "unit": "ratio",
+      "score": 91.66666666666667,
+      "weight": 0.2,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "heuristic",
+        "source": "heuristic"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "pp_unplanned_long_pauses_per_10min",
+      "category_id": "pace_pausing",
+      "raw_value": 0.5,
+      "unit": "per_10min",
+      "score": 92.5,
+      "weight": 0.15,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "heuristic",
+        "source": "heuristic"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "pp_mean_length_of_run",
+      "category_id": "pace_pausing",
+      "raw_value": 9.0,
+      "unit": "words",
+      "score": 95.0,
+      "weight": 0.15,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "heuristic",
+        "source": "heuristic"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "vv_pvq_median",
+      "category_id": "vocal_variety",
+      "raw_value": 0.18,
+      "unit": "ratio",
+      "score": 92.0,
+      "weight": 0.3,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "research",
+        "source": "S24"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "vv_pitch_range_st",
+      "category_id": "vocal_variety",
+      "raw_value": 8.0,
+      "unit": "semitones",
+      "score": 95.0,
+      "weight": 0.2,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "heuristic",
+        "source": "heuristic"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "vv_monotone_windows_ratio",
+      "category_id": "vocal_variety",
+      "raw_value": 0.08,
+      "unit": "ratio",
+      "score": 84.0,
+      "weight": 0.2,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "heuristic",
+        "source": "heuristic"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "vv_intensity_variation_db",
+      "category_id": "vocal_variety",
+      "raw_value": 4.0,
+      "unit": "decibels",
+      "score": 90.0,
+      "weight": 0.15,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "heuristic",
+        "source": "heuristic"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "vv_emphasis_rate_per_min",
+      "category_id": "vocal_variety",
+      "raw_value": 10.0,
+      "unit": "per_minute",
+      "score": 95.0,
+      "weight": 0.15,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "heuristic",
+        "source": "heuristic"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "fl_filler_sounds_per_min",
+      "category_id": "fluency",
+      "raw_value": 2.0,
+      "unit": "per_minute",
+      "score": 85.0,
+      "weight": 0.4,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "research",
+        "source": "S12"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "fl_filler_words_per_min",
+      "category_id": "fluency",
+      "raw_value": 1.0,
+      "unit": "per_minute",
+      "score": 95.0,
+      "weight": 0.2,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "research",
+        "source": "S12"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "fl_hedges_apologies_per_10min",
+      "category_id": "fluency",
+      "raw_value": 1.0,
+      "unit": "per_10min",
+      "score": 92.5,
+      "weight": 0.15,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "heuristic",
+        "source": "heuristic"
+      },
+      "target_band": null,
+      "details": {}
+    },
+    {
+      "id": "fl_repetitions_restarts_per_min",
+      "category_id": "fluency",
+      "raw_value": 0.2,
+      "unit": "per_minute",
+      "score": 97.0,
+      "weight": 0.15,
+      "confidence": 0.3,
+      "included": false,
+      "basis": {
+        "kind": "heuristic",
+        "source": "heuristic"
+      },
+      "target_band": null,
+      "details": {}
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-0001",
+      "category_id": "fluency",
+      "metric_id": "fl_filler_sounds_per_min",
+      "t_start": 0.0,
+      "t_end": 5.0,
+      "modality": "audio",
+      "kind": "observation",
+      "text": "Measured filler-sound rate 2.00 per minute.",
+      "quote": null,
+      "seg_ids": [],
+      "measurement": {
+        "metric_id": "fl_filler_sounds_per_min",
+        "value": null
+      },
+      "confidence": 0.3,
+      "user_disputed": false
+    },
+    {
+      "id": "ev-0002",
+      "category_id": "pace_pausing",
+      "metric_id": "pp_wpm",
+      "t_start": 0.0,
+      "t_end": 10.0,
+      "modality": "audio",
+      "kind": "observation",
+      "text": "Speaking rate 145.0 words per minute.",
+      "quote": null,
+      "seg_ids": [],
+      "measurement": {
+        "metric_id": "pp_wpm",
+        "value": null
+      },
+      "confidence": 0.3,
+      "user_disputed": false
+    }
+  ],
+  "insights": {
+    "summary": "",
+    "strengths": [],
+    "weaknesses": [],
+    "opportunities": []
+  },
+  "series": {
+    "pace": "/tmp/tmpm8ppgdn6/series_pace.json",
+    "pitch": "/tmp/tmpm8ppgdn6/series_pitch.json",
+    "loudness": "/tmp/tmpm8ppgdn6/series_loudness.json",
+    "energy": "/tmp/tmpm8ppgdn6/series_energy.json"
+  },
+  "transcript_ref": "/workspace/services/analysis/tests/golden/fixtures/noisy_low_snr/transcript.json"
+}

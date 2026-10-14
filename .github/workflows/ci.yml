@@ -201,6 +201,9 @@ jobs:
           cd services/analysis
           pytest -v --tb=short
 
+      - name: Golden fixtures
+        run: python scripts/process_local.py --golden
+
   validate-config:
     name: Validate Scoring Config
     runs-on: ubuntu-latest
