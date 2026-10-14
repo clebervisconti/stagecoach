@@ -1,0 +1,114 @@
+{
+  "outline": {
+    "sections": [
+      {"title": "Introduction", "start_seg": "S0001", "end_seg": "S0004", "purpose": "Set context"},
+      {"title": "Three-Step Solution", "start_seg": "S0005", "end_seg": "S0016", "purpose": "Describe the approach"},
+      {"title": "Call to Action", "start_seg": "S0017", "end_seg": "S0024", "purpose": "Close"}
+    ],
+    "main_points": 3,
+    "signposts": [
+      {"seg_id": "S0005", "quote": "First, we identified", "type": "preview"},
+      {"seg_id": "S0006", "quote": "Second, we stripped away", "type": "transition"},
+      {"seg_id": "S0007", "quote": "And finally, we tested", "type": "transition"}
+    ],
+    "recap_seg": "S0017",
+    "outline_clarity_level": 4.5,
+    "insufficient_evidence": false
+  },
+  "message": {
+    "core_message": {
+      "text": "Simplicity creates value by removing friction",
+      "quote": "When you remove friction, you create value",
+      "seg_ids": ["S0010"],
+      "claim_type": "claim",
+      "level": 4.5,
+      "rationale": "Clear claim stated and reinforced"
+    },
+    "reinforcements": [
+      {"seg_id": "S0018", "quote": "Simplicity isn't about doing less"}
+    ],
+    "cta": {
+      "text": "Go back and ask what can we remove",
+      "seg_ids": ["S0019"],
+      "specificity_level": 4.0,
+      "rationale": "Clear action"
+    },
+    "bluf": {"present": true, "seg_id": "S0002"},
+    "insufficient_evidence": false
+  },
+  "story_impact": {
+    "stories": [
+      {
+        "start_seg": "S0008",
+        "end_seg": "S0009",
+        "character": "Sarah, enterprise customer",
+        "conflict": "Spending 20 minutes per campaign",
+        "resolution": "New design reduced time to 2 minutes",
+        "point": "Simplicity reduces friction",
+        "tied_to_message": true
+      }
+    ],
+    "contrasts": [
+      {"seg_id": "S0003", "quote": "Too many features vs doing one thing well"}
+    ],
+    "clt_instances": [
+      {"type": "rhetorical_question", "seg_id": "S0004", "quote": "What if we focused on one thing?"},
+      {"type": "three_part_list", "seg_id": "S0017", "quote": "Focus. Remove. Test."}
+    ],
+    "success_profile": {
+      "simple_level": 5.0,
+      "unexpected_level": 3.5,
+      "concrete_level": 4.5,
+      "credible_level": 4.0,
+      "emotional_level": 3.5,
+      "stories_level": 4.0,
+      "rationale": "Concrete examples and data"
+    },
+    "memorable_moment": {
+      "seg_id": "S0012",
+      "quote": "3.2 to 4.7 out of 5",
+      "why_memorable": "Quantified improvement"
+    },
+    "insufficient_evidence": false
+  },
+  "audience_clarity": {
+    "jargon": [{"term": "net promoter score", "first_seg": "S0013", "defined": false}],
+    "speaker_centric_phrases": [],
+    "claims": [
+      {"seg_id": "S0011", "claim": "Support tickets dropped by 60%", "support_type": "data"}
+    ],
+    "redundancy_spans": [],
+    "vagueness": [],
+    "audience_fit_level": 4.0,
+    "clarity_level": 4.5,
+    "rationale": "Clear language",
+    "insufficient_evidence": false
+  },
+  "open_close": {
+    "opening": {
+      "hook_type": "question",
+      "hook_level": 4.0,
+      "value_preview_level": 4.5,
+      "throat_clearing_end_seg": null,
+      "rationale": "Sets the problem"
+    },
+    "closing": {
+      "ending_type": "cta",
+      "message_restated": true,
+      "cta_clear": true,
+      "fades_out": false,
+      "closing_level": 4.5,
+      "rationale": "Strong close"
+    },
+    "insufficient_evidence": false
+  },
+  "fluency_disambig": {"disambiguations": []},
+  "qa": {"pairs": [], "insufficient_evidence": true},
+  "prompt_versions": {
+    "outline_v1": "1.0.0",
+    "message_v1": "1.0.0",
+    "story_impact_v1": "1.0.0",
+    "audience_clarity_v1": "1.0.0",
+    "open_close_v1": "1.0.0"
+  }
+}

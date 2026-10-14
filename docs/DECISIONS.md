@@ -1059,3 +1059,40 @@ Issue #25 requires pace, vocal-variety, fluency, and time-management sub-metrics
 - ✅ Units stay in lockstep with scoring.yaml via a dedicated unit-match test
 - ⚠️ `fl_grammar_llm` stays N/A until the content-LLM stage supplies a level
 
+---
+
+## ADR-017: Fusion scores only existing artifacts; missing categories are N/A
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Issue #30 requires `fusion_scoring` and `report` for categories 1–7, 9–11, and 15 (audio/text). Video categories and any metric without an existing input must not be invented. `scoring.yaml` v1.0.0 is the only source of curves, weights, and names.
+
+### Decision
+
+- Fusion reads `metrics.json`, `audio_metrics.json`, `transcript.json`, and `content.json` when present. It never synthesizes a raw value that those files do not contain.
+- Categories 8, 12–14 are always N/A in this phase, with an explicit reason.
+- Categories 1–7 are N/A unless `content.json` exists and min-evidence rules pass.
+- Coach text is a facts-only template (`coach_text` in the report stage). Every number in prose is checked against the facts payload. No emotion terms.
+- Drill IDs come from `packages/scoring-config/v1.0.0/drill_rules.yaml` (SPEC §7.8 excerpt).
+- Result tables (`transcripts`, `metric_values`, `category_scores`, `overall_scores`, `evidence_items`, `insights`) persist scores when `job_id` is a UUID.
+- Context-specific curves that omit the current context reuse an existing published curve (keynote, else the first listed). That is not a new curve.
+
+### Alternatives Considered
+
+1. **Call content_llm inside fusion when content.json is missing**  
+   - ❌ Invents a live LLM dependency for scoring; smoke has no API key
+
+2. **Keep `mvp_report.py` as the production report**  
+   - ❌ Inline curves; does not validate `analysis_result.v1.json`
+
+### Consequences
+
+- ✅ Honest partial reports on the 3-second CI fixture
+- ✅ Schema-valid `analysis_result.json` / `report.json` with provenance
+- ⚠️ Category 15 is often N/A until intensity-trajectory fields exist in `audio_metrics.json`
+- 📌 Do not add emotion labels to coach text (enforced in tests)
+

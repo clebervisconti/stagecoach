@@ -1,0 +1,26 @@
+# Drill attachment rules (SPEC §7.8 excerpt).
+# Evaluated against computed raw metric values. Never invents scores.
+version: "1.0.0"
+rules:
+  - when: {metric: fl_filler_sounds_per_min, op: ">", value: 5}
+    drills: [pause_instead_of_um, two_min_impromptu_count]
+  - when: {metric: tm_pct_of_slot, op: ">", value: 1.0}
+    drills: [cut_list_rehearsal, checkpoint_rehearsal]
+  - when: {metric: va_reading_ratio, op: ">", value: 0.3}
+    drills: [assertion_titles_rewrite, five_word_cue_card]
+  - when: {metric: vv_monotone_windows_ratio, op: ">", value: 0.25}
+    drills: [three_readings, stress_shift]
+  - when: {metric: ec_audience_facing_ratio, op: "<", value: 0.6}
+    drills: [one_thought_one_person, lens_sticker]
+  - when: {metric: pp_rush_index, op: ">", value: 1.15}
+    drills: [last20_checkpoints]
+  - when: {metric: sto_story_quality, op: "<", value: 3}
+    drills: [story_60s]
+  - when: {metric: cl_bluf, op: "==", value: later}
+    drills: [bluf_rewrite]
+  - when: {metric: oc_hook_quality, op: "<", value: 3}
+    drills: [hook_x3]
+  - when: {metric: ep_key_moment_lift, op: "<", value: 0}
+    drills: [energy_ladder]
+  - when: {metric: qa_answer_first_ratio, op: "<", value: 0.5}
+    drills: [wsn_answers]
