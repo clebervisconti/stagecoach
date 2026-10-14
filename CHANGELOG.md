@@ -32,6 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Redis token-bucket rate limits on `/api/v1` (per user and per IP)
 - Smoke: `GET /report` returns the synthetic fixture `report.json`
 
+##### Added - Session hard delete + audit (issue #34)
+- `DELETE /sessions/{id}` removes `MEDIA_ROOT/{session_id}` files, the object-store prefix when MinIO is reachable, and CASCADE DB rows (session, assets, jobs, steps, scores, evidence, insights, transcripts)
+- Writes `audit_log` `session.delete` with object count and row counts only (no title, transcript, quote, or storage URIs)
+- Writes `deletion_requests` proof with remaining counts; HTTP 500 if anything is left
+- Search index is not deployed in Phase 1, so there are no index entries to remove
+- Unit tests cover leftover files, prefix isolation, and content-key rejection; smoke plants files under the session dir (never `smoke-fixture`) and asserts 204 then 404
+
 ##### Added - Audio-features stage
 - `audio_features` stage (issue #24, SPEC §6.4) writing `prosody.parquet` (10 ms), `pauses.json`, `syllables.json`, `audio_metrics.json`
 - Two-pass Praat F0 with speaker-adaptive floor/ceiling and octave-jump removal

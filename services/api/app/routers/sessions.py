@@ -4,7 +4,6 @@ import hashlib
 import hmac
 import json
 import os
-import shutil
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -18,11 +17,29 @@ from celery import Celery
 from app.auth import get_current_user, get_optional_user
 from app.auth import jwt as auth_jwt
 from app.database import get_db
+from app.deletion import (
+    assert_no_content,
+    audit_details,
+    build_object_store,
+    count_files,
+    delete_local_prefix,
+    ip_hash,
+    local_session_dir,
+    session_object_prefix,
+)
 from app.models.analysis_job import AnalysisJob
+from app.models.audit_log import AuditLog
+from app.models.category_score import CategoryScore
+from app.models.deletion_request import DeletionRequest
+from app.models.evidence_item import EvidenceItem
+from app.models.insight import Insight
 from app.models.job_step import JobStep
 from app.models.user import User
 from app.models.session import Session as SessionModel
 from app.models.media_asset import MediaAsset
+from app.models.metric_value import MetricValue
+from app.models.overall_score import OverallScore
+from app.models.transcript import Transcript
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -568,19 +585,129 @@ async def get_playback_media(
     )
 
 
+def _session_row_counts(db: Session, session: SessionModel) -> tuple[dict[str, int], list]:
+    jobs = db.query(AnalysisJob).filter(AnalysisJob.session_id == session.id).all()
+    job_ids = [job.id for job in jobs]
+    counts = {
+        "sessions": 1,
+        "media_assets": db.query(MediaAsset).filter(MediaAsset.session_id == session.id).count(),
+        "analysis_jobs": len(jobs),
+        "job_steps": 0,
+        "transcripts": 0,
+        "metric_values": 0,
+        "category_scores": 0,
+        "overall_scores": 0,
+        "evidence_items": 0,
+        "insights": 0,
+    }
+    if job_ids:
+        counts["job_steps"] = db.query(JobStep).filter(JobStep.job_id.in_(job_ids)).count()
+        counts["transcripts"] = db.query(Transcript).filter(Transcript.job_id.in_(job_ids)).count()
+        counts["metric_values"] = db.query(MetricValue).filter(MetricValue.job_id.in_(job_ids)).count()
+        counts["category_scores"] = db.query(CategoryScore).filter(CategoryScore.job_id.in_(job_ids)).count()
+        counts["overall_scores"] = db.query(OverallScore).filter(OverallScore.job_id.in_(job_ids)).count()
+        counts["evidence_items"] = db.query(EvidenceItem).filter(EvidenceItem.job_id.in_(job_ids)).count()
+        counts["insights"] = db.query(Insight).filter(Insight.job_id.in_(job_ids)).count()
+    return counts, job_ids
+
+
+def _remaining_session_rows(db: Session, session_id, job_ids: list) -> dict[str, int]:
+    remaining = {
+        "sessions": db.query(SessionModel).filter(SessionModel.id == session_id).count(),
+        "media_assets": db.query(MediaAsset).filter(MediaAsset.session_id == session_id).count(),
+        "analysis_jobs": db.query(AnalysisJob).filter(AnalysisJob.session_id == session_id).count(),
+        "job_steps": 0,
+        "transcripts": 0,
+        "metric_values": 0,
+        "category_scores": 0,
+        "overall_scores": 0,
+        "evidence_items": 0,
+        "insights": 0,
+    }
+    if job_ids:
+        remaining["job_steps"] = db.query(JobStep).filter(JobStep.job_id.in_(job_ids)).count()
+        remaining["transcripts"] = db.query(Transcript).filter(Transcript.job_id.in_(job_ids)).count()
+        remaining["metric_values"] = db.query(MetricValue).filter(MetricValue.job_id.in_(job_ids)).count()
+        remaining["category_scores"] = db.query(CategoryScore).filter(CategoryScore.job_id.in_(job_ids)).count()
+        remaining["overall_scores"] = db.query(OverallScore).filter(OverallScore.job_id.in_(job_ids)).count()
+        remaining["evidence_items"] = db.query(EvidenceItem).filter(EvidenceItem.job_id.in_(job_ids)).count()
+        remaining["insights"] = db.query(Insight).filter(Insight.job_id.in_(job_ids)).count()
+    return remaining
+
+
 @router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_session(
     session_id: str,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Hard-delete owned DB rows and every file below this session's private root."""
+    """Hard-delete objects, derived artifacts, and DB rows; write a content-free audit."""
     session = _owned_session(session_id, current_user, db)
-    session_dir = (MEDIA_ROOT / str(session.id)).resolve()
-    if not session_dir.is_relative_to(MEDIA_ROOT) or session_dir == MEDIA_ROOT:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session path")
+    session_uuid = session.id
+    session_id_str = str(session_uuid)
+    try:
+        session_dir = local_session_dir(MEDIA_ROOT, session_uuid)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session path") from exc
+
+    prefix = session_object_prefix(current_user.id, session_uuid)
+    store = build_object_store()
+    db_rows, job_ids = _session_row_counts(db, session)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    request_row = DeletionRequest(
+        user_id=current_user.id,
+        scope="session",
+        requested_at=now,
+        verification={},
+    )
+    db.add(request_row)
+    db.flush()
+
+    local_deleted = delete_local_prefix(session_dir, MEDIA_ROOT)
+    remote_deleted = store.delete_prefix(prefix)
+    object_count = local_deleted + remote_deleted
+
     db.delete(session)
+    db.flush()
+    db.expire_all()
+
+    remaining_local = count_files(session_dir)
+    remaining_remote = store.remaining(prefix)
+    db_left = _remaining_session_rows(db, session_uuid, job_ids)
+    db_remaining = sum(db_left.values())
+    verification = {
+        "object_count": object_count,
+        "local_remaining": remaining_local,
+        "object_store_remaining": remaining_remote,
+        "db_remaining": db_remaining,
+        "db_rows": db_rows,
+        "db_left": db_left,
+        "search_index": "not_deployed",
+    }
+    assert_no_content(verification)
+    request_row.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    request_row.verification = verification
+    details = audit_details(
+        object_count=object_count,
+        db_rows=db_rows,
+        prefixes=["local", "object_store"],
+    )
+    db.add(
+        AuditLog(
+            actor_id=current_user.id,
+            action="session.delete",
+            target_type="session",
+            target_id=session_id_str,
+            at=datetime.now(timezone.utc).replace(tzinfo=None),
+            ip_hash=ip_hash(request.client.host if request.client else None),
+            details=details,
+        )
+    )
     db.commit()
-    if session_dir.exists():
-        shutil.rmtree(session_dir)
+    if remaining_local or remaining_remote or db_remaining:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Session delete left remaining artifacts",
+        )
     return None
