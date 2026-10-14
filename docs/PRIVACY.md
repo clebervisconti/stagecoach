@@ -42,6 +42,7 @@ Per §10 of SPEC:
 - Policy texts (en, pt-BR) live in `packages/consent/v1.json`; `consents.version` is the SHA-256 of that file.
 - Expression analysis and detailed tracking are off by default. Vision stages do not run without `video_analysis`. Facial movement metrics additionally require `expression_analysis`. Raw landmarks are kept only with `keep_detailed_tracking`.
 - Pose/face per-second aggregates are the storage specified in SPEC §5.4 / §10.1. Raw frames are not stored as vision features.
+- Issue #38 writes those aggregates as AES-256-GCM files (`STAGECOACH_ARTIFACT_KEY`). Raw landmark arrays are dropped after extraction unless `keep_detailed_tracking`.
 
 ## Compliance
 

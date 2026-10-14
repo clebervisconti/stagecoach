@@ -47,4 +47,4 @@ pytest tests/golden/  # Golden-file tests
 
 - Phase 0: Package structure only
 - Phase 1: Ingest, ASR, content LLM, and audio features (`prosody.parquet` / pauses / syllables)
-- Phase 2: Vision pipeline
+- Phase 2: Vision pipeline (`pose.parquet` / `face.parquet`, CPU MediaPipe, consent-gated)

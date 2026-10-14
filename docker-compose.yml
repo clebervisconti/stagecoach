@@ -95,6 +95,8 @@ services:
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://stagecoach:${POSTGRES_PASSWORD}@postgres:5432/stagecoach
       MEDIA_ROOT: /data/stagecoach
+      STAGECOACH_ARTIFACT_KEY: ${STAGECOACH_ARTIFACT_KEY:-}
+      MEDIAPIPE_MODELS_DIR: /models
     depends_on:
       postgres:
         condition: service_healthy

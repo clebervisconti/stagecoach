@@ -240,6 +240,50 @@ def ingest_task(self, input_path: str, output_dir: str, session_id: str, job_id:
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
 
 
+@app.task(name="tasks.vision", bind=True, max_retries=3)
+def vision_task(
+    self,
+    ingest_result: dict,
+    output_dir: str,
+    session_id: str,
+    consents: Optional[dict] = None,
+    job_id: Optional[str] = None,
+):
+    """Vision stage: CPU MediaPipe pose/hands/face (issue #38). Consent-gated."""
+    from pipeline.consent import persist_consent_snapshot, run_vision_if_allowed
+    from pipeline.stages.vision import run_vision_stage
+
+    logger = logging.getLogger(__name__)
+    dest = Path(output_dir)
+    snapshot = persist_consent_snapshot(dest, consents)
+    artifacts = (ingest_result or {}).get("artifacts") or {}
+    proxy = artifacts.get("analysis") or str(dest / "analysis.mp4")
+
+    def runner(decision):
+        return run_vision_stage(
+            output_dir=dest,
+            session_id=session_id,
+            decision=decision,
+            video_path=Path(proxy) if proxy else None,
+        ).to_dict()
+
+    if job_id:
+        emit_progress(job_id, "vision", "running", pct=0, message="Tracking pose and face landmarks")
+    try:
+        gate = run_vision_if_allowed(snapshot, runner)
+        payload = gate.get("result") or gate
+        status = "skipped" if gate["status"] == "skipped" or payload.get("skipped") else "succeeded"
+        if job_id:
+            emit_progress(job_id, "vision", status, pct=100, message="Vision stage finished")
+        logger.info("vision task %s for %s", status, session_id)
+        return payload
+    except Exception as exc:
+        logger.error("vision failed for %s: %s", session_id, exc)
+        if job_id:
+            emit_progress(job_id, "vision", "failed", message=str(exc)[:200])
+        raise self.retry(exc=exc, countdown=4 ** self.request.retries)
+
+
 @app.task(name="tasks.asr", bind=True, max_retries=3)
 def asr_task(
     self,
@@ -599,8 +643,9 @@ def run_mvp_analysis_task(
 
     try:
         snapshot = persist_consent_snapshot(destination, consents)
-        vision_gate = run_vision_if_allowed(snapshot, runner=None)
-        if vision_gate["status"] == "skipped":
+        vision_decision_early = run_vision_if_allowed(snapshot, runner=None)
+        skip_vision_now = vision_decision_early["status"] == "skipped"
+        if skip_vision_now:
             started = datetime.utcnow()
             emit_progress(
                 job_id,
@@ -615,7 +660,7 @@ def run_mvp_analysis_task(
                 status="skipped",
                 started_at=started,
                 metrics={
-                    "reason": vision_gate["reason"],
+                    "reason": vision_decision_early["reason"],
                     "run_pose": False,
                     "run_expression_metrics": False,
                     "keep_raw_landmarks": False,
@@ -635,6 +680,68 @@ def run_mvp_analysis_task(
             metrics=ingest_dict["media_info"],
         )
         emit_progress(job_id, "ingest", "succeeded", pct=25, message="Media prepared")
+
+        if not skip_vision_now:
+            from pipeline.consent import decide_vision
+            from pipeline.stages.vision import run_vision_stage
+
+            started = datetime.utcnow()
+            emit_progress(
+                job_id,
+                "vision",
+                "running",
+                pct=26,
+                message="Tracking pose and face landmarks",
+            )
+            try:
+
+                def _vision_runner(decision):
+                    proxy = destination / "analysis.mp4"
+                    return run_vision_stage(
+                        output_dir=destination,
+                        session_id=session_id,
+                        decision=decision,
+                        video_path=proxy if proxy.exists() else None,
+                    ).to_dict()
+
+                vision_gate = run_vision_if_allowed(snapshot, _vision_runner)
+                vision_result = vision_gate.get("result") or {}
+                vision_status = (
+                    "skipped"
+                    if vision_result.get("skipped") or vision_gate["status"] == "skipped"
+                    else "succeeded"
+                )
+                _record_job_step(
+                    job_id=job_id,
+                    stage="vision",
+                    status=vision_status,
+                    started_at=started,
+                    outputs=vision_result.get("artifacts"),
+                    metrics=vision_result.get("metrics")
+                    or {
+                        "reason": vision_result.get("skip_reason") or vision_gate.get("reason"),
+                        "run_pose": decide_vision(snapshot).run_pose,
+                    },
+                )
+                emit_progress(
+                    job_id,
+                    "vision",
+                    vision_status,
+                    pct=29,
+                    message="Vision aggregates ready"
+                    if vision_status == "succeeded"
+                    else "Vision skipped (no video stream)",
+                )
+            except Exception as vis_exc:
+                logger.exception("vision failed session=%s; continuing audio/text", session_id)
+                _record_job_step(
+                    job_id=job_id,
+                    stage="vision",
+                    status="failed",
+                    started_at=started,
+                    error={"type": type(vis_exc).__name__, "message": str(vis_exc)[:200]},
+                )
+                emit_progress(job_id, "vision", "failed", pct=29, message="Vision failed; audio/text continue")
 
         started = datetime.utcnow()
         emit_progress(job_id, "asr", "running", pct=30, message="Transcribing speech")

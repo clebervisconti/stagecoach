@@ -1,0 +1,61 @@
+{
+  "updated": "2026-10-14",
+  "openface_used": false,
+  "emotion_inference": false,
+  "cpu_only": true,
+  "models": [
+    {
+      "component": "vision_pose",
+      "model_name": "pose_landmarker_full",
+      "version": "float16/1",
+      "filename": "pose_landmarker_full.task",
+      "url": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+      "sha256": "5134a3aad27a58b93da0088d431f366da362b44e3ccfbe3462b3827a839011b1",
+      "license": "Apache-2.0",
+      "delegate": "CPU",
+      "license_evidence": "Google maintainer schmidt-sebastian, mediapipe#6306 (2026-06-10): pose_landmarker_full/float16/1 .task is Apache 2. Repo LICENSE Apache-2.0 fetched 2026-10-14 from github.com/google-ai-edge/mediapipe."
+    },
+    {
+      "component": "vision_hands",
+      "model_name": "hand_landmarker",
+      "version": "float16/1",
+      "filename": "hand_landmarker.task",
+      "url": "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+      "sha256": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+      "license": "Apache-2.0",
+      "delegate": "CPU",
+      "license_evidence": "schmidt-sebastian, mediapipe#6355 (2026-10-05): source and models Apache2 unless otherwise noted. Hand Landmarker page does not note a different license."
+    },
+    {
+      "component": "vision_face",
+      "model_name": "face_landmarker",
+      "version": "float16/1",
+      "filename": "face_landmarker.task",
+      "url": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+      "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+      "license": "Apache-2.0",
+      "delegate": "CPU",
+      "model_card": "https://storage.googleapis.com/mediapipe-assets/Model%20Card%20Blendshape%20V2.pdf",
+      "license_evidence": "schmidt-sebastian, mediapipe#6355 (2026-10-05): models Apache2 unless noted. Blendshape scores stored as numbers only; no emotion classifier."
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "mediapipe",
+      "version": "0.10.14",
+      "license": "Apache-2.0",
+      "evidence": "PyPI classifiers License :: OSI Approved :: Apache Software License; package license field Apache 2.0. github.com/google-ai-edge/mediapipe LICENSE fetched 2026-10-14."
+    },
+    {
+      "name": "cryptography",
+      "version": "43.0.3",
+      "license": "Apache-2.0 OR BSD-3-Clause",
+      "evidence": "https://github.com/pyca/cryptography/blob/main/LICENSE"
+    },
+    {
+      "name": "scipy",
+      "license": "BSD-3-Clause",
+      "evidence": "https://github.com/scipy/scipy/blob/main/LICENSE.txt; already a librosa transitive dependency, pinned for Savitzky-Golay"
+    }
+  ]
+}

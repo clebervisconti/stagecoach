@@ -83,4 +83,6 @@ dist/
 temp/
 tmp/
 .cache/
+*.task
+services/analysis/models/weights/
 tests/fixtures/llm_cassettes/*.json

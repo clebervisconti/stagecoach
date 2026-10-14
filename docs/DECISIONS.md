@@ -1352,7 +1352,60 @@ The SPEC already defines the storage: per-second aggregates; raw landmarks disca
 
 ---
 
+## ADR-025: CPU MediaPipe Tasks for pose/hands/face; OpenFace excluded
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 2
+
+### Context
+
+Issue #38 / SPEC §6.5 requires pose every frame on the 15 fps analysis proxy, face and hands at 10 fps, primary-person IoU tracking, One-Euro or Savitzky-Golay smoothing, and per-second `pose.parquet` / `face.parquet`. OpenFace 2.0 is non-commercial academic research only [S39]. Emotion inference is forbidden. MediaPipe models were marked "not re-checked" in §6.9.
+
+Licenses re-checked 2026-10-14:
+- `github.com/google-ai-edge/mediapipe` LICENSE: Apache-2.0 (fetched).
+- PyPI `mediapipe` 0.10.14 (Tasks VIDEO API; Apache 2.0). Transitive jax/opencv-contrib are unused; inference uses the CPU Tasks landmarker only.
+- `pose_landmarker_full/float16/1/*.task`: Apache 2, Google maintainer on mediapipe#6306 (2026-06-10).
+- Face and hand `.task` bundles: maintainer on mediapipe#6355 (2026-10-05): "Our source and the models (unless otherwise noted) are licensed under Apache2." Face/Hand Landmarker pages do not note a different license.
+- SHA-256 of the three float16/1 files recorded in `services/analysis/models/model_registry.json` after download on 2026-10-14.
+- New deps: `cryptography` (Apache-2.0 OR BSD-3-Clause) for AES-GCM; `scipy` (BSD-3-Clause) for Savitzky-Golay (already a librosa transitive).
+
+### Decision
+
+- Use MediaPipe Tasks Python **VIDEO** mode on **CPU only** (`BaseOptions.Delegate.CPU`). Pose Landmarker *full*, Hand Landmarker, Face Landmarker with blendshapes and transformation matrices enabled.
+- Do not import or depend on OpenFace.
+- Primary person: greedy IoU tracker; score = bbox area × centrality × persistence.
+- Smooth with One-Euro per landmark coordinate, then Savitzky-Golay (window 5, poly 2) before velocities.
+- Write per-second aggregates. Encrypt pose/face (and optional raw landmarks) with AES-256-GCM (`STAGECOACH_ARTIFACT_KEY`). Discard raw landmarks unless `keep_detailed_tracking`. Never store RGB frames as vision features.
+- Blendshape *subset* columns are stored only with `expression_analysis`. `eyeLook*` scores are gaze geometry, not emotion labels. No classifier, no affect words in artifacts.
+- Record models in `model_registry` (JSON + Postgres table). Delegate stays CPU.
+
+### Alternatives Considered
+
+1. **OpenFace 2.0**  
+   - ❌ Non-commercial academic license [S39]; issue AC forbids it
+
+2. **GPU MediaPipe / Heavy pose**  
+   - ❌ ADR-008 CPU-only; SPEC asks to benchmark CPU in Phase 2
+
+3. **L2CS-Net gaze**  
+   - ❌ Optional in §6.5; pretrained-weight training-data terms not re-checked here
+
+4. **Store plaintext parquet on disk and rely only on SSE-S3**  
+   - ❌ Local `MEDIA_ROOT` is not object storage; §10.1 says pose/face aggregates are encrypted
+
+### Consequences
+
+- ✅ Commercially usable Apache-2.0 models with recorded SHAs
+- ✅ Consent gate from ADR-024 still the only way into this stage
+- ⚠️ First vision run downloads ~20 MB of `.task` files and verifies SHA-256
+- 📌 Category 14 scoring and smile/flat-face *events* are issue #39 / #42, not this stage
+- 📌 Benchmark wall time on a 10-minute clip remains unmeasured until recorded
+
+---
+
 ## Change Log (continued)
 
+- **2026-10-14**: ADR-025 (Phase 2: CPU MediaPipe vision stage, issue #38)
 - **2026-10-14**: ADR-024 (Phase 2: consent UI and vision gate, issue #37)
 
