@@ -195,7 +195,11 @@ jobs:
             libgl1 \
             libsm6 \
             libxext6 \
-            libxrender1
+            libxrender1 \
+            tesseract-ocr \
+            tesseract-ocr-eng \
+            tesseract-ocr-por \
+            poppler-utils
       
       - name: Install Python dependencies
         run: |
@@ -990,6 +994,7 @@ jobs:
           echo "  - model_registry table seeded with MediaPipe pose/hands/face (Apache-2.0)"
           echo "  - vision_events.json / vision_quality.json when video_analysis is granted"
           echo "  - category 14 (facial_affect) only when expression_analysis is granted; no emotion labels"
+          echo "  - slides stage: PySceneDetect (BSD), keyframes, python-pptx/pdftotext, Tesseract OCR; deck antivirus in sandbox"
           echo ""
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"

@@ -224,6 +224,9 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
     if (method === "POST" && path === `/sessions/${SESSION_ID}/upload`) {
       return json(route, { id: SESSION_ID, status: "processing" });
     }
+    if (method === "POST" && path === `/sessions/${SESSION_ID}/deck`) {
+      return json(route, { session_id: SESSION_ID, kind: "pptx", bytes: 0 }, 201);
+    }
     if (method === "GET" && path === `/sessions/${SESSION_ID}`) {
       if (!firstSessionGet) firstSessionGet = Date.now();
       return json(route, session());

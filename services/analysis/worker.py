@@ -286,6 +286,56 @@ def vision_task(
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
 
 
+@app.task(name="tasks.slides", bind=True, max_retries=3)
+def slides_task(
+    self,
+    output_dir: str,
+    session_id: str,
+    video_path: Optional[str] = None,
+    deck_path: Optional[str] = None,
+    camera_setup: str = "unknown",
+    language: str = "en",
+    is_screen_recording: bool = False,
+    is_audio_only: bool = False,
+    job_id: Optional[str] = None,
+):
+    """Slides stage: PySceneDetect, keyframes, deck text, OCR, matching (issue #43)."""
+    from pipeline.stages.slides import run_slides_stage
+
+    logger = logging.getLogger(__name__)
+    dest = Path(output_dir)
+    transcript = None
+    tpath = dest / "transcript.json"
+    if tpath.exists():
+        try:
+            transcript = json.loads(tpath.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            transcript = None
+    if job_id:
+        emit_progress(job_id, "slides", "running", pct=0, message="Detecting slides")
+    try:
+        result = run_slides_stage(
+            output_dir=dest,
+            session_id=session_id,
+            video_path=Path(video_path) if video_path else None,
+            deck_path=Path(deck_path) if deck_path else None,
+            camera_setup=camera_setup,
+            language=language,
+            transcript=transcript,
+            is_screen_recording=is_screen_recording,
+            is_audio_only=is_audio_only,
+        )
+        status = "skipped" if result.skipped else "succeeded"
+        if job_id:
+            emit_progress(job_id, "slides", status, pct=100, message=result.skip_reason or "Slides ready")
+        return result.to_dict()
+    except Exception as exc:
+        logger.error("slides failed for %s: %s", session_id, type(exc).__name__)
+        if job_id:
+            emit_progress(job_id, "slides", "failed", message=str(exc)[:200])
+        raise self.retry(exc=exc, countdown=4 ** self.request.retries)
+
+
 @app.task(name="tasks.asr", bind=True, max_retries=3)
 def asr_task(
     self,
@@ -813,9 +863,55 @@ def run_mvp_analysis_task(
             job_id,
             "audio_features",
             "succeeded",
-            pct=85,
+            pct=82,
             message="Audio measurements ready",
         )
+
+        from pipeline.stages.slides import find_deck_path, run_slides_stage
+
+        started = datetime.utcnow()
+        emit_progress(job_id, "slides", "running", pct=84, message="Detecting slides")
+        try:
+            proxy = ingest_dict.get("artifacts", {}).get("analysis")
+            modality = ingest_dict.get("modality") or {}
+            slides_out = run_slides_stage(
+                output_dir=destination,
+                session_id=session_id,
+                video_path=Path(proxy) if proxy else destination / "analysis.mp4",
+                deck_path=find_deck_path(destination),
+                camera_setup=camera_setup if camera_setup else "unknown",
+                language=language,
+                transcript=json.loads(transcript_path.read_text()) if transcript_path.exists() else None,
+                is_screen_recording=bool(modality.get("is_screen_recording"))
+                or camera_setup == "screen_recording",
+                is_audio_only=bool(modality.get("is_audio_only")) or camera_setup == "audio_only",
+            )
+            slides_status = "skipped" if slides_out.skipped else "succeeded"
+            _record_job_step(
+                job_id=job_id,
+                stage="slides",
+                status=slides_status,
+                started_at=started,
+                outputs=slides_out.artifacts,
+                metrics=slides_out.metrics,
+            )
+            emit_progress(
+                job_id,
+                "slides",
+                slides_status,
+                pct=87,
+                message=slides_out.skip_reason or "Slides ready",
+            )
+        except Exception as slides_exc:
+            logger.exception("slides failed session=%s; continuing", session_id)
+            _record_job_step(
+                job_id=job_id,
+                stage="slides",
+                status="failed",
+                started_at=started,
+                error={"type": type(slides_exc).__name__, "message": str(slides_exc)[:200]},
+            )
+            emit_progress(job_id, "slides", "failed", pct=87, message="Slides failed; scoring continues")
 
         started = datetime.utcnow()
         emit_progress(job_id, "fusion_scoring", "running", pct=88, message="Scoring from measured signals")

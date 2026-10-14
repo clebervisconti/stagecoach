@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Slides stage: PySceneDetect, keyframes, deck, OCR (issue #43)
+- Slide region: full frame for screen recordings; stage uses a bright low-motion quadrilateral (H)
+- Scene changes via PySceneDetect ContentDetector (BSD-3-Clause); merge gaps under 2 s; ffmpeg scene fallback
+- Keyframe is the sharpest frame (Laplacian variance) in the first half of each segment
+- python-pptx / pdftotext for uploaded decks; Tesseract `eng`/`por` otherwise (PaddleOCR not used)
+- Video slides matched to deck pages with TF-IDF cosine or average-hash when OCR is sparse
+- Sandbox antivirus: magic bytes, zip-bomb/macro/JS checks; ClamAV if `clamscan` is on PATH
+- `POST /sessions/{id}/deck` stores PPTX/PDF beside the session; audio-only with no deck stays empty
+
 ##### Added - Category 14 facial expressiveness signals, opt-in (issue #42, D8)
 - `facial_affect` is scored only when `expression_analysis` is granted (off by default)
 - Metrics from MediaPipe blendshapes: smile presence, expressivity index, expression variety

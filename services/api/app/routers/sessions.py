@@ -28,6 +28,13 @@ from app.deletion import (
     session_object_prefix,
 )
 from app.consents.store import snapshot_for_user
+from app.deck_safety import (
+    ALLOWED_DECK_CONTENT_TYPES,
+    ALLOWED_DECK_EXTENSIONS,
+    MAX_DECK_BYTES,
+    DeckRejected,
+    scan_deck_bytes,
+)
 from app.models.analysis_job import AnalysisJob
 from app.models.audit_log import AuditLog
 from app.models.category_score import CategoryScore
@@ -430,6 +437,74 @@ async def upload_and_analyze(
     session.status = "processing"
     db.commit()
     return {"session_id": str(session.id), "job_id": str(job.id), "status": "processing"}
+
+
+@router.post("/{session_id}/deck", status_code=status.HTTP_201_CREATED)
+async def attach_deck(
+    session_id: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Attach a PPTX/PDF deck. Worker sandbox repeats the antivirus scan (issue #43)."""
+    session = _owned_session(session_id, current_user, db)
+    original_name = file.filename or "deck"
+    extension = Path(original_name).suffix.casefold()
+    if extension not in ALLOWED_DECK_EXTENSIONS:
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Deck must be .pptx or .pdf")
+    if file.content_type and file.content_type.casefold() not in ALLOWED_DECK_CONTENT_TYPES:
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Unsupported deck content type")
+
+    session_dir = (MEDIA_ROOT / str(session.id)).resolve()
+    if not session_dir.is_relative_to(MEDIA_ROOT):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid session path")
+    session_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+
+    digest = hashlib.sha256()
+    chunks: list[bytes] = []
+    total = 0
+    try:
+        while chunk := await file.read(1024 * 1024):
+            total += len(chunk)
+            if total > MAX_DECK_BYTES:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail="Deck exceeds the 50 MB limit",
+                )
+            digest.update(chunk)
+            chunks.append(chunk)
+    finally:
+        await file.close()
+    data = b"".join(chunks)
+    try:
+        kind = scan_deck_bytes(data, original_name)
+    except DeckRejected as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    stored_path = session_dir / f"deck.{kind}"
+    stored_path.write_bytes(data)
+    stored_path.chmod(0o600)
+
+    retention_until = datetime.utcnow() + timedelta(days=DEFAULT_RETENTION_DAYS)
+    asset = MediaAsset(
+        session_id=session.id,
+        kind="deck",
+        storage_uri=str(stored_path),
+        bytes=total,
+        sha256=digest.hexdigest(),
+        retention_until=retention_until,
+        codec_info={"content_type": file.content_type, "extension": f".{kind}", "filename": original_name},
+    )
+    db.add(asset)
+    db.commit()
+    db.refresh(asset)
+    return {
+        "session_id": str(session.id),
+        "deck_asset_id": str(asset.id),
+        "kind": kind,
+        "bytes": total,
+        "sha256": digest.hexdigest(),
+    }
 
 
 @router.get("/{session_id}/report")
