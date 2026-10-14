@@ -452,8 +452,45 @@ jobs:
               assert metrics_data["metrics"]["pp_wpm"]["unit"] == "words_per_minute"
               assert metrics_data["metrics"]["vv_pvq_median"]["unit"] == "ratio"
               print(f"✅ audio_features + metrics persisted: {metrics_path}")
+
+              # Fusion + report (issue #30)
+              fusion = app.send_task(
+                  "tasks.fusion_scoring",
+                  kwargs={
+                      "output_dir": str(output_dir),
+                      "session_id": "00000000-0000-4000-8000-000000000099",
+                      "context_type": "keynote",
+                      "language": "en",
+                  },
+                  queue="cpu",
+              )
+              fusion_output = fusion.get(timeout=60)
+              analysis_path = output_dir / "analysis_result.json"
+              assert analysis_path.exists(), f"analysis_result.json missing at {analysis_path}"
+              assert fusion_output["provenance"]["scoring_config_version"] == "1.0.0"
+              video_na = [
+                  c for c in fusion_output["categories"]
+                  if c["id"] in ("visual_aids", "gestures_body", "eye_contact", "facial_affect")
+              ]
+              assert all(c["applicable"] is False and c["score"] is None for c in video_na)
+              report_task = app.send_task(
+                  "tasks.report",
+                  kwargs={
+                      "fusion_result": fusion_output,
+                      "output_dir": str(output_dir),
+                      "session_id": "00000000-0000-4000-8000-000000000099",
+                  },
+                  queue="cpu",
+              )
+              report_output = report_task.get(timeout=60)
+              report_path = Path(report_output["report_path"])
+              assert report_path.exists(), f"report.json missing at {report_path}"
+              report_data = json.loads(report_path.read_text())
+              assert "insights" in report_data
+              assert report_data["insights"]["summary"]
+              print(f"✅ fusion_scoring + report produced: {report_path}")
               
-          print("✅ Ingest + ASR + audio_features + metrics pipeline test passed")
+          print("✅ Ingest + ASR + audio_features + metrics + fusion + report pipeline test passed")
           EOF
       
       - name: Verify Phase 0 Acceptance Criteria
@@ -473,8 +510,8 @@ jobs:
           curl -f -s http://localhost:8000/health | python3 -m json.tool
           echo ""
           
-          echo "4. Database Tables (7 expected):"
-          docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "\dt" | grep -E "table|users|consents|sessions|media_assets|analysis_jobs|job_steps|scoring_configs"
+          echo "4. Database Tables (baseline + result tables):"
+          docker compose exec -T postgres psql -U stagecoach -d stagecoach -c "\dt" | grep -E "table|users|consents|sessions|media_assets|analysis_jobs|job_steps|scoring_configs|transcripts|metric_values|category_scores|overall_scores|evidence_items|insights"
           echo ""
           
           echo "5. Seeded Config:"

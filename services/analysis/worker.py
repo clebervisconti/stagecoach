@@ -501,6 +501,74 @@ def audio_features_task(
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
 
 
+@app.task(name="tasks.fusion_scoring", bind=True, max_retries=3)
+def fusion_scoring_task(
+    self,
+    audio_result: Optional[dict] = None,
+    output_dir: str = "",
+    session_id: str = "",
+    context_type: str = "keynote",
+    language: str = "en",
+    slot_min: Optional[int] = None,
+    job_id: Optional[str] = None,
+):
+    """Fusion + scoring from existing metrics / content artifacts (issue #30)."""
+    from pipeline.stages.fusion_scoring import run_fusion_scoring
+
+    logger = logging.getLogger(__name__)
+    dest = Path(output_dir)
+    if job_id:
+        emit_progress(job_id, "fusion_scoring", "running", pct=0, message="Scoring measured signals")
+    try:
+        result = run_fusion_scoring(
+            session_id=session_id,
+            output_dir=dest,
+            context_type=context_type,
+            language=language,
+            slot_min=slot_min,
+            packages_dir=Path("/packages"),
+        )
+        if job_id:
+            emit_progress(job_id, "fusion_scoring", "succeeded", pct=100, message="Scores ready")
+        logger.info("fusion_scoring completed for %s", session_id)
+        return result
+    except Exception as exc:
+        logger.error("fusion_scoring failed for %s: %s", session_id, exc)
+        if job_id:
+            emit_progress(job_id, "fusion_scoring", "failed", message=str(exc)[:200])
+        raise self.retry(exc=exc, countdown=4 ** self.request.retries)
+
+
+@app.task(name="tasks.report", bind=True, max_retries=3)
+def report_task(
+    self,
+    fusion_result: Optional[dict] = None,
+    output_dir: str = "",
+    session_id: str = "",
+    job_id: Optional[str] = None,
+):
+    """Report stage: facts-only coach text + report.json (issue #30)."""
+    from pipeline.persist import persist_analysis_result
+    from pipeline.stages.report import run_report_stage
+
+    logger = logging.getLogger(__name__)
+    dest = Path(output_dir)
+    if job_id:
+        emit_progress(job_id, "report", "running", pct=0, message="Writing report")
+    try:
+        report = run_report_stage(output_dir=dest, analysis=fusion_result, packages_dir=Path("/packages"))
+        if job_id:
+            persist_analysis_result(job_id=job_id, analysis=report)
+            emit_progress(job_id, "report", "succeeded", pct=100, message="Report ready")
+        logger.info("report completed for %s", session_id)
+        return {"report_path": str(dest / "report.json"), "session_id": session_id}
+    except Exception as exc:
+        logger.error("report failed for %s: %s", session_id, exc)
+        if job_id:
+            emit_progress(job_id, "report", "failed", message=str(exc)[:200])
+        raise self.retry(exc=exc, countdown=4 ** self.request.retries)
+
+
 @app.task(name="tasks.run_mvp_analysis", bind=True, max_retries=1)
 def run_mvp_analysis_task(
     self,
@@ -513,11 +581,13 @@ def run_mvp_analysis_task(
     language: str,
     slot_min: Optional[int] = None,
 ):
-    """Run the private-beta ingest → ASR → audio → partial-report pipeline."""
+    """Run ingest → ASR → audio → fusion_scoring → report (issue #30)."""
+    from pipeline.persist import persist_analysis_result
     from pipeline.stages.asr import transcribe_audio
     from pipeline.stages.audio_features import extract_audio_features
+    from pipeline.stages.fusion_scoring import run_fusion_scoring
     from pipeline.stages.ingest import ingest
-    from pipeline.stages.mvp_report import build_mvp_report
+    from pipeline.stages.report import run_report_stage
 
     logger = logging.getLogger(__name__)
     source = Path(input_path)
@@ -611,21 +681,42 @@ def run_mvp_analysis_task(
         )
 
         started = datetime.utcnow()
-        emit_progress(job_id, "report", "running", pct=90, message="Building coaching report")
+        emit_progress(job_id, "fusion_scoring", "running", pct=88, message="Scoring from measured signals")
         resolved_language = "pt-BR" if transcript.language.startswith("pt") else "en"
-        report_path = destination / "report.json"
-        report = build_mvp_report(
+        analysis = run_fusion_scoring(
             session_id=session_id,
-            context_type=context_type,
+            output_dir=destination,
+            context_type=context_type if context_type != "other" else "keynote",
             language=resolved_language,
             slot_min=slot_min,
+            qa_in_slot=False,
+            camera_setup="unknown",
             ingest=ingest_dict,
             transcript_path=transcript_path,
             audio_metrics_path=Path(audio.artifacts["audio_metrics"]),
-            prosody_path=Path(audio.artifacts["prosody"]),
+            metrics_path=Path(audio.artifacts.get("metrics") or destination / "metrics.json"),
+            content_path=destination / "content.json",
             packages_dir=Path("/packages"),
-            output_path=report_path,
         )
+        _record_job_step(
+            job_id=job_id,
+            stage="fusion_scoring",
+            status="succeeded",
+            started_at=started,
+            outputs={"analysis_result": str(destination / "analysis_result.json")},
+            metrics={"coverage": (analysis.get("overall") or {}).get("coverage")},
+        )
+        emit_progress(job_id, "fusion_scoring", "succeeded", pct=92, message="Scores computed")
+
+        started = datetime.utcnow()
+        emit_progress(job_id, "report", "running", pct=94, message="Building coaching report")
+        report = run_report_stage(output_dir=destination, analysis=analysis, packages_dir=Path("/packages"))
+        persist_analysis_result(
+            job_id=job_id,
+            analysis=report,
+            transcript=json.loads(transcript_path.read_text()),
+        )
+        report_path = destination / "report.json"
         playback = ingest_dict["artifacts"].get("playback") or str(source)
         _record_job_step(
             job_id=job_id,
@@ -634,13 +725,14 @@ def run_mvp_analysis_task(
             started_at=started,
             outputs={
                 "report": str(report_path),
+                "analysis_result": str(destination / "analysis_result.json"),
                 "transcript": str(transcript_path),
                 "playback": playback,
             },
             metrics={
-                "overall": report.get("overall"),
-                "confidence": report.get("confidence"),
-                "partial": True,
+                "overall": (report.get("overall") or {}).get("score"),
+                "confidence": (report.get("overall") or {}).get("confidence"),
+                "partial": (report.get("overall") or {}).get("partial"),
             },
         )
         _set_job_state(job_id, session_id, "partial")
