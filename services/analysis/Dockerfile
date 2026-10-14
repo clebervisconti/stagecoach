@@ -1,6 +1,6 @@
-# Use ECR mirror for base image to avoid Docker Hub rate limits
+# Use GCR mirror to avoid Docker Hub / public ECR rate limits in CI
 # Use Bookworm (Debian 12) for ffmpeg compatibility with av==11.*
-FROM public.ecr.aws/docker/library/python:3.11-slim-bookworm
+FROM mirror.gcr.io/library/python:3.11-slim-bookworm
 
 WORKDIR /app
 

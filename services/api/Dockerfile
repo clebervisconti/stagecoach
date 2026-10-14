@@ -1,5 +1,5 @@
-# Use public.ecr.aws mirror to avoid Docker Hub rate limits in CI
-FROM public.ecr.aws/docker/library/python:3.11-slim
+# Use GCR mirror to avoid Docker Hub / public ECR rate limits in CI
+FROM mirror.gcr.io/library/python:3.11-slim
 
 WORKDIR /app
 

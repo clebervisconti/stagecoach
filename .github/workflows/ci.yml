@@ -306,6 +306,8 @@ jobs:
           IMAGES=(
             "mirror.gcr.io/library/postgres:16-alpine"
             "mirror.gcr.io/library/redis:7-alpine"
+            "mirror.gcr.io/library/python:3.11-slim"
+            "mirror.gcr.io/library/python:3.11-slim-bookworm"
             "ghcr.io/axllent/mailpit:latest"
           )
           
