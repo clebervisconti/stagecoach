@@ -151,3 +151,49 @@ Phase 2 additions:
   - vision_events.json / vision_quality.json when video_analysis is granted
   - category 14 (facial_affect) only when expression_analysis is granted; no emotion labels
 ```
+
+## PR #118 — Slides stage: PySceneDetect, keyframes, deck, OCR (#43)
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/118
+- Head SHA at green CI: `f9daff7092ecf1a8f1ac0a2db72642e91d66c5d3`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38619748706
+- `gh run view 38619748706 --json conclusion,headSha` → `success` / `f9daff7092ecf1a8f1ac0a2db72642e91d66c5d3`
+
+Jobs on that SHA (all success): Lint and Type Check, Production Dependency Audit, Playwright E2E, Docker Compose Smoke Test, Check Generated Code, Validate Scoring Config, Web Type Check and Build, Secret Scan, API Unit Tests, Test Suite, Worker Tests.
+
+Worker Tests excerpt:
+
+```
+tests/test_slides.py::test_merge_scenes_under_two_seconds PASSED
+tests/test_slides.py::test_antivirus_accepts_pptx_rejects_macro_and_exe_magic PASSED
+tests/test_slides.py::test_antivirus_scan_file PASSED
+tests/test_slides.py::test_stage_region_full_frame_for_screen_recording PASSED
+tests/test_slides.py::test_stage_region_finds_bright_quad PASSED
+tests/test_slides.py::test_tfidf_and_reading_overlap PASSED
+tests/test_slides.py::test_ahash_hamming PASSED
+tests/test_slides.py::test_pptx_extract PASSED
+tests/test_slides.py::test_run_slides_on_synthetic_scenes PASSED
+tests/test_slides.py::test_audio_only_without_deck_is_skipped PASSED
+tests/test_slides.py::test_no_pyscenedetect_in_forbidden_models PASSED
+================== 177 passed, 8 skipped, 1 warning in 20.84s ==================
+```
+
+API Unit Tests excerpt:
+
+```
+tests/test_deck.py::test_pptx_ok_macro_rejected PASSED
+tests/test_deck.py::test_pdf_javascript_rejected PASSED
+tests/test_deck.py::test_wrong_extension_rejected PASSED
+=================== 34 passed, 2 skipped, 1 warning in 0.92s ===================
+```
+
+Smoke excerpt (issue #43 echo):
+
+```
+Phase 2 additions:
+  - GET/POST /me/consents (defaults off, grant/revoke, unknown purpose 422)
+  - model_registry table seeded with MediaPipe pose/hands/face (Apache-2.0)
+  - vision_events.json / vision_quality.json when video_analysis is granted
+  - category 14 (facial_affect) only when expression_analysis is granted; no emotion labels
+  - slides stage: PySceneDetect (BSD), keyframes, python-pptx/pdftotext, Tesseract OCR; deck antivirus in sandbox
+```
