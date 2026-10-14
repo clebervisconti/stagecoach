@@ -53,6 +53,20 @@ test("filler breakdown counts um", () => {
   assert.equal(counts[0]?.count, 1);
 });
 
+test("pt-BR né/tipo/então disambiguation rows stay on the payload", () => {
+  const payload = {
+    language: "pt-BR",
+    disambiguations: [
+      { word: "né", is_filler: true, context_before: "legal", context_after: "" },
+      { word: "tipo", is_filler: true, context_before: "foi", context_after: "assim" },
+      { word: "então", is_filler: false, context_before: "", context_after: "vamos começar" },
+    ],
+  };
+  const tokens = (payload.disambiguations ?? []).map((item) => item.word);
+  assert.deepEqual(tokens, ["né", "tipo", "então"]);
+  assert.equal(payload.disambiguations[2]?.is_filler, false);
+});
+
 test("exports txt, srt, and vtt from existing segments", () => {
   assert.match(exportTxt(payload), /\[00:00\] SPK_0: Um hello everyone/);
   assert.match(exportSrt(payload), /00:00:00,000 --> 00:00:04,000/);

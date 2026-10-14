@@ -10,6 +10,11 @@ import yaml
 
 from .confidence import asr_confidence, prosody_confidence
 from .fluency import combined_filler_rate, compute_fluency_metrics, filler_benchmark_note
+from .fluency_disambig import (
+    confirmed_filler_word_objects,
+    disambiguate_transcript,
+    write_fluency_disambig,
+)
 from .pace import compute_pace_metrics
 from .prosody import compute_prosody_metrics
 from .timing import compute_timing_metrics
@@ -252,13 +257,17 @@ def persist_session_metrics(
     audio = json.loads(audio_metrics_path.read_text()) if audio_metrics_path.exists() else {}
     pauses_payload = json.loads(pauses_path.read_text()) if pauses_path and pauses_path.exists() else {}
     language = str(transcript.get("language") or "en")
+    lexicon = load_lexicon(language, packages_dir)
+    sidecar = disambiguate_transcript(transcript, lexicon)
+    write_fluency_disambig(output_dir / "fluency_disambig.json", sidecar)
     bundle = compute_session_metrics(
         transcript=transcript,
         audio_metrics=audio,
         pauses=pauses_from_json(pauses_payload),
         frames=[],
-        lexicon=load_lexicon(language, packages_dir),
+        lexicon=lexicon,
         slot_s=slot_s,
+        confirmed_filler_words=confirmed_filler_word_objects(transcript, sidecar),
     )
     dest = output_dir / "metrics.json"
     payload = {

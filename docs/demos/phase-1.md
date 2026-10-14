@@ -265,4 +265,48 @@ PASS noisy_low_snr language=en kind=noisy overall=None confidence=0.0
 all golden fixtures passed (±2 scores, ±5% metrics)
 ```
 
+## PR #111 — Phase 1 exit e2e + CPU bench (#36)
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/111
+- Impl SHA: `7609c679144b2e9ae6e085488317f5274c906653`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38598347916
+- Branched from `main` (`7bb7164`)
+- Local Playwright (this agent, Chromium): both specs passed in 9.8s (`upload → progress → report → delete` and pt-BR né/tipo/então rows)
+
+Jobs on `7609c679144b2e9ae6e085488317f5274c906653` (all success): Production Dependency Audit, Validate Scoring Config, Test Suite, Docker Compose Smoke Test, Web Type Check and Build, Check Generated Code, Secret Scan, API Unit Tests, Worker Tests, Lint and Type Check, Playwright E2E.
+
+Playwright E2E excerpt (`gh run view 38598347916 --log`):
+
+```
+✓  1 [chromium] › e2e/upload-report-delete.spec.ts:20:5 › upload → progress → report → delete (en) (3.4s)
+✓  2 [chromium] › e2e/upload-report-delete.spec.ts:36:5 › pt-BR upload shows né/tipo/então disambiguation then delete (3.3s)
+2 passed (9.0s)
+```
+
+Worker Tests excerpt: `127 passed, 8 skipped, 1 warning in 26.06s`. Web unit tests include `ok 12 - pt-BR né/tipo/então disambiguation rows stay on the payload`.
+
+### CPU bench (observed on this agent VM, 2026-10-14)
+
+Command: `python3 scripts/bench_phase1_cpu.py --seconds 600 --speech --model tiny`
+
+Host: `Intel(R) Xeon(R) Processor`, 4 CPUs, Linux 6.12.94+ x86_64. ASR: faster-whisper `tiny` int8 CPU (same model CI uses). Audio is **espeak-ng synthetic speech**, not a licensed human talk (D13). The 3-second CI smoke sine is not this benchmark.
+
+A 600 s CC0 sine was also run: measured duration 600.0 s, **0 transcript words**, ingest 6.399 s + ASR 2.180 s + audio_features 3.653 s + fusion 0.104 s = **12.338 s** to analysis. That is not a talk; Whisper VAD produced an empty transcript.
+
+**en (espeak-ng, requested 600 s):**
+
+- measured audio: **773.534 s** (12.9 min; espeak ran long)
+- wall ingest→report: **29.604 s** (script 30.153 s) — **within 15 min**
+- stages: ingest 8.740 s, asr 16.601 s, audio_features 4.082 s, metrics 0.021 s, fusion 0.108 s, report 0.052 s
+- transcript_words: 1980; overall_score: 73; disambiguation tokens: `like`, `so`
+
+**pt-BR (espeak-ng, requested 600 s):**
+
+- measured audio: **865.414 s** (14.4 min)
+- wall ingest→report: **36.115 s** (script 36.694 s) — **within 15 min**
+- stages: ingest 9.852 s, asr 21.595 s, audio_features 4.485 s, metrics 0.022 s, fusion 0.109 s, report 0.052 s
+- transcript_words: 1874; overall_score: 73
+- disambiguation tokens observed: **né, tipo, então, é** (heuristic_v1)
+
+Not measured: a consented human 10-minute talk; faster-whisper `small`/`medium`; GPU; live LLM `fluency_disambig_v1` (no API key in this environment). Heuristic readings are labelled as such in the UI.
 

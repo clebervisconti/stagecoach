@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 1: Audio + text MVP report (In Progress)
 
+##### Added - Phase 1 exit e2e, CPU bench, and filler disambiguation (issue #36)
+- Playwright e2e covers upload → progress → report → delete (en) and the same path in pt-BR
+- Transcript tab shows né/tipo/então (and like/so) heuristic readings; only confirmed fillers count toward `fl_filler_words_per_min`
+- `scripts/bench_phase1_cpu.py` times ingest → ASR → audio-features → fusion → report on a 10-minute synthetic clip
+- Observed wall times are recorded in `docs/demos/phase-1.md` (unmeasured claims are labelled as such)
+
 ##### Added - Golden fixtures and metric validation start (issue #35)
 - Three synthetic licensed clips (`en_clean`, `ptbr_clean`, `noisy_low_snr`); no personal recordings
 - `scripts/process_local.py --golden` compares fusion output with ±2 score points and ±5% metrics

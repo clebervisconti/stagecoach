@@ -91,6 +91,8 @@ export default function SessionsPage() {
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t("recentSessions")}</h1>
         <button
+          type="button"
+          data-testid="new-session"
           onClick={() => setShowForm((value) => !value)}
           className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90"
         >
@@ -106,7 +108,11 @@ export default function SessionsPage() {
       )}
 
       {showForm && (
-        <form onSubmit={submit} className="mb-8 grid gap-4 rounded-lg border bg-card p-6 md:grid-cols-2">
+        <form
+          onSubmit={submit}
+          data-testid="session-form"
+          className="mb-8 grid gap-4 rounded-lg border bg-card p-6 md:grid-cols-2"
+        >
           <label className="grid gap-2 text-sm font-medium">
             {t("title")}
             <input name="title" required maxLength={255} className="rounded-md border bg-background px-3 py-2" />
@@ -148,6 +154,7 @@ export default function SessionsPage() {
               name="file"
               type="file"
               required
+              data-testid="session-file"
               accept=".mp4,.mov,.webm,.mkv,.m4a,.mp3,.wav,.ogg,.flac,audio/*,video/*"
               className="rounded-md border bg-background px-3 py-2"
             />
@@ -167,7 +174,7 @@ export default function SessionsPage() {
       {loading ? (
         <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
       ) : sessions.length === 0 ? (
-        <div className="rounded-lg border bg-card p-8 text-center text-card-foreground">
+        <div className="rounded-lg border bg-card p-8 text-center text-card-foreground" data-testid="empty-sessions">
           <p className="text-muted-foreground">{t("noSessions")}</p>
         </div>
       ) : (

@@ -310,6 +310,9 @@ def test_persist_metrics_writes_file(tmp_path):
     )
     payload = json.loads(dest.read_text())
     assert dest.name == "metrics.json"
+    assert (tmp_path / "fluency_disambig.json").is_file()
+    sidecar = json.loads((tmp_path / "fluency_disambig.json").read_text())
+    assert sidecar["disambiguations"] == []
     assert payload["scoring_config_version"] == "1.0.0"
     assert "pp_wpm" in payload["metrics"]
     assert payload["metrics"]["pp_wpm"]["unit"] == "words_per_minute"

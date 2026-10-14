@@ -154,6 +154,13 @@ def build_report(
     """Fill insights from facts, attach drills, write report.json."""
     packages = packages_dir or _packages_dir()
     facts = _facts_payload(analysis)
+    ranked_preview = engine_opportunities or []
+    facts["opportunity_targets"] = [
+        item.get("target_score") for item in ranked_preview[:3] if item.get("target_score") is not None
+    ]
+    facts["opportunity_impacts"] = [
+        item.get("impact") for item in ranked_preview[:3] if item.get("impact") is not None
+    ]
     drills = _match_drills(analysis.get("metrics") or [], packages)
     evidence = analysis.get("evidence") or []
     by_cat = {c["id"]: c for c in analysis.get("categories") or []}
