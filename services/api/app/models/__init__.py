@@ -18,6 +18,8 @@ from app.models.category_score import CategoryScore  # noqa: F401, E402
 from app.models.overall_score import OverallScore  # noqa: F401, E402
 from app.models.evidence_item import EvidenceItem  # noqa: F401, E402
 from app.models.insight import Insight  # noqa: F401, E402
+from app.models.audit_log import AuditLog  # noqa: F401, E402
+from app.models.deletion_request import DeletionRequest  # noqa: F401, E402
 
 __all__ = [
     "Base",
@@ -34,4 +36,6 @@ __all__ = [
     "OverallScore",
     "EvidenceItem",
     "Insight",
+    "AuditLog",
+    "DeletionRequest",
 ]
