@@ -185,3 +185,26 @@ unavailable pillars: ['message', 'story_impact', 'visuals', 'voice', 'body', 'pr
 ✅ Phase 0 + Phase 1 smoke test complete
 ```
 
+## PR #108 — Player, transcript, Voice tab (#33), stacked on #107
+
+- URL: https://github.com/clebervisconti/stagecoach/pull/108
+- Impl SHA: `22d089693e2eb4c4235b06b63ce4babe13deb21d`
+- CI: https://github.com/clebervisconti/stagecoach/actions/runs/38501030248
+- Base: `cursor/p1-report-v1-ui-32-1b22`
+
+Jobs on `22d089693e2eb4c4235b06b63ce4babe13deb21d` (all success): Worker Tests, API Unit Tests, Docker Compose Smoke Test, Production Dependency Audit, Validate Scoring Config, Check Generated Code, Web Type Check and Build, Secret Scan, Lint and Type Check, Test Suite.
+
+Web tests excerpt (`gh run view 38501030248 --log`):
+
+```
+ok 2 - evidence chips seek to t_start minus 2 seconds
+ok 3 - keyboard map covers space, arrows, and J/L markers
+ok 10 - transcript highlights fillers, pauses, and API core-message spans
+ok 12 - exports txt, srt, and vtt from existing segments
+ok 13 - pace windows use null when a window has no speech
+ok 14 - unavailable series are not treated as zeros
+# tests 15
+# pass 15
+```
+
+

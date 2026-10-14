@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Provenance records scoring-config 1.0.0 and model versions
 - Smoke fixture now produces `analysis_result.json` and `report.json`
 
+##### Added - Player, transcript highlights, Voice tab (issue #33)
+- Evidence chips seek to `t_start − 2 s` (clamped at 0)
+- Keyboard player: Space, ←/→ 5 s, J/L evidence markers
+- Transcript tab: speaker labels, click-to-seek, highlight toggles, filler breakdown, TXT/SRT/VTT export
+- Voice tab: pace with context band, pitch, loudness/energy, pause histogram, filler-per-section with 5/min and 12/min lines
+- Unavailable series stay unavailable (not plotted as zero)
+
 ##### Added - Report v1 UI (issue #32)
 - Session report page reads `GET /sessions/{id}/report` (analysis_result view model)
 - Summary card: overall as `71 ± 4 · Strong`, Partial badge, coverage, config-weight tooltip

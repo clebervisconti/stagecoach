@@ -190,6 +190,32 @@
     },
     "fillerBenchmarks": "Reference lines: 5/min (no penalty) and 12/min (harmful) from S12.",
     "wpmBand": "Context band {band} WPM (heuristic).",
-    "closeInfo": "Close metric details"
+    "closeInfo": "Close metric details",
+    "tabs": "Report sections",
+    "voiceTab": "Voice",
+    "playbackError": "Playback is not available for this session yet.",
+    "playerRegion": "Recording player. Space plays or pauses. Left and right skip 5 seconds. J and L jump to evidence markers.",
+    "playerHelp": "Space: play/pause. ←/→: skip 5 seconds. J/L: previous/next evidence. Evidence chips seek 2 seconds before the timestamp.",
+    "highlightToggles": "Transcript highlight types",
+    "highlights": {
+      "filler_sound": "Filler sounds",
+      "filler_word": "Possible filler words",
+      "hedge": "Hedges and apologies",
+      "vague": "Vague words",
+      "clt": "Charismatic language",
+      "core_message": "Core message",
+      "pause": "Long pauses"
+    },
+    "speakerUnknown": "Speaker",
+    "exportTxt": "Export TXT",
+    "exportSrt": "Export SRT",
+    "exportVtt": "Export VTT",
+    "fillerBreakdown": "Filler breakdown",
+    "noFillers": "No filler sounds labelled in this transcript.",
+    "paceGraph": "Pace (WPM per 30 s)",
+    "loudnessGraph": "Loudness and energy",
+    "pauseHistogram": "Pause duration histogram",
+    "fillerPerSection": "Filler sounds per section",
+    "seriesUnavailable": "This series was not produced for this session, so it is unavailable rather than plotted as zero."
   }
 }

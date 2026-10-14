@@ -1163,3 +1163,38 @@ Issue #32 is the first report page. The analysis_result from #31 already marks m
 - ⚠️ Player seeking, transcript highlights, and Voice tab graphs stay for issue #33
 - 📌 Do not plot a null pillar at the origin
 
+---
+
+## ADR-020: Client-side transcript highlights and voice graphs
+
+**Date:** 2026-10-14  
+**Status:** Accepted  
+**Phase:** 1
+
+### Context
+
+Issue #33 needs clickable evidence, transcript highlights, and voice graphs. The report API already returns `/transcript`, `/series/{name}`, and signed `/media/playback`. Series from fusion are often sparse on the 3 s smoke fixture.
+
+### Decision
+
+- Seek target is `max(0, t_start − 2)`. Tests assert the error is ≤ 0.5 s.
+- The player is a focused region with Space / arrows / J / L. Captions come from a VTT blob of the existing transcript.
+- Highlights label existing words using Appendix A lists and ASR tags. CLT and core-message spans come only from API highlights/evidence, never invented.
+- Pace windows and pause histograms are computed from transcript timestamps. Pitch/loudness use `/series` points with numeric values; `unavailable: true` series are omitted, not drawn at 0.
+- Filler-per-section bars include the 5/min and 12/min [S12] reference lines.
+- The BFF forwards only `exp` and `sig` query params so signed playback URLs work through `/api/stagecoach`.
+
+### Alternatives Considered
+
+1. **A charting library for Voice tab**  
+   - ❌ Extra dependency; SVG matches the radar from #32
+
+2. **Treat missing series points as 0**  
+   - ❌ Violates the N/A rule from #32 / §4.6.1
+
+### Consequences
+
+- ✅ Partial fixtures still render Transcript and Voice tabs honestly
+- ⚠️ Pitch and loudness graphs are often unavailable until fusion writes F0/intensity series
+- 📌 Do not invent CLT highlights without impact evidence
+

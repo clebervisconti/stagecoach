@@ -2,19 +2,26 @@
 
 import { useTranslations } from "next-intl";
 import type { AnalysisReport, ReportInsight } from "@/lib/report-types";
+import { formatTimestamp } from "@/lib/player";
+import { evidenceById } from "@/lib/report-view";
 
 type InsightsPanelProps = {
   report: AnalysisReport;
+  onSeek?: (tStart: number) => void;
 };
 
 function InsightList({
   items,
   empty,
   tone,
+  report,
+  onSeek,
 }: {
   items: ReportInsight[];
   empty: string;
   tone: "opp" | "str" | "weak";
+  report: AnalysisReport;
+  onSeek?: (tStart: number) => void;
 }) {
   const t = useTranslations("report");
   const toneClass = {
@@ -42,13 +49,31 @@ function InsightList({
               {t("drill")}: {item.drill_ids.join(", ")}
             </p>
           )}
+          {item.evidence_ids.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {item.evidence_ids.map((id) => {
+                const evidence = evidenceById(report).get(id);
+                if (!evidence) return null;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => onSeek?.(evidence.t_start)}
+                    className="rounded-md border bg-background px-2 py-1 font-mono text-xs hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    ▶ {formatTimestamp(evidence.t_start)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </li>
       ))}
     </ul>
   );
 }
 
-export function InsightsPanel({ report }: InsightsPanelProps) {
+export function InsightsPanel({ report, onSeek }: InsightsPanelProps) {
   const t = useTranslations("report");
   const { opportunities, strengths, weaknesses } = report.insights;
 
@@ -59,7 +84,7 @@ export function InsightsPanel({ report }: InsightsPanelProps) {
           {t("opportunities")}
         </h2>
         <div className="mt-4">
-          <InsightList items={opportunities.slice(0, 3)} empty={t("noOpportunities")} tone="opp" />
+          <InsightList items={opportunities.slice(0, 3)} empty={t("noOpportunities")} tone="opp" report={report} onSeek={onSeek} />
         </div>
       </section>
       <div className="grid gap-6 md:grid-cols-2">
@@ -68,7 +93,7 @@ export function InsightsPanel({ report }: InsightsPanelProps) {
             {t("strengths")}
           </h2>
           <div className="mt-4">
-            <InsightList items={strengths.slice(0, 3)} empty={t("noStrengthsYet")} tone="str" />
+            <InsightList items={strengths.slice(0, 3)} empty={t("noStrengthsYet")} tone="str" report={report} onSeek={onSeek} />
           </div>
         </section>
         <section className="rounded-lg border bg-card p-6" aria-labelledby="weaknesses-heading">
@@ -76,7 +101,7 @@ export function InsightsPanel({ report }: InsightsPanelProps) {
             {t("weaknesses")}
           </h2>
           <div className="mt-4">
-            <InsightList items={weaknesses} empty={t("noWeaknesses")} tone="weak" />
+            <InsightList items={weaknesses} empty={t("noWeaknesses")} tone="weak" report={report} onSeek={onSeek} />
           </div>
         </section>
       </div>
