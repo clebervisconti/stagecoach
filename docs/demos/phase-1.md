@@ -243,8 +243,13 @@ audit object_count=3 db_rows={'insights': 1, 'sessions': 1, 'job_steps': 1, 'tra
 - Impl SHA: `fb45c95cec8de905f3942e31ae0d892f5440d676`
 - CI: https://github.com/clebervisconti/stagecoach/actions/runs/38592701585
 - Branched from `main` (`478e91a`)
+- After merging origin/main (`7bb7164`, includes #109): merge SHA `fe329530d9a10eb2bfaae033ae4f23510cf74d43`
+- Merge CI: https://github.com/clebervisconti/stagecoach/actions/runs/38594492808
+- `gh pr view 110 --json mergeable,mergeStateStatus` → `MERGEABLE` / `CLEAN`
 
-Jobs on `fb45c95cec8de905f3942e31ae0d892f5440d676` (all success): Web Type Check and Build, Validate Scoring Config, API Unit Tests, Lint and Type Check, Docker Compose Smoke Test, Test Suite, Production Dependency Audit, Check Generated Code, Worker Tests, Secret Scan.
+Jobs on merge SHA `fe329530d9a10eb2bfaae033ae4f23510cf74d43` (all success): Production Dependency Audit, Secret Scan, Lint and Type Check, Check Generated Code, Test Suite, Validate Scoring Config, Web Type Check and Build, Worker Tests, Docker Compose Smoke Test, API Unit Tests.
+
+Jobs on impl SHA `fb45c95cec8de905f3942e31ae0d892f5440d676` (all success): Web Type Check and Build, Validate Scoring Config, API Unit Tests, Lint and Type Check, Docker Compose Smoke Test, Test Suite, Production Dependency Audit, Check Generated Code, Worker Tests, Secret Scan.
 
 Worker Tests excerpt (`gh run view 38592701585 --log`):
 
