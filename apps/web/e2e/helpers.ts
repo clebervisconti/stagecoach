@@ -155,12 +155,65 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
     },
   });
 
+  const consents = {
+    policy_id: "1.0.0",
+    policy_version: "0".repeat(64),
+    locale: options.language,
+    consents: [
+      {
+        purpose: "video_analysis",
+        granted: false,
+        granted_at: null,
+        revoked_at: null,
+        version: null,
+        title: "Video analysis",
+        what: "Pose and face landmarks as per-second aggregates.",
+        why: "Gesture and audience-facing metrics.",
+        limits: "Accuracy drops in low light.",
+        never: "No emotion inference. No face recognition.",
+      },
+      {
+        purpose: "expression_analysis",
+        granted: false,
+        granted_at: null,
+        revoked_at: null,
+        version: null,
+        title: "Expression analysis",
+        what: "Descriptive facial-movement signals. Off by default.",
+        why: "Optional category 14.",
+        limits: "Off unless this toggle is on.",
+        never: "The app does not infer inner states.",
+      },
+      {
+        purpose: "keep_detailed_tracking",
+        granted: false,
+        granted_at: null,
+        revoked_at: null,
+        version: null,
+        title: "Keep detailed tracking",
+        what: "Optional 30-day raw landmarks.",
+        why: "Re-analysis without re-running detection.",
+        limits: "Deleted with the session or after 30 days.",
+        never: "Not identity templates.",
+      },
+    ],
+  };
+
   await page.route("**/api/stagecoach/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname.replace(/^\/api\/stagecoach/, "");
     const method = request.method();
 
+    if (method === "GET" && path === "/me/consents") {
+      return json(route, consents);
+    }
+    if (method === "POST" && path === "/me/consents") {
+      const body = request.postDataJSON() as { purpose?: string; granted?: boolean };
+      const item = consents.consents.find((row) => row.purpose === body.purpose);
+      if (item && typeof body.granted === "boolean") item.granted = body.granted;
+      return json(route, consents, 201);
+    }
     if (method === "GET" && path === "/sessions") {
       return json(route, { sessions: created && !deleted ? [session()] : [] });
     }

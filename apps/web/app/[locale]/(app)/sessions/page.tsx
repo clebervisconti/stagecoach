@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Upload } from "lucide-react";
+import { ConsentPanel } from "@/components/consents/consent-panel";
 
 type Session = {
   id: string;
@@ -159,6 +160,7 @@ export default function SessionsPage() {
               className="rounded-md border bg-background px-3 py-2"
             />
           </label>
+          <ConsentPanel compact />
           <div className="md:col-span-2">
             <button
               disabled={submitting}

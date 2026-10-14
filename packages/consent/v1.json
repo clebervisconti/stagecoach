@@ -1,0 +1,85 @@
+{
+  "policy_id": "1.0.0",
+  "purposes": {
+    "video_analysis": {
+      "en": {
+        "title": "Video analysis (pose, hands, and face landmarks)",
+        "what": "When on, Stage Coach runs MediaPipe pose, hand, and face landmarkers on the analysis video. It stores per-second aggregates (shoulder width, wrist positions, head yaw/pitch/roll, visibility). Raw video frames are not kept as vision features. Raw landmark arrays are discarded after aggregation unless you also turn on detailed tracking.",
+        "why": "These signals feed gesture, posture, and audience-facing metrics (categories 12 and 13). Head orientation is a proxy for looking toward the camera or room, not true eye contact.",
+        "limits": "Accuracy drops with distance, low light, profile views, occlusion (hands, microphones, masks), and glasses glare. Webcam head-and-shoulders framing limits which body metrics apply. Audio-only sessions never run this stage.",
+        "never": "No emotion inference. No face recognition. No identity embeddings or demographic labels. Landmarks are not used to identify you."
+      },
+      "pt-BR": {
+        "title": "Análise de vídeo (pose, mãos e pontos do rosto)",
+        "what": "Quando ativada, o Stage Coach executa os modelos MediaPipe de pose, mãos e face no vídeo de análise. Guarda agregados por segundo (largura dos ombros, posição dos pulsos, orientação da cabeça, visibilidade). Quadros brutos não são guardados como atributos de visão. As matrizes brutas de pontos são descartadas após a agregação, salvo se você também ativar o rastreamento detalhado.",
+        "why": "Esses sinais alimentam métricas de gestos, postura e orientação para a plateia (categorias 12 e 13). A orientação da cabeça é um proxy de olhar para a câmera ou para a sala, não contato visual verdadeiro.",
+        "limits": "A precisão cai com distância, pouca luz, perfil, oclusão (mãos, microfone, máscara) e reflexo de óculos. Enquadramento só de cabeça e ombros limita as métricas corporais. Sessões só de áudio não executam esta etapa.",
+        "never": "Não há inferência de emoção. Não há reconhecimento facial. Não há embeddings de identidade nem rótulos demográficos. Os pontos não servem para identificar você."
+      }
+    },
+    "expression_analysis": {
+      "en": {
+        "title": "Expression analysis (opt-in, off by default)",
+        "what": "When on, Stage Coach records descriptive facial-movement signals from blendshapes: smile presence, brow movement, and an expressivity index over short windows. Jaw and mouth-shape channels used for speech are excluded. This toggle is separate from video analysis and is off until you turn it on.",
+        "why": "Optional category 14 describes visible expression signals that can support the message. It is self-coaching only.",
+        "limits": "Expressions vary by person, culture, and situation. A neutral resting face is not a problem. Landmark quality drops when the face is small, poorly lit, or partly hidden. Off unless this toggle is on, even if video analysis is on.",
+        "never": "The app does not infer inner states from the face or voice. A smile is reported as a smile. Reports never assign mood, engagement, honesty, or authenticity scores."
+      },
+      "pt-BR": {
+        "title": "Análise de expressão (opcional, desligada por padrão)",
+        "what": "Quando ativada, o Stage Coach registra sinais descritivos de movimento facial a partir de blendshapes: presença de sorriso, movimento de sobrancelha e um índice de expressividade em janelas curtas. Canais de mandíbula e forma da boca ligados à fala ficam de fora. Este controle é separado da análise de vídeo e permanece desligado até você ligá-lo.",
+        "why": "A categoria 14, opcional, descreve sinais visíveis de expressão que podem apoiar a mensagem. Uso apenas para autoaperfeiçoamento.",
+        "limits": "Expressões variam por pessoa, cultura e situação. Um rosto em repouso neutro não é um problema. A qualidade dos pontos cai quando o rosto é pequeno, mal iluminado ou parcialmente coberto. Permanece desligada se este controle estiver off, mesmo com análise de vídeo ligada.",
+        "never": "O aplicativo não infere estados internos a partir do rosto ou da voz. Um sorriso é relatado como sorriso. Relatórios nunca atribuem estados de ânimo, engajamento, honestidade ou autenticidade."
+      }
+    },
+    "keep_detailed_tracking": {
+      "en": {
+        "title": "Keep detailed tracking for 30 days",
+        "what": "When on, raw landmark arrays from a consented video-analysis run are kept for 30 days so the session can be re-analyzed without re-running detection. The default is to discard raw landmarks after per-second aggregation.",
+        "why": "Lets a later scoring-config change re-use the same tracking without decoding the video again.",
+        "limits": "Raw landmarks are biometric-adjacent data. They are deleted with the session or after 30 days, whichever comes first. They are never written if video analysis is off.",
+        "never": "Raw landmarks are not identity templates. They are not used to recognize you across sessions."
+      },
+      "pt-BR": {
+        "title": "Manter rastreamento detalhado por 30 dias",
+        "what": "Quando ativado, as matrizes brutas de pontos de uma execução com consentimento de análise de vídeo ficam guardadas por 30 dias para reanalisar a sessão sem repetir a detecção. O padrão é descartar os pontos brutos após a agregação por segundo.",
+        "why": "Permite reaproveitar o mesmo rastreamento depois de uma mudança de configuração de pontuação, sem decodificar o vídeo de novo.",
+        "limits": "Pontos brutos são dados adjacentes a biometria. São apagados com a sessão ou após 30 dias, o que ocorrer primeiro. Não são gravados se a análise de vídeo estiver desligada.",
+        "never": "Pontos brutos não são modelos de identidade. Não servem para reconhecer você entre sessões."
+      }
+    },
+    "research_use": {
+      "en": {
+        "title": "Research use (opt-in)",
+        "what": "Copy specific sessions into a separate validation bucket with its own consent and retention. Off by default. Not used in Phase 2 product analysis.",
+        "why": "Only if you later join a validation study with an explicit research consent.",
+        "limits": "No session is copied for research unless this purpose is granted for that copy.",
+        "never": "Turning this off (or leaving it off) means sessions stay in your account only."
+      },
+      "pt-BR": {
+        "title": "Uso em pesquisa (opcional)",
+        "what": "Copia sessões específicas para um repositório de validação separado, com consentimento e retenção próprios. Desligado por padrão. Não entra na análise de produto da Fase 2.",
+        "why": "Somente se você participar depois de um estudo de validação com consentimento explícito de pesquisa.",
+        "limits": "Nenhuma sessão é copiada para pesquisa sem esta finalidade concedida para essa cópia.",
+        "never": "Desligar (ou deixar desligado) mantém as sessões só na sua conta."
+      }
+    },
+    "benchmarks": {
+      "en": {
+        "title": "Opt-in benchmarks",
+        "what": "Allow anonymized metric distributions for context and language comparison when a minimum sample size exists (v3). Off by default.",
+        "why": "Optional comparison against an anonymized cohort, never individual scores shared with others.",
+        "limits": "Not available in Phase 2. Granting this now only records the preference.",
+        "never": "Individual scores are never published to other users."
+      },
+      "pt-BR": {
+        "title": "Comparativos opcionais",
+        "what": "Permite distribuições anonimizadas de métricas por contexto e idioma quando houver amostra mínima (v3). Desligado por padrão.",
+        "why": "Comparação opcional com um grupo anonimizado; pontuações individuais não são compartilhadas.",
+        "limits": "Indisponível na Fase 2. Conceder agora só registra a preferência.",
+        "never": "Pontuações individuais nunca são publicadas para outras pessoas."
+      }
+    }
+  }
+}

@@ -62,6 +62,27 @@
     "uploading": "Enviando…",
     "uploadAndAnalyze": "Enviar e analisar"
   },
+  "consents": {
+    "heading": "Consentimentos de análise",
+    "intro": "Análise de vídeo e de expressão ficam desligadas até você ligar cada finalidade. Os controles são específicos: pontos de pose/rosto, sinais opcionais de expressão e rastreamento detalhado opcional por 30 dias. Não há inferência de emoções.",
+    "what": "O que é medido",
+    "why": "Por quê",
+    "limits": "Limites",
+    "never": "O que isto nunca faz",
+    "loadError": "Não foi possível carregar os consentimentos.",
+    "saveError": "Não foi possível salvar este consentimento.",
+    "needsVideo": "Ligue primeiro a análise de vídeo. Sinais de expressão e rastreamento detalhado não são usados sem ela.",
+    "policyVersion": "Versão da política",
+    "loading": "Carregando o texto do consentimento…",
+    "revoked": "Esta finalidade foi revogada. O estado atual é desligado."
+  },
+  "settings": {
+    "heading": "Configurações",
+    "account": "Conta",
+    "email": "E-mail",
+    "locale": "Idioma",
+    "signOut": "Sair"
+  },
   "report": {
     "loadError": "Não foi possível carregar esta sessão.",
     "back": "Sessões",

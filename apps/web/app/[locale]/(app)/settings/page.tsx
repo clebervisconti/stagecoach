@@ -1,26 +1,28 @@
 import { auth, signOut } from "@/auth";
+import { getTranslations } from "next-intl/server";
+import { ConsentPanel } from "@/components/consents/consent-panel";
 
 export default async function SettingsPage() {
   const session = await auth();
+  const t = await getTranslations("settings");
+  const email = session?.user?.email || process.env.PRIVATE_BETA_EMAIL;
 
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-8 text-3xl font-bold">Settings</h1>
+      <h1 className="mb-8 text-3xl font-bold">{t("heading")}</h1>
 
       <div className="space-y-6">
         <div className="rounded-lg border bg-card p-6">
-          <h2 className="mb-4 text-lg font-semibold">Account</h2>
+          <h2 className="mb-4 text-lg font-semibold">{t("account")}</h2>
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Email</span>
-              <span>{session?.user?.email}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Locale</span>
-              <span>English</span>
+              <span className="text-muted-foreground">{t("email")}</span>
+              <span>{email}</span>
             </div>
           </div>
         </div>
+
+        <ConsentPanel />
 
         <div className="rounded-lg border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold">Session</h2>
@@ -34,14 +36,10 @@ export default async function SettingsPage() {
               type="submit"
               className="rounded-md border border-input bg-background px-4 py-2 font-medium hover:bg-accent hover:text-accent-foreground"
             >
-              Sign Out
+              {t("signOut")}
             </button>
           </form>
         </div>
-
-        <p className="text-sm text-muted-foreground">
-          Phase 0 - Profile editing and consent management coming in later phases
-        </p>
       </div>
     </div>
   );
