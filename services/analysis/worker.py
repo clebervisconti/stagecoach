@@ -73,6 +73,14 @@ app.conf.update(
 )
 
 
+def _publish_event(job_id: str, event: dict) -> None:
+    """Publish a SPEC §7.6 event onto the job's Redis progress channel."""
+    r = redis.from_url(REDIS_URL)
+    channel = f"progress:{job_id}"
+    r.publish(channel, json.dumps(event))
+    logging.info("Progress published to %s: %s", channel, event.get("type") or event.get("status"))
+
+
 def emit_progress(
     job_id: str,
     stage: str,
@@ -80,20 +88,41 @@ def emit_progress(
     pct: Optional[float] = None,
     eta_s: Optional[int] = None,
     message: Optional[str] = None,
+    session_id: Optional[str] = None,
 ):
-    """Emit progress event to Redis for SSE streaming (issue #19)."""
-    r = redis.from_url(REDIS_URL)
-    event = {
-        "stage": stage,
-        "status": status,
-        "pct": pct,
-        "eta_s": eta_s,
-        "message": message,
-        "timestamp": datetime.utcnow().isoformat(),
-    }
-    channel = f"progress:{job_id}"
-    r.publish(channel, json.dumps(event))
-    logging.info(f"Progress published to {channel}: {status}")
+    """Emit a `type: stage` progress event for SSE streaming (issues #19, #46)."""
+    from pipeline.partial import stage_event
+
+    _publish_event(
+        job_id,
+        stage_event(
+            job_id,
+            stage,
+            status,
+            session_id=session_id,
+            pct=pct,
+            eta_s=eta_s,
+            message=message,
+        ),
+    )
+
+
+def emit_partial_ready(
+    job_id: str,
+    categories: list[str],
+    session_id: Optional[str] = None,
+) -> None:
+    """Emit SPEC §7.6 `partial_ready` so the report can render scored categories live."""
+    from pipeline.partial import partial_ready_event
+
+    _publish_event(job_id, partial_ready_event(job_id, list(categories), session_id=session_id))
+
+
+def emit_done(job_id: str, status: str, session_id: Optional[str] = None) -> None:
+    """Emit SPEC §7.6 `done` when the job reaches a terminal report."""
+    from pipeline.partial import done_event
+
+    _publish_event(job_id, done_event(job_id, status, session_id=session_id))
 
 
 def _set_job_state(job_id: str, session_id: str, status: str, error: Optional[dict] = None) -> None:
@@ -275,17 +304,29 @@ def vision_task(
     if job_id:
         emit_progress(job_id, "vision", "running", pct=0, message="Tracking pose and face landmarks")
     try:
+        from pipeline.partial import write_vision_status
+
         gate = run_vision_if_allowed(snapshot, runner)
         payload = gate.get("result") or gate
         status = "skipped" if gate["status"] == "skipped" or payload.get("skipped") else "succeeded"
+        write_vision_status(dest, status, reason=gate.get("reason") or payload.get("skip_reason"))
         if job_id:
             emit_progress(job_id, "vision", status, pct=100, message="Vision stage finished")
         logger.info("vision task %s for %s", status, session_id)
         return payload
     except Exception as exc:
+        from pipeline.partial import write_vision_status
+
         logger.error("vision failed for %s: %s", session_id, exc)
+        write_vision_status(
+            dest,
+            "failed",
+            error={"type": type(exc).__name__, "message": str(exc)[:200]},
+        )
         if job_id:
             emit_progress(job_id, "vision", "failed", message=str(exc)[:200])
+        if self.request.retries >= (self.max_retries or 0):
+            return {"status": "failed", "error": str(exc)[:200]}
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
 
 
@@ -683,9 +724,10 @@ def run_mvp_analysis_task(
     camera_setup: str = "unknown",
     accessibility_profile: Optional[dict] = None,
 ):
-    """Run ingest → vision (if consented) → ASR → audio → fusion_scoring → report."""
+    """Run ingest → ASR → audio → partial scores → vision → slides → fusion → report."""
     from pipeline.accessibility import persist_accessibility
     from pipeline.consent import persist_consent_snapshot, run_vision_if_allowed
+    from pipeline.partial import scored_category_ids, write_vision_status
     from pipeline.persist import persist_analysis_result
     from pipeline.stages.asr import transcribe_audio
     from pipeline.stages.audio_features import extract_audio_features
@@ -713,6 +755,11 @@ def run_mvp_analysis_task(
                 pct=0,
                 message="Video analysis is off; pose and face landmarks were not processed",
             )
+            write_vision_status(
+                destination,
+                "skipped",
+                reason=vision_decision_early["reason"],
+            )
             _record_job_step(
                 job_id=job_id,
                 stage="vision",
@@ -739,69 +786,6 @@ def run_mvp_analysis_task(
             metrics=ingest_dict["media_info"],
         )
         emit_progress(job_id, "ingest", "succeeded", pct=25, message="Media prepared")
-
-        if not skip_vision_now:
-            from pipeline.consent import decide_vision
-            from pipeline.stages.vision import run_vision_stage
-
-            started = datetime.utcnow()
-            emit_progress(
-                job_id,
-                "vision",
-                "running",
-                pct=26,
-                message="Tracking pose and face landmarks",
-            )
-            try:
-
-                def _vision_runner(decision):
-                    proxy = destination / "analysis.mp4"
-                    return run_vision_stage(
-                        output_dir=destination,
-                        session_id=session_id,
-                        decision=decision,
-                        video_path=proxy if proxy.exists() else None,
-                        camera_setup=camera_setup,
-                    ).to_dict()
-
-                vision_gate = run_vision_if_allowed(snapshot, _vision_runner)
-                vision_result = vision_gate.get("result") or {}
-                vision_status = (
-                    "skipped"
-                    if vision_result.get("skipped") or vision_gate["status"] == "skipped"
-                    else "succeeded"
-                )
-                _record_job_step(
-                    job_id=job_id,
-                    stage="vision",
-                    status=vision_status,
-                    started_at=started,
-                    outputs=vision_result.get("artifacts"),
-                    metrics=vision_result.get("metrics")
-                    or {
-                        "reason": vision_result.get("skip_reason") or vision_gate.get("reason"),
-                        "run_pose": decide_vision(snapshot).run_pose,
-                    },
-                )
-                emit_progress(
-                    job_id,
-                    "vision",
-                    vision_status,
-                    pct=29,
-                    message="Vision aggregates ready"
-                    if vision_status == "succeeded"
-                    else "Vision skipped (no video stream)",
-                )
-            except Exception as vis_exc:
-                logger.exception("vision failed session=%s; continuing audio/text", session_id)
-                _record_job_step(
-                    job_id=job_id,
-                    stage="vision",
-                    status="failed",
-                    started_at=started,
-                    error={"type": type(vis_exc).__name__, "message": str(vis_exc)[:200]},
-                )
-                emit_progress(job_id, "vision", "failed", pct=29, message="Vision failed; audio/text continue")
 
         started = datetime.utcnow()
         emit_progress(job_id, "asr", "running", pct=30, message="Transcribing speech")
@@ -869,9 +853,148 @@ def run_mvp_analysis_task(
             job_id,
             "audio_features",
             "succeeded",
-            pct=82,
+            pct=80,
             message="Audio measurements ready",
         )
+
+        started = datetime.utcnow()
+        emit_progress(
+            job_id,
+            "partial_scoring",
+            "running",
+            pct=81,
+            message="Scoring audio and text categories",
+        )
+        resolved_language = "pt-BR" if transcript.language.startswith("pt") else "en"
+        analysis = run_fusion_scoring(
+            session_id=session_id,
+            output_dir=destination,
+            context_type=context_type if context_type != "other" else "keynote",
+            language=resolved_language,
+            slot_min=slot_min,
+            qa_in_slot=False,
+            camera_setup=camera_setup if camera_setup else "unknown",
+            ingest=ingest_dict,
+            transcript_path=transcript_path,
+            audio_metrics_path=Path(audio.artifacts["audio_metrics"]),
+            metrics_path=Path(audio.artifacts.get("metrics") or destination / "metrics.json"),
+            content_path=destination / "content.json",
+            packages_dir=Path("/packages"),
+        )
+        report = run_report_stage(
+            output_dir=destination, analysis=analysis, packages_dir=Path("/packages")
+        )
+        persist_analysis_result(
+            job_id=job_id,
+            analysis=report,
+            transcript=json.loads(transcript_path.read_text()),
+        )
+        report_path = destination / "report.json"
+        playback = ingest_dict["artifacts"].get("playback") or str(source)
+        live_categories = scored_category_ids(analysis)
+        _record_job_step(
+            job_id=job_id,
+            stage="partial_scoring",
+            status="succeeded",
+            started_at=started,
+            outputs={
+                "report": str(report_path),
+                "analysis_result": str(destination / "analysis_result.json"),
+                "transcript": str(transcript_path),
+                "playback": playback,
+            },
+            metrics={
+                "categories": live_categories,
+                "coverage": (analysis.get("overall") or {}).get("coverage"),
+            },
+        )
+        emit_progress(
+            job_id,
+            "partial_scoring",
+            "succeeded",
+            pct=83,
+            message="Audio and text scores ready",
+        )
+        emit_partial_ready(job_id, live_categories, session_id=session_id)
+
+        if not skip_vision_now:
+            from pipeline.consent import decide_vision
+            from pipeline.stages.vision import run_vision_stage
+
+            started = datetime.utcnow()
+            emit_progress(
+                job_id,
+                "vision",
+                "running",
+                pct=84,
+                message="Tracking pose and face landmarks",
+            )
+            try:
+
+                def _vision_runner(decision):
+                    proxy = destination / "analysis.mp4"
+                    return run_vision_stage(
+                        output_dir=destination,
+                        session_id=session_id,
+                        decision=decision,
+                        video_path=proxy if proxy.exists() else None,
+                        camera_setup=camera_setup,
+                    ).to_dict()
+
+                vision_gate = run_vision_if_allowed(snapshot, _vision_runner)
+                vision_result = vision_gate.get("result") or {}
+                vision_status = (
+                    "skipped"
+                    if vision_result.get("skipped") or vision_gate["status"] == "skipped"
+                    else "succeeded"
+                )
+                write_vision_status(
+                    destination,
+                    vision_status,
+                    reason=vision_result.get("skip_reason") or vision_gate.get("reason"),
+                )
+                _record_job_step(
+                    job_id=job_id,
+                    stage="vision",
+                    status=vision_status,
+                    started_at=started,
+                    outputs=vision_result.get("artifacts"),
+                    metrics=vision_result.get("metrics")
+                    or {
+                        "reason": vision_result.get("skip_reason") or vision_gate.get("reason"),
+                        "run_pose": decide_vision(snapshot).run_pose,
+                    },
+                )
+                emit_progress(
+                    job_id,
+                    "vision",
+                    vision_status,
+                    pct=86,
+                    message="Vision aggregates ready"
+                    if vision_status == "succeeded"
+                    else "Vision skipped (no video stream)",
+                )
+            except Exception as vis_exc:
+                logger.exception("vision failed session=%s; continuing audio/text", session_id)
+                write_vision_status(
+                    destination,
+                    "failed",
+                    error={"type": type(vis_exc).__name__, "message": str(vis_exc)[:200]},
+                )
+                _record_job_step(
+                    job_id=job_id,
+                    stage="vision",
+                    status="failed",
+                    started_at=started,
+                    error={"type": type(vis_exc).__name__, "message": str(vis_exc)[:200]},
+                )
+                emit_progress(
+                    job_id,
+                    "vision",
+                    "failed",
+                    pct=86,
+                    message="Vision failed; audio/text continue",
+                )
 
         from pipeline.stages.slides import find_deck_path, run_slides_stage
 
@@ -921,7 +1044,6 @@ def run_mvp_analysis_task(
 
         started = datetime.utcnow()
         emit_progress(job_id, "fusion_scoring", "running", pct=88, message="Scoring from measured signals")
-        resolved_language = "pt-BR" if transcript.language.startswith("pt") else "en"
         analysis = run_fusion_scoring(
             session_id=session_id,
             output_dir=destination,
@@ -976,6 +1098,7 @@ def run_mvp_analysis_task(
         )
         _set_job_state(job_id, session_id, "partial")
         emit_progress(job_id, "report", "succeeded", pct=100, message="Report ready")
+        emit_done(job_id, "partial", session_id=session_id)
         logger.info("MVP analysis completed session=%s job=%s", session_id, job_id)
         return {"job_id": job_id, "session_id": session_id, "report_path": str(report_path)}
     except Exception as exc:

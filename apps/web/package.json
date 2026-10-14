@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "type-check": "next typegen && tsc --noEmit",
-    "test": "node --experimental-strip-types --experimental-default-type=module --test lib/report-view.test.ts lib/forbidden-terms.test.ts lib/player.test.ts lib/transcript.test.ts lib/voice-charts.test.ts lib/consents.test.ts",
+    "test": "node --experimental-strip-types --experimental-default-type=module --test lib/report-view.test.ts lib/forbidden-terms.test.ts lib/player.test.ts lib/transcript.test.ts lib/voice-charts.test.ts lib/consents.test.ts lib/progress.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

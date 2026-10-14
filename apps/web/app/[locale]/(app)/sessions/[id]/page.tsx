@@ -13,6 +13,7 @@ import { RadarChart } from "@/components/report/radar-chart";
 import { SummaryCard } from "@/components/report/summary-card";
 import { TranscriptTab } from "@/components/report/transcript-tab";
 import { VoiceTab } from "@/components/report/voice-tab";
+import { eventsUrl, parseProgressData, shouldReloadReport } from "@/lib/progress";
 import { radarPoints } from "@/lib/report-view";
 import { exportVtt, type TranscriptPayload } from "@/lib/transcript";
 import type { SeriesPayload } from "@/lib/voice-charts";
@@ -32,8 +33,23 @@ type SessionDetail = {
   };
 };
 
-const FALLBACK_STAGES = ["ingest", "asr", "audio_features", "fusion_scoring", "report"];
-const STAGE_LABELS = new Set(["ingest", "asr", "audio_features", "fusion_scoring", "content_llm", "report"]);
+const FALLBACK_STAGES = [
+  "ingest",
+  "asr",
+  "audio_features",
+  "partial_scoring",
+  "fusion_scoring",
+  "report",
+];
+const STAGE_LABELS = new Set([
+  "ingest",
+  "asr",
+  "audio_features",
+  "partial_scoring",
+  "fusion_scoring",
+  "content_llm",
+  "report",
+]);
 
 function isReport(value: unknown): value is AnalysisReport {
   if (!value || typeof value !== "object") return false;
@@ -58,6 +74,30 @@ export default function SessionPage() {
 
   useEffect(() => {
     let active = true;
+    async function loadArtifacts() {
+      const reportResponse = await fetch(`/api/stagecoach/sessions/${params.id}/report`, {
+        cache: "no-store",
+      });
+      if (reportResponse.ok) {
+        const payload: unknown = await reportResponse.json();
+        if (isReport(payload) && active) setReport(payload);
+      }
+      const transcriptResponse = await fetch(`/api/stagecoach/sessions/${params.id}/transcript`, {
+        cache: "no-store",
+      });
+      if (transcriptResponse.ok && active) setTranscript(await transcriptResponse.json());
+      const seriesNames = ["pace", "pitch", "loudness", "energy"] as const;
+      const loaded: Record<string, SeriesPayload | null> = {};
+      await Promise.all(
+        seriesNames.map(async (name) => {
+          const response = await fetch(`/api/stagecoach/sessions/${params.id}/series/${name}`, {
+            cache: "no-store",
+          });
+          loaded[name] = response.ok ? ((await response.json()) as SeriesPayload) : null;
+        }),
+      );
+      if (active) setSeries(loaded);
+    }
     async function refresh() {
       try {
         const response = await fetch(`/api/stagecoach/sessions/${params.id}`, { cache: "no-store" });
@@ -65,29 +105,9 @@ export default function SessionPage() {
         const body: SessionDetail = await response.json();
         if (!active) return;
         setSession(body);
-        if ((body.status === "ready" || body.status === "partial") && !report) {
-          const reportResponse = await fetch(`/api/stagecoach/sessions/${params.id}/report`, {
-            cache: "no-store",
-          });
-          if (reportResponse.ok) {
-            const payload: unknown = await reportResponse.json();
-            if (isReport(payload)) setReport(payload);
-          }
-          const transcriptResponse = await fetch(`/api/stagecoach/sessions/${params.id}/transcript`, {
-            cache: "no-store",
-          });
-          if (transcriptResponse.ok) setTranscript(await transcriptResponse.json());
-          const seriesNames = ["pace", "pitch", "loudness", "energy"] as const;
-          const loaded: Record<string, SeriesPayload | null> = {};
-          await Promise.all(
-            seriesNames.map(async (name) => {
-              const response = await fetch(`/api/stagecoach/sessions/${params.id}/series/${name}`, {
-                cache: "no-store",
-              });
-              loaded[name] = response.ok ? ((await response.json()) as SeriesPayload) : null;
-            }),
-          );
-          if (active) setSeries(loaded);
+        const ready = body.status === "ready" || body.status === "partial";
+        if (ready || body.status === "processing") {
+          await loadArtifacts();
         }
       } catch (reason) {
         if (active) setError(reason instanceof Error ? reason.message : t("loadError"));
@@ -97,11 +117,19 @@ export default function SessionPage() {
     const timer = window.setInterval(() => {
       if (!terminal) void refresh();
     }, 2500);
+    const source = new EventSource(eventsUrl(params.id));
+    source.onmessage = (message) => {
+      if (!active) return;
+      const event = parseProgressData(message.data);
+      if (shouldReloadReport(event)) void loadArtifacts();
+      if (event?.type === "done") void refresh();
+    };
     return () => {
       active = false;
       window.clearInterval(timer);
+      source.close();
     };
-  }, [params.id, report, terminal, t]);
+  }, [params.id, terminal, t]);
 
   async function remove() {
     if (!window.confirm(t("deleteConfirm"))) return;
@@ -175,13 +203,23 @@ export default function SessionPage() {
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
             <h2 className="text-xl font-semibold">{t("processing")}</h2>
           </div>
+          <p className="mb-4 text-sm text-muted-foreground">{t("processingHint")}</p>
           <div className="grid gap-3 md:grid-cols-4">
             {stages.map((stage) => {
               const complete = session?.job?.steps.some(
                 (step) => step.stage === stage && step.status === "succeeded",
               );
               const label = STAGE_LABELS.has(stage)
-                ? t(stage as "ingest" | "asr" | "audio_features" | "fusion_scoring" | "content_llm" | "report")
+                ? t(
+                    stage as
+                      | "ingest"
+                      | "asr"
+                      | "audio_features"
+                      | "partial_scoring"
+                      | "fusion_scoring"
+                      | "content_llm"
+                      | "report",
+                  )
                 : stage.replaceAll("_", " ");
               return (
                 <div key={stage} className="flex items-center gap-2 rounded-md bg-muted p-3 text-sm">

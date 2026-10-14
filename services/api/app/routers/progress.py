@@ -67,13 +67,11 @@ async def event_stream(job_id: str, timeout: int = 600) -> AsyncGenerator[str, N
                     data = message["data"].decode("utf-8")
                     event = json.loads(data)
                     
-                    # Send SSE event
+                    # Send SSE event (stage, partial_ready, or done — SPEC §7.6)
                     yield f"data: {json.dumps(event)}\n\n"
-                    logger.debug(f"Sent progress event: {event['status']}")
-                    
-                    # If stage succeeded or failed, check if pipeline is done
-                    if event["status"] in ("succeeded", "failed"):
-                        # Could check DB here if all stages done
+                    logger.debug("Sent progress event: %s", event.get("type") or event.get("status"))
+
+                    if event.get("type") == "done" or event.get("status") in ("succeeded", "failed"):
                         pass
                         
             except asyncio.TimeoutError:

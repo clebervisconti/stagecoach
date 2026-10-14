@@ -64,11 +64,18 @@ async function proxy(
     "content-disposition",
     "accept-ranges",
     "content-range",
+    "x-accel-buffering",
+    "connection",
   ]) {
     const value = upstream.headers.get(name);
     if (value) responseHeaders.set(name, value);
   }
   responseHeaders.set("cache-control", "no-store");
+  if ((upstream.headers.get("content-type") || "").includes("text/event-stream")) {
+    responseHeaders.set("cache-control", "no-cache");
+    responseHeaders.set("connection", "keep-alive");
+    responseHeaders.set("x-accel-buffering", "no");
+  }
   return new Response(upstream.body, {
     status: upstream.status,
     headers: responseHeaders,
