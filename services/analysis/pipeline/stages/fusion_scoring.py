@@ -53,27 +53,41 @@ PILLAR_OF = {
 CLAIM_TYPE_LEVEL = {"none": 1, "topic": 2, "vague_claim": 3, "claim": 5}
 
 
+def _walk_packages() -> list[Path]:
+    """Locate packages/ without assuming a repo-relative depth.
+
+    In Docker the worker lives at /app/pipeline/stages/..., so parents[4]
+    raises IndexError. Prefer the compose mount at /packages.
+    """
+    found: list[Path] = []
+    seen: set[Path] = set()
+    for path in (Path("/packages"),):
+        if path.exists() and path not in seen:
+            found.append(path)
+            seen.add(path)
+    here = Path(__file__).resolve().parent
+    for parent in [here, *here.parents]:
+        candidate = parent / "packages"
+        if candidate.exists() and candidate not in seen:
+            found.append(candidate)
+            seen.add(candidate)
+    return found
+
+
 def _ensure_scoring_path() -> None:
-    candidates = [
-        Path("/packages/scoring"),
-        Path(__file__).resolve().parents[4] / "packages" / "scoring",
-    ]
-    for path in candidates:
-        if (path / "scoring").exists() or (path / "scoring" / "engine.py").exists() or (path / "pyproject.toml").exists():
+    for packages in _walk_packages():
+        path = packages / "scoring"
+        if (path / "scoring").exists() or (path / "pyproject.toml").exists():
             if str(path) not in sys.path:
                 sys.path.insert(0, str(path))
             return
 
 
 def _packages_dir() -> Path:
-    candidates = (
-        Path("/packages"),
-        Path(__file__).resolve().parents[4] / "packages",
-    )
-    for path in candidates:
+    for path in _walk_packages():
         if (path / "scoring-config").exists() or (path / "schemas").exists():
             return path
-    return Path(__file__).resolve().parents[4] / "packages"
+    return Path("/packages")
 
 
 def _load_schema(packages: Path | None = None) -> dict[str, Any]:

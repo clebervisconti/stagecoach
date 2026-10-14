@@ -10,7 +10,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parents[3] / "packages" / "scoring"))
 
-from pipeline.stages.fusion_scoring import VIDEO_CATEGORIES, run_fusion_scoring
+from pipeline.stages.fusion_scoring import (
+    VIDEO_CATEGORIES,
+    _ensure_scoring_path,
+    _packages_dir,
+    _walk_packages,
+    run_fusion_scoring,
+)
 from pipeline.stages.report import FORBIDDEN, build_report, run_report_stage
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -133,6 +139,14 @@ def _write_inputs(tmp_path: Path, *, with_content: bool, short: bool = False) ->
     if with_content:
         (tmp_path / "content.json").write_text((FIXTURES / "synthetic_content.json").read_text())
     return {"transcript": transcript}
+
+
+def test_packages_lookup_does_not_assume_repo_depth():
+    """Worker image path is /app/pipeline/stages/... — parents[4] must not be required."""
+    _ensure_scoring_path()
+    packages = _packages_dir()
+    assert (packages / "scoring-config" / "v1.0.0" / "scoring.yaml").exists()
+    assert any((p / "schemas" / "analysis_result.v1.json").exists() for p in _walk_packages())
 
 
 def test_missing_content_marks_text_categories_unavailable(tmp_path: Path):
