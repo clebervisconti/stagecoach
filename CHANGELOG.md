@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Report accessibility WCAG 2.2 AA (issue #53)
+- `@axe-core/playwright` on the report (test-only; axe-core is MPL-2.0 and was already a transitive dep)
+- Keyboard-only coverage of player, evidence chips, and timeline lanes
+- Captions from the transcript (`<track kind="captions">`)
+- Color-blind hatch patterns on radar and timeline; `prefers-reduced-motion`
+
 ##### Added - Observability: OTel, Prometheus, admin cost (issue #52)
 - API and workers start OTel when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (existing Splunk distro)
 - Prometheus `GET /metrics` with handler templates only (no PII labels)

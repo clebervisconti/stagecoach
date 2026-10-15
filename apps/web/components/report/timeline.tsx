@@ -97,7 +97,6 @@ export function ReportTimeline({
       <div
         className="relative space-y-1 rounded-md border bg-muted/40 p-2"
         onClick={seekFromEvent}
-        onKeyDown={() => undefined}
       >
         {visible.map((lane) => (
           <button
@@ -122,7 +121,11 @@ export function ReportTimeline({
               return (
                 <span
                   key={`${lane.id}-${index}`}
-                  className={`absolute top-1 h-4 rounded-sm ${active ? "bg-primary" : "bg-primary/50"}`}
+                  className={`absolute top-1 h-4 rounded-sm ${
+                    active
+                      ? "bg-primary bg-[repeating-linear-gradient(45deg,transparent,transparent_2px,rgba(255,255,255,0.35)_2px,rgba(255,255,255,0.35)_4px)]"
+                      : "bg-primary/50 bg-[repeating-linear-gradient(-45deg,transparent,transparent_2px,rgba(0,0,0,0.15)_2px,rgba(0,0,0,0.15)_4px)]"
+                  }`}
                   style={{ left: `${left}%`, width: `${width}%` }}
                   title={item.label}
                   onMouseEnter={() => setHover({ t: item.t_start, label: item.label })}

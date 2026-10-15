@@ -27,6 +27,12 @@ export function RadarChart({ points }: RadarChartProps) {
         aria-hidden="true"
         className="mx-auto h-64 w-64"
       >
+        <defs>
+          <pattern id="radar-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="6" height="6" className="fill-primary/15" />
+            <line x1="0" y1="0" x2="0" y2="6" className="stroke-primary" strokeWidth="2" />
+          </pattern>
+        </defs>
         {rings.map((ring) => {
           const ringPoints = points
             .map((_, index) => radarAxisPoint(index, points.length, RADIUS * ring, CX, CY))
@@ -80,7 +86,8 @@ export function RadarChart({ points }: RadarChartProps) {
         {polygon ? (
           <polygon
             points={polygon}
-            className="fill-primary/20 stroke-primary"
+            fill="url(#radar-hatch)"
+            className="stroke-primary"
             strokeWidth="2"
           />
         ) : null}
