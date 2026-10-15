@@ -16,6 +16,7 @@
     "sessions": "Sessions",
     "trends": "Trends",
     "settings": "Settings",
+    "research": "References",
     "prep": "Talk Prep"
   },
   "marketing": {
@@ -367,5 +368,28 @@
     "pauseHistogram": "Pause duration histogram",
     "fillerPerSection": "Filler sounds per section",
     "seriesUnavailable": "This series was not produced for this session, so it is unavailable rather than plotted as zero."
+  },
+  "research": {
+    "heading": "References",
+    "intro": "Every category card and “why this matters” tooltip links here. Claims come only from docs/research/sources.md ([S1]–[S56]).",
+    "mythsHeading": "Myths and limits",
+    "mythsIntro": "What Stage Coach does not claim. Source keys open the References page.",
+    "myths": {
+      "no73855Title": "No 7-38-55",
+      "no73855Body": "The 7%-38%-55% ratios do not describe communication in general. Mehrabian’s experiments concerned judgments of feelings and attitudes from inconsistent messages.",
+      "noEmotionTitle": "No emotion reading",
+      "noEmotionBody": "Facial movements are not reliable read-outs of inner emotion across people and contexts. The app reports expressions and signals only.",
+      "noAccentTitle": "No accent scoring",
+      "noAccentBody": "ASR accuracy differs across speaker groups. The app scores behaviors and treats ASR-derived metrics as estimates.",
+      "moreNotBetterTitle": "More is not always better",
+      "moreNotBetterBody": "Eye contact can increase resistance to persuasion in some listeners. Gesture norms are cultural. Targets are bands, not maximums.",
+      "heuristicsTitle": "Rules of thumb are labeled",
+      "heuristicsBody": "130–160 WPM, about 90% of the slot, ≤ 25 words per slide, and 30–90 s answers are heuristics, not research claims."
+    },
+    "scoringHeading": "Scoring config {version}",
+    "scoringIntro": "Read-only public copy of the versioned weights, curves, and category skeleton.",
+    "scoringReadonly": "This page does not accept edits. Changes ship as a new scoring-config version.",
+    "scoringCategories": "Categories",
+    "scoringRaw": "Full scoring.yaml"
   }
 }

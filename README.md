@@ -12,7 +12,7 @@ Production: LION loopback `:3107`, LaunchAgent `com.cyberlabs.stagecoach`. See `
 
 - [Full Specification](docs/SPEC.md) - Complete product and technical specification
 - [Architecture Decisions](docs/DECISIONS.md) - ADRs for key technical choices
-- [Research Sources](docs/research/sources.md) - Verified research citations
+- [Research Sources](docs/research/sources.md) - Verified research citations (in-app: `/research`, `/research/myths`, `/config/scoring/1.0.0`)
 - [Validation Plan](docs/VALIDATION.md) - Methodology and validation results
 
 ## Architecture Overview

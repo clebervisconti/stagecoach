@@ -16,6 +16,7 @@
     "sessions": "Sessões",
     "trends": "Progresso",
     "settings": "Configurações",
+    "research": "Referências",
     "prep": "Preparação"
   },
   "marketing": {
@@ -367,5 +368,28 @@
     "pauseHistogram": "Histograma de pausas",
     "fillerPerSection": "Sons de preenchimento por seção",
     "seriesUnavailable": "Esta série não foi produzida para esta sessão, por isso fica indisponível em vez de aparecer como zero."
+  },
+  "research": {
+    "heading": "Referências",
+    "intro": "Cada cartão de categoria e o texto “por que isso importa” apontam para cá. As afirmações vêm só de docs/research/sources.md ([S1]–[S56]).",
+    "mythsHeading": "Mitos e limites",
+    "mythsIntro": "O que o Stage Coach não afirma. As chaves de fonte abrem a página de Referências.",
+    "myths": {
+      "no73855Title": "Sem 7-38-55",
+      "no73855Body": "As razões 7%-38%-55% não descrevem a comunicação em geral. Os experimentos de Mehrabian tratavam de julgamentos de sentimentos e atitudes em mensagens inconsistentes.",
+      "noEmotionTitle": "Sem leitura de emoção",
+      "noEmotionBody": "Movimentos faciais não são leitura confiável da emoção interna entre pessoas e contextos. O app relata só expressões e sinais.",
+      "noAccentTitle": "Sem pontuação de sotaque",
+      "noAccentBody": "A acurácia do ASR varia entre grupos de falantes. O app pontua comportamentos e trata métricas derivadas do ASR como estimativas.",
+      "moreNotBetterTitle": "Mais nem sempre é melhor",
+      "moreNotBetterBody": "O contato visual pode aumentar a resistência à persuasão em alguns ouvintes. Normas de gesto são culturais. Os alvos são faixas, não máximos.",
+      "heuristicsTitle": "Regras práticas vêm rotuladas",
+      "heuristicsBody": "130–160 palavras/min, cerca de 90% do slot, ≤ 25 palavras por slide e respostas de 30–90 s são heurísticas, não afirmações de pesquisa."
+    },
+    "scoringHeading": "Configuração de pontuação {version}",
+    "scoringIntro": "Cópia pública e somente leitura dos pesos, curvas e categorias versionados.",
+    "scoringReadonly": "Esta página não aceita edições. Mudanças saem como uma nova versão do scoring-config.",
+    "scoringCategories": "Categorias",
+    "scoringRaw": "scoring.yaml completo"
   }
 }

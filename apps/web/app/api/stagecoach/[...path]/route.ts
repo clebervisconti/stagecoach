@@ -3,7 +3,7 @@ import { stagecoachApi } from "@/lib/api";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SAFE_SEGMENT = /^[A-Za-z0-9_-]+$/;
+const SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/;
 const ALLOWED_METHODS = new Set(["GET", "POST", "PATCH", "DELETE"]);
 
 function apiPath(parts: string[]): string {

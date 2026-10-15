@@ -30,7 +30,10 @@ const NAMED_CATEGORIES = new Set<string>([
 ]);
 const ENABLE_HINTS = new Set(["visual_aids", "gestures_body", "eye_contact", "facial_affect", "qa"]);
 const KEY_METRIC_SET = new Set<string>(KEY_METRIC_IDS);
+import { useLocale } from "next-intl";
+import Link from "next/link";
 import { formatTimestamp } from "@/lib/player";
+import { referencesHref } from "@/lib/research-sources";
 import { categoriesByPillar, evidenceById, metricsById } from "@/lib/report-view";
 import { MetricInfo } from "./metric-info";
 
@@ -62,6 +65,8 @@ function CategoryCard({
   onSeek?: (tStart: number) => void;
 }) {
   const t = useTranslations("report");
+  const locale = useLocale();
+  const prefix = locale === "en" ? "" : `/${locale}`;
   const metrics = metricsById(report);
   const evidence = evidenceById(report);
   const name = NAMED_CATEGORIES.has(category.id)
@@ -183,12 +188,13 @@ function CategoryCard({
             <p>
               <span className="font-medium">{t("sources")}: </span>
               {category.sources.map((source) => (
-                <span
+                <Link
                   key={source}
-                  className="mr-1 inline-block rounded bg-muted px-1.5 py-0.5 font-mono text-xs"
+                  href={referencesHref(source, prefix)}
+                  className="mr-1 inline-block rounded bg-muted px-1.5 py-0.5 font-mono text-xs hover:bg-muted/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {source === "heuristic" ? t("heuristic") : source}
-                </span>
+                </Link>
               ))}
             </p>
           )}

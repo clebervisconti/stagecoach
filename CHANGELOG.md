@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - In-app References, Myths and limits, scoring config (issue #51)
+- `GET /research/sources` lists [S1]–[S56] from `docs/research/sources.md` with stable anchors
+- `/research` References page; category cards and metric info link to `#S#`
+- `/research/myths` renders SPEC §4.8 (no 7-38-55, no emotion reading, no accent scoring)
+- Read-only `/config/scoring/{version}` and `GET /config/scoring/{version}`
+
 ##### Added - AI provider settings (owner decision 2026-10-14)
 - xAI (Grok) remains the default
 - Settings → AI providers: local OpenAI-compatible (LM Studio / Gemma), Anthropic, OpenAI, Gemini, custom URL
