@@ -121,6 +121,7 @@ export function ReportPlayer({
         {t("recording")}
       </h2>
       <div
+        role="region"
         tabIndex={0}
         onKeyDown={onKeyDown}
         className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
