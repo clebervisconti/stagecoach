@@ -72,6 +72,7 @@ app.conf.update(
         "tasks.run_mvp_analysis": {"queue": "cpu"},
         "tasks.export_pdf": {"queue": "cpu"},
         "tasks.retention_sweeper": {"queue": "cpu"},
+        "tasks.prep_llm": {"queue": "llm"},
     },
     beat_schedule={
         "retention-sweeper-nightly": {
@@ -252,6 +253,24 @@ def _finalize_media(
 def health_check():
     """Health check task for worker verification."""
     return {"status": "healthy", "worker": "celery"}
+
+
+@app.task(name="tasks.prep_llm")
+def prep_llm_task(
+    plan_id: str,
+    section: str = "all",
+    feedback: str = "",
+    llm_settings: Optional[dict] = None,
+) -> dict:
+    """Enqueue target for POST /plans and /regenerate. LLM bodies land in #56–#62."""
+    from pipeline.prep_llm import apply_prep_placeholder
+
+    return apply_prep_placeholder(
+        plan_id,
+        section=section,
+        feedback=feedback,
+        llm_settings=llm_settings or {},
+    )
 
 
 @app.task(name="tasks.retention_sweeper")
