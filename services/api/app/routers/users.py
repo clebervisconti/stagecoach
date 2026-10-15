@@ -13,6 +13,7 @@ from app.consents.store import current_from_rows, records_for_user
 from app.database import get_db
 from app.models.consent import Consent
 from app.models.user import User, uuid7
+from app.llm_providers import normalize_llm_settings, provider_catalog
 from app.retention import DEFAULT_RETENTION_POLICY, RETENTION_POLICIES, normalize_retention_policy
 
 router = APIRouter(prefix="/me", tags=["users"])
@@ -43,6 +44,16 @@ def normalize_accessibility(raw: Optional[dict]) -> dict:
     return out
 
 
+def parse_llm_settings(value: Optional[dict]) -> dict:
+    try:
+        return normalize_llm_settings(value)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
 def parse_retention_policy(value: Optional[str]) -> str:
     try:
         return normalize_retention_policy(value)
@@ -62,6 +73,7 @@ class UserProfile(BaseModel):
     timezone: str = "UTC"
     accessibility_profile: Optional[dict] = None
     retention_policy: str = DEFAULT_RETENTION_POLICY
+    llm_settings: Optional[dict] = None
 
 
 class UserProfileUpdate(BaseModel):
@@ -71,6 +83,7 @@ class UserProfileUpdate(BaseModel):
     timezone: Optional[str] = Field(None, max_length=50)
     accessibility_profile: Optional[dict] = None
     retention_policy: Optional[str] = None
+    llm_settings: Optional[dict] = None
 
 
 class ConsentChange(BaseModel):
@@ -130,7 +143,17 @@ async def get_me(current_user: User = Depends(get_current_user)):
         timezone=current_user.timezone,
         accessibility_profile=current_user.accessibility_profile,
         retention_policy=parse_retention_policy(getattr(current_user, "retention_policy", None)),
+        llm_settings=parse_llm_settings(getattr(current_user, "llm_settings", None)),
     )
+
+
+@router.get("/ai-providers")
+async def get_ai_providers(current_user: User = Depends(get_current_user)):
+    """Catalog of selectable providers. Reports key presence, never key values."""
+    return {
+        **provider_catalog(),
+        "llm_settings": parse_llm_settings(getattr(current_user, "llm_settings", None)),
+    }
 
 
 @router.patch("", response_model=UserProfile)
@@ -150,6 +173,8 @@ async def update_me(
         current_user.accessibility_profile = normalize_accessibility(update.accessibility_profile)
     if update.retention_policy is not None:
         current_user.retention_policy = parse_retention_policy(update.retention_policy)
+    if update.llm_settings is not None:
+        current_user.llm_settings = parse_llm_settings(update.llm_settings)
 
     db.commit()
     db.refresh(current_user)
@@ -162,6 +187,7 @@ async def update_me(
         timezone=current_user.timezone,
         accessibility_profile=current_user.accessibility_profile,
         retention_policy=parse_retention_policy(getattr(current_user, "retention_policy", None)),
+        llm_settings=parse_llm_settings(getattr(current_user, "llm_settings", None)),
     )
 
 

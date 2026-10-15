@@ -83,6 +83,32 @@
     "locale": "Locale",
     "signOut": "Sign Out"
   },
+  "aiProviders": {
+    "heading": "AI providers",
+    "intro": "xAI (Grok) is the default. Keys stay in the server environment or a secret manager — they are never typed here or stored in the repo. Transcripts go to the selected provider.",
+    "loadError": "Could not load AI provider settings.",
+    "saveError": "Could not save AI provider settings.",
+    "baseUrl": "Endpoint URL",
+    "keyPresent": "A key is configured in the environment.",
+    "keyMissing": "Set {env} on the server. Do not paste a key into this page.",
+    "leavesMachine": "This provider is not the default. Analysis text will leave this machine and be sent to that vendor.",
+    "keys": {
+      "xai": "xAI (Grok) — default",
+      "local": "Local OpenAI-compatible (LM Studio / Gemma)",
+      "anthropic": "Anthropic Claude",
+      "openai": "OpenAI",
+      "gemini": "Google Gemini",
+      "custom": "Custom OpenAI-compatible URL"
+    },
+    "hints": {
+      "xai": "Owner-chosen default. Uses XAI_API_KEY or LLM_API_KEY.",
+      "local": "For example LM Studio on TIGER serving Gemma at http://127.0.0.1:1234/v1. Data stays on the machine when the URL is loopback.",
+      "anthropic": "Uses ANTHROPIC_API_KEY.",
+      "openai": "Uses OPENAI_API_KEY.",
+      "gemini": "Uses GEMINI_API_KEY or GOOGLE_API_KEY.",
+      "custom": "Any OpenAI-compatible /v1 endpoint. Set CUSTOM_LLM_API_KEY or LLM_API_KEY if the host requires a key."
+    }
+  },
   "retention": {
     "heading": "Recording retention",
     "intro": "Original uploads are deleted after 30 days by default. Analysis working copies (16 kHz audio and the analysis proxy) are always removed when a job finishes. Scores and the report stay until you delete the session.",

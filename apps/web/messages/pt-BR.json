@@ -83,6 +83,32 @@
     "locale": "Idioma",
     "signOut": "Sair"
   },
+  "aiProviders": {
+    "heading": "Provedores de IA",
+    "intro": "xAI (Grok) é o padrão. As chaves ficam no ambiente do servidor ou no gerenciador de segredos — nunca são digitadas aqui nem guardadas no repositório. As transcrições vão para o provedor escolhido.",
+    "loadError": "Não foi possível carregar as configurações de provedor de IA.",
+    "saveError": "Não foi possível salvar as configurações de provedor de IA.",
+    "baseUrl": "URL do endpoint",
+    "keyPresent": "Há uma chave configurada no ambiente.",
+    "keyMissing": "Defina {env} no servidor. Não cole uma chave nesta página.",
+    "leavesMachine": "Este provedor não é o padrão. O texto da análise sairá desta máquina e será enviado a esse fornecedor.",
+    "keys": {
+      "xai": "xAI (Grok) — padrão",
+      "local": "OpenAI-compatível local (LM Studio / Gemma)",
+      "anthropic": "Anthropic Claude",
+      "openai": "OpenAI",
+      "gemini": "Google Gemini",
+      "custom": "URL OpenAI-compatível personalizada"
+    },
+    "hints": {
+      "xai": "Padrão escolhido pelo titular. Usa XAI_API_KEY ou LLM_API_KEY.",
+      "local": "Por exemplo LM Studio no TIGER servindo Gemma em http://127.0.0.1:1234/v1. Os dados ficam na máquina quando a URL é loopback.",
+      "anthropic": "Usa ANTHROPIC_API_KEY.",
+      "openai": "Usa OPENAI_API_KEY.",
+      "gemini": "Usa GEMINI_API_KEY ou GOOGLE_API_KEY.",
+      "custom": "Qualquer endpoint /v1 compatível com OpenAI. Defina CUSTOM_LLM_API_KEY ou LLM_API_KEY se o host exigir chave."
+    }
+  },
   "retention": {
     "heading": "Retenção das gravações",
     "intro": "Os envios originais são apagados após 30 dias por padrão. Cópias de trabalho da análise (áudio 16 kHz e o proxy de análise) são sempre removidas quando o job termina. Pontuações e o relatório permanecem até você excluir a sessão.",

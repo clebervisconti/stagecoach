@@ -48,7 +48,7 @@ def run_slides_v1(
             from llm import LLMClient
             from llm.exceptions import LLMAuthError
 
-            client = LLMClient()
+            client = LLMClient()  # reads STAGECOACH_LLM_SETTINGS_PATH / env; keys from env only
         except Exception as exc:  # no key, missing dep
             logger.info("slides_v1 skipped: %s", type(exc).__name__)
             return None

@@ -72,6 +72,12 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
       MEDIA_ROOT: /data/stagecoach
+      LLM_PROVIDER: ${LLM_PROVIDER:-xai}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -98,6 +104,13 @@ services:
       STAGECOACH_ARTIFACT_KEY: ${STAGECOACH_ARTIFACT_KEY:-}
       STAGECOACH_KEK: ${STAGECOACH_KEK:-}
       MEDIAPIPE_MODELS_DIR: /models
+      LLM_PROVIDER: ${LLM_PROVIDER:-xai}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,7 +1,7 @@
 """LLM Client Package for Stage Coach
 
 Provider-neutral LLM client with structured output support.
-Per ADR-007: xAI (Grok) as the first provider.
+Per ADR-007 / ADR-038: xAI (Grok) is the default; other providers are selectable.
 """
 
 from .client import LLMClient
