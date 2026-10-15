@@ -292,6 +292,52 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
     if (method === "GET" && path.startsWith(`/sessions/${SESSION_ID}/series/`)) {
       return json(route, { name: path.split("/").pop(), resolution_s: 1, points: [], unavailable: true });
     }
+    if (method === "GET" && path === `/sessions/${SESSION_ID}/body`) {
+      return json(route, {
+        available: true,
+        duration_s: 12,
+        heat: [{ t: 0, value: 0.6 }],
+        space: { cols: 8, rows: 6, samples: 2, cells: [0, 2, 0, 1] },
+        events: [{ type: "self_adaptor", t_start: 1.2, t_end: 2.0 }],
+        sway: { value: 0.11, applicable: true, unit: "shoulder_widths_sd" },
+        yaw_histogram: [{ center: -10, count: 4 }],
+        audience_facing_ratio: 0.7,
+        notes_down: [{ type: "notes_down", t_start: 3, t_end: 5 }],
+        expressivity: { available: false, opt_in: true, points: [] },
+        quality: {
+          person_visible_ratio: 0.9,
+          face_visible_ratio: 0.8,
+          mean_face_height_px: 90,
+          mean_person_height_px: 240,
+        },
+      });
+    }
+    if (method === "GET" && path === `/sessions/${SESSION_ID}/slides`) {
+      return json(route, {
+        available: true,
+        slides: [
+          {
+            index: 1,
+            t_start: 0,
+            t_end: 8,
+            dwell_s: 8,
+            word_count: 12,
+            title: "Roadmap",
+            title_type: "topic",
+            glance_level: null,
+            reading_overlap: 0.2,
+            facing_screen_s: 1.5,
+            has_keyframe: false,
+            suggested_title: "We shipped the Q3 roadmap.",
+            suggestion_source: "ai",
+          },
+        ],
+        ai_suggestions: true,
+      });
+    }
+    if (method === "GET" && path === `/sessions/${SESSION_ID}/keyframe`) {
+      return route.fulfill({ status: 404, body: "" });
+    }
     if (method === "GET" && path === `/sessions/${SESSION_ID}/timeline`) {
       return json(route, {
         duration_s: 12,

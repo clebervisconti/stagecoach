@@ -29,6 +29,10 @@ LOCO_ALIGN_S = 5.0
 SWAY_BAND_HZ = (0.2, 1.5)
 GESTURE_SPACE_Y = (-1.7, -0.12)  # waist≈0 (down +); shoulders typically −1.3
 GESTURE_SPACE_X = 0.25
+SPACE_GRID_COLS = 8
+SPACE_GRID_ROWS = 6
+SPACE_GRID_X = (-1.6, 1.6)
+SPACE_GRID_Y = (-2.0, 0.4)
 CLASPED_X = 0.30
 HIDDEN_WRIST_VIS = 0.5
 ELBOW_VIS = 0.5
@@ -172,6 +176,52 @@ def gb_gesture_space_ratio(
         else:
             in_space[i] = any(candidates)
     return float(np.mean(in_space[gesture]))
+
+
+def wrist_space_density(
+    rows: Sequence[dict[str, Any]],
+    *,
+    one_handed: bool = False,
+) -> dict[str, Any]:
+    """2-D wrist-position counts in shoulder-width units for the Body-tab silhouette.
+
+    Missing wrists stay out of the grid. Counts are never invented.
+    `one_handed` is accepted for the same call sites as other gesture helpers.
+    """
+    _ = one_handed
+    cols, rows_n = SPACE_GRID_COLS, SPACE_GRID_ROWS
+    x0, x1 = SPACE_GRID_X
+    y0, y1 = SPACE_GRID_Y
+    cells = [0] * (cols * rows_n)
+    samples = 0
+    for row in rows:
+        for prefix in ("wrist_l", "wrist_r"):
+            vis = float(row.get(f"{prefix}_vis") or 0.0)
+            if vis <= HANDS_VIS_THRESH:
+                continue
+            x = row.get(f"{prefix}_x")
+            y = row.get(f"{prefix}_y")
+            if x is None or y is None:
+                continue
+            xf, yf = float(x), float(y)
+            if isinstance(x, float) and np.isnan(xf):
+                continue
+            if xf < x0 or xf > x1 or yf < y0 or yf > y1:
+                continue
+            ci = min(cols - 1, max(0, int((xf - x0) / max(x1 - x0, 1e-6) * cols)))
+            ri = min(rows_n - 1, max(0, int((yf - y0) / max(y1 - y0, 1e-6) * rows_n)))
+            cells[ri * cols + ci] += 1
+            samples += 1
+    return {
+        "cols": cols,
+        "rows": rows_n,
+        "x_min": x0,
+        "x_max": x1,
+        "y_min": y0,
+        "y_max": y1,
+        "samples": samples,
+        "cells": cells,
+    }
 
 
 def gb_self_adaptor_per_min(
@@ -504,6 +554,7 @@ def compute_gesture_metrics(
         "stroke_times_s": [round(t, 3) for t in stroke_times],
         "locomotion_segments": _locomotion_segments(extra_events),
         "activity_windows": activity_windows,
+        "space_density": wrist_space_density(visible, one_handed=one_handed),
         "metrics": metrics,
     }
     return payload

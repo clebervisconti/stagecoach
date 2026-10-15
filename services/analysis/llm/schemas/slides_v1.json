@@ -24,6 +24,7 @@
             "type": "array",
             "items": { "type": "string", "maxLength": 120 }
           },
+          "suggested_assertion_title": { "type": "string", "maxLength": 120 },
           "insufficient_evidence": { "type": "boolean" }
         }
       }

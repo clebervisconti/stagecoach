@@ -1001,6 +1001,7 @@ jobs:
           echo "  - category 15 (energy_presence) fuses loudness/PVQ/gesture/expressivity z-scores; not confidence detection; no SER"
           echo "  - partial_ready SSE + live report; vision failure → audio/text report with categories 12–14 N/A"
           echo "  - video-synced timeline lanes (sections/slides/fillers/pauses/rushing/monotone/gestures/audience-facing/smiles opt-in/CLT/QA); J/L Space arrows"
+          echo "  - Body tab (heat, gesture space, events, sway, yaw, notes-down, expressivity opt-in, quality) and Slides tab (filmstrip + AI titles)"
           echo ""
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"

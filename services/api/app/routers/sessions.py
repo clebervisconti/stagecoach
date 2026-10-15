@@ -640,6 +640,69 @@ async def get_timeline(
     raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Timeline is not ready")
 
 
+def _json_artifact(outputs: dict, key: str, filename: str) -> dict:
+    raw = outputs.get(key)
+    if raw:
+        return json.loads(_safe_artifact_path(raw).read_text())
+    directory = _artifact_dir(outputs)
+    if directory:
+        candidate = (directory / filename).resolve()
+        if candidate.is_file() and candidate.is_relative_to(MEDIA_ROOT):
+            return json.loads(candidate.read_text())
+    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"{key} is not ready")
+
+
+@router.get("/{session_id}/body")
+async def get_body(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """SPEC §8.7 Body-tab payload written beside report artifacts (issue #48)."""
+    session = _owned_session(session_id, current_user, db)
+    _, outputs = _outputs_or_conflict(session, db)
+    return _json_artifact(outputs, "body", "body.json")
+
+
+@router.get("/{session_id}/slides")
+async def get_slides_tab(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """SPEC §8.7 Slides-tab filmstrip (issue #48)."""
+    session = _owned_session(session_id, current_user, db)
+    _, outputs = _outputs_or_conflict(session, db)
+    return _json_artifact(outputs, "slides_tab", "slides_tab.json")
+
+
+@router.get("/{session_id}/keyframe")
+async def get_keyframe(
+    session_id: str,
+    i: int = Query(default=1, ge=1),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Slide keyframe JPEG for the Slides-tab filmstrip."""
+    session = _owned_session(session_id, current_user, db)
+    _, outputs = _outputs_or_conflict(session, db)
+    directory = _artifact_dir(outputs)
+    if not directory:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Keyframe is not ready")
+    slides = _json_artifact(outputs, "slides", "slides.json")
+    raw = None
+    for slide in slides.get("slides") or []:
+        if int(slide.get("index") or 0) == i:
+            raw = slide.get("keyframe")
+            break
+    if not raw:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Keyframe is not ready")
+    candidate = Path(raw).resolve()
+    if not candidate.is_file() or not candidate.is_relative_to(MEDIA_ROOT):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Keyframe is not ready")
+    return FileResponse(candidate, media_type="image/jpeg")
+
+
 @router.get("/{session_id}/sprite")
 async def get_sprite(
     session_id: str,
