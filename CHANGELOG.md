@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Phase 2 exit fixtures and CPU bench (issue #54)
+- Stage / to-camera / screen-recording fixtures assert the N/A matrix and non-zero confidence
+- CPU fusion-only ratio ≤ 1.5× on the synthetic transcript; vision scripted-frame s/media-minute recorded in ADR-042
+- GPU and full-pipeline 20-min P50 are flagged (this CI is CPU-only)
+
 ##### Added - Report accessibility WCAG 2.2 AA (issue #53)
 - `@axe-core/playwright` on the report (test-only; axe-core is MPL-2.0 and was already a transitive dep)
 - Keyboard-only coverage of player, evidence chips, and timeline lanes
