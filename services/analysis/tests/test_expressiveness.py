@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -14,10 +15,12 @@ from pipeline.consent import VisionDecision
 from pipeline.stages.fusion_scoring import run_fusion_scoring
 from pipeline.stages.report import FORBIDDEN, run_report_stage
 from pipeline.stages.vision import run_vision_stage
+from pipeline.vision.crypto import MAGIC_V2, load_json_object
 from pipeline.vision.expressiveness import attach_incongruence
 from pipeline.vision.synthetic import scripted_events
 
 TEST_KEY = bytes.fromhex("11" * 32)
+os.environ.setdefault("STAGECOACH_ARTIFACT_KEY", TEST_KEY.hex())
 PACKAGES = Path(__file__).parents[3] / "packages"
 VIDEO = VisionDecision(
     run_pose=True,
@@ -68,7 +71,10 @@ def test_expression_metrics_written_only_with_consent(tmp_path: Path):
         frames=scripted_events(),
         encryption_key=TEST_KEY,
     )
-    payload = json.loads((tmp_path / "expression_metrics.json").read_text())
+    expr_path = tmp_path / "expression_metrics.json"
+    assert expr_path.read_bytes()[:6] == MAGIC_V2
+    payload = load_json_object(expr_path, TEST_KEY)
+    assert payload is not None
     assert payload["emotion_inference"] is False
     assert "fa_smile_presence_ratio" in payload["metrics"]
     assert "fa_expressivity_index" in payload["metrics"]

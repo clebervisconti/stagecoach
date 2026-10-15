@@ -17,7 +17,7 @@ import numpy as np
 
 from pipeline.consent import VisionDecision
 from pipeline.vision.aggregate import aggregate_face, aggregate_pose, write_encrypted_parquet
-from pipeline.vision.crypto import resolve_artifact_key
+from pipeline.vision.crypto import resolve_artifact_key, write_encrypted_json
 from pipeline.vision.features import (
     FACE_HANDS_FPS,
     POSE_FPS,
@@ -313,7 +313,7 @@ def run_vision_stage(
 
         expr = compute_expression_metrics(face_rows, events, duration_s=max(duration, 1.0))
         if expr is not None:
-            expr_path.write_text(json.dumps(expr, indent=2) + "\n", encoding="utf-8")
+            write_encrypted_json(expr_path, expr, key)
             artifacts["expression_metrics"] = str(expr_path)
     elif expr_path.exists():
         expr_path.unlink()

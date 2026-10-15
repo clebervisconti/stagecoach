@@ -83,6 +83,22 @@
     "locale": "Idioma",
     "signOut": "Sair"
   },
+  "retention": {
+    "heading": "Retenção das gravações",
+    "intro": "Os envios originais são apagados após 30 dias por padrão. Cópias de trabalho da análise (áudio 16 kHz e o proxy de análise) são sempre removidas quando o job termina. Pontuações e o relatório permanecem até você excluir a sessão.",
+    "loadError": "Não foi possível carregar as configurações de retenção.",
+    "saveError": "Não foi possível salvar as configurações de retenção.",
+    "keys": {
+      "after_analysis": "Excluir imediatamente após a análise",
+      "days_30": "Manter por 30 dias após a análise",
+      "until_delete": "Manter até eu excluir a sessão"
+    },
+    "hints": {
+      "after_analysis": "Remove a gravação original assim que o relatório fica pronto. A reprodução pode permanecer para você revisar a sessão.",
+      "days_30": "Padrão. Um faxineiro noturno apaga originais cuja data de retenção já passou.",
+      "until_delete": "Os originais ficam até você excluir a sessão. As regras de ciclo de vida do armazenamento são só um limite de segurança."
+    }
+  },
   "accessibility": {
     "heading": "Perfil de acessibilidade",
     "intro": "Estas opções alteram quais métricas corporais são pontuadas. Elas são uma preferência que você define, nunca inferida do vídeo. Métricas indisponíveis aparecem como N/D, sem penalidade.",

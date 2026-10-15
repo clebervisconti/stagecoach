@@ -91,7 +91,7 @@ The application will be available at:
 
 - ✅ **Phase 0** (Week 1): Foundations - monorepo, DB, config, scoring engine
 - 🚧 **Phase 1** (Weeks 2-4): Audio + text MVP - ASR, LLM analysis, basic report
-- 🚧 **Phase 2** (Weeks 5-7): Video + slides — consents, CPU MediaPipe vision, vision events, opt-in category 14 (no emotion inference), category 12 gestures with accessibility-profile gates, category 13 audience-facing time (head orientation, not eye contact), slides stage (PySceneDetect, keyframes, deck text, Tesseract), category 8 visual aids, category 15 energy fusion (no SER), partial reports (vision failure → categories 12–14 N/A), video-synced timeline lanes, Body and Slides tabs, PDF export via Playwright Chromium, then retention/encryption
+- 🚧 **Phase 2** (Weeks 5-7): Video + slides — consents, CPU MediaPipe vision, vision events, opt-in category 14 (no emotion inference), category 12 gestures with accessibility-profile gates, category 13 audience-facing time (head orientation, not eye contact), slides stage (PySceneDetect, keyframes, deck text, Tesseract), category 8 visual aids, category 15 energy fusion (no SER), partial reports (vision failure → categories 12–14 N/A), video-synced timeline lanes, Body and Slides tabs, PDF export via Playwright Chromium, retention sweeper + envelope encryption of biometric JSON
 - 📅 **Phase 3** (Weeks 8-10): Talk-prep coach - objectives, trends, personal baselines
 - 📅 **Phase 4** (v2): Practice loop - in-browser recording, live feedback, drills
 - 📅 **Phase 5** (v3): Teams - organizations, coaches, cohort analytics, benchmarks

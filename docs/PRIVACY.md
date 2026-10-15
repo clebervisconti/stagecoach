@@ -15,7 +15,7 @@ Per §10 of SPEC:
 
 ### Data Minimization
 - Only collect data necessary for the service
-- Delete recordings per retention policy (default 90 days)
+- Delete recordings per retention policy (default 30 days after analysis)
 
 ### Encryption
 - TLS in transit
@@ -43,6 +43,7 @@ Per §10 of SPEC:
 - Expression analysis and detailed tracking are off by default. Vision stages do not run without `video_analysis`. Facial movement metrics additionally require `expression_analysis`. Raw landmarks are kept only with `keep_detailed_tracking`.
 - Pose/face per-second aggregates are the storage specified in SPEC §5.4 / §10.1. Raw frames are not stored as vision features.
 - Issue #38 writes those aggregates as AES-256-GCM files (`STAGECOACH_ARTIFACT_KEY`). Raw landmark arrays are dropped after extraction unless `keep_detailed_tracking`.
+- Issue #50 wraps derived biometric JSON in an SCENC2 envelope (DEK + local KEK). KMS selection is an owner decision and is not enabled here.
 
 ## Compliance
 
@@ -52,7 +53,9 @@ Per §10 of SPEC:
 
 ## Data Retention
 
-- Media files: 90 days default (user configurable in Phase 3)
+- Original uploads: 30 days after analysis by default; user may choose delete-after-analysis or keep-until-delete
+- `audio16k` / analysis proxy: deleted when the job completes
+- Nightly `retention_sweeper` cross-checks `media_assets.retention_until`; object-storage lifecycle rules are a backstop
 - Derived features: Deleted with session
 - User accounts: Soft delete with 7-day grace period (Phase 3)
 

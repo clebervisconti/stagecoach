@@ -5,7 +5,7 @@ import hmac
 import json
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
@@ -48,13 +48,17 @@ from app.models.media_asset import MediaAsset
 from app.models.metric_value import MetricValue
 from app.models.overall_score import OverallScore
 from app.models.transcript import Transcript
+from app.retention import (
+    UNTIL_DELETE,
+    retention_until_for,
+    normalize_retention_policy,
+)
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 # Configuration
 MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", "/data/stagecoach")).resolve()
 MAX_FILE_SIZE = int(os.getenv("MAX_UPLOAD_BYTES", str(500 * 1024 * 1024)))
-DEFAULT_RETENTION_DAYS = 90
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 ALLOWED_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv", ".m4a", ".mp3", ".wav", ".ogg", ".flac"}
 ALLOWED_CONTENT_TYPES = {
@@ -399,7 +403,8 @@ async def upload_and_analyze(
         stored_path.unlink(missing_ok=True)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty")
 
-    retention_until = datetime.utcnow() + timedelta(days=DEFAULT_RETENTION_DAYS)
+    policy = normalize_retention_policy(getattr(current_user, "retention_policy", None))
+    retention_until = retention_until_for(policy, datetime.utcnow(), event="upload")
     asset = MediaAsset(
         session_id=session.id,
         kind="original",
@@ -407,7 +412,7 @@ async def upload_and_analyze(
         bytes=total,
         sha256=digest.hexdigest(),
         retention_until=retention_until,
-        codec_info={"content_type": file.content_type, "extension": extension},
+        codec_info={"content_type": file.content_type, "extension": extension, "retention_policy": policy},
     )
     job = AnalysisJob(
         session_id=session.id,
@@ -436,6 +441,7 @@ async def upload_and_analyze(
             "consents": snapshot_for_user(db, current_user.id),
             "camera_setup": session.camera_setup,
             "accessibility_profile": current_user.accessibility_profile or {},
+            "retention_policy": policy,
         },
         queue="cpu",
     )
@@ -490,7 +496,7 @@ async def attach_deck(
     stored_path.write_bytes(data)
     stored_path.chmod(0o600)
 
-    retention_until = datetime.utcnow() + timedelta(days=DEFAULT_RETENTION_DAYS)
+    retention_until = retention_until_for(UNTIL_DELETE, datetime.utcnow(), event="upload")
     asset = MediaAsset(
         session_id=session.id,
         kind="deck",

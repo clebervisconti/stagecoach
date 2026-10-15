@@ -27,9 +27,14 @@ SMILE_TYPES = ("smile", "flat_face")
 def _read_json(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
+    from pipeline.vision.crypto import load_json_object
+
+    loaded = load_json_object(path)
+    if loaded is not None:
+        return loaded
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return {}
     return data if isinstance(data, dict) else {}
 

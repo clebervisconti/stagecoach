@@ -108,7 +108,16 @@ def _session_uuid(session_id: str) -> str:
 def _read_json(path: Optional[Path]) -> Optional[dict[str, Any]]:
     if path is None or not path.exists():
         return None
-    return json.loads(path.read_text())
+    from pipeline.vision.crypto import load_json_object
+
+    loaded = load_json_object(path)
+    if loaded is not None:
+        return loaded
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
 
 
 def _normalize_language(value: Optional[str]) -> str:

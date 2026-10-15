@@ -13,6 +13,7 @@ from app.consents.store import current_from_rows, records_for_user
 from app.database import get_db
 from app.models.consent import Consent
 from app.models.user import User, uuid7
+from app.retention import DEFAULT_RETENTION_POLICY, RETENTION_POLICIES, normalize_retention_policy
 
 router = APIRouter(prefix="/me", tags=["users"])
 
@@ -42,6 +43,16 @@ def normalize_accessibility(raw: Optional[dict]) -> dict:
     return out
 
 
+def parse_retention_policy(value: Optional[str]) -> str:
+    try:
+        return normalize_retention_policy(value)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"retention_policy must be one of {list(RETENTION_POLICIES)}",
+        ) from exc
+
+
 class UserProfile(BaseModel):
     """User profile response."""
     id: str
@@ -50,6 +61,7 @@ class UserProfile(BaseModel):
     locale: str = "en"
     timezone: str = "UTC"
     accessibility_profile: Optional[dict] = None
+    retention_policy: str = DEFAULT_RETENTION_POLICY
 
 
 class UserProfileUpdate(BaseModel):
@@ -58,6 +70,7 @@ class UserProfileUpdate(BaseModel):
     locale: Optional[str] = Field(None, pattern="^(en|pt-BR)$")
     timezone: Optional[str] = Field(None, max_length=50)
     accessibility_profile: Optional[dict] = None
+    retention_policy: Optional[str] = None
 
 
 class ConsentChange(BaseModel):
@@ -116,6 +129,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
         locale=current_user.locale,
         timezone=current_user.timezone,
         accessibility_profile=current_user.accessibility_profile,
+        retention_policy=parse_retention_policy(getattr(current_user, "retention_policy", None)),
     )
 
 
@@ -134,6 +148,8 @@ async def update_me(
         current_user.timezone = update.timezone
     if update.accessibility_profile is not None:
         current_user.accessibility_profile = normalize_accessibility(update.accessibility_profile)
+    if update.retention_policy is not None:
+        current_user.retention_policy = parse_retention_policy(update.retention_policy)
 
     db.commit()
     db.refresh(current_user)
@@ -145,6 +161,7 @@ async def update_me(
         locale=current_user.locale,
         timezone=current_user.timezone,
         accessibility_profile=current_user.accessibility_profile,
+        retention_policy=parse_retention_policy(getattr(current_user, "retention_policy", None)),
     )
 
 

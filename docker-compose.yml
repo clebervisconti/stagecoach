@@ -96,6 +96,7 @@ services:
       DATABASE_URL: postgresql://stagecoach:${POSTGRES_PASSWORD}@postgres:5432/stagecoach
       MEDIA_ROOT: /data/stagecoach
       STAGECOACH_ARTIFACT_KEY: ${STAGECOACH_ARTIFACT_KEY:-}
+      STAGECOACH_KEK: ${STAGECOACH_KEK:-}
       MEDIAPIPE_MODELS_DIR: /models
     depends_on:
       postgres:
@@ -110,6 +111,30 @@ services:
     command: celery -A worker.app worker -Q cpu --loglevel=info --concurrency=2
     profiles:
       - workers  # Use --profile workers to start this service
+
+  worker-beat:
+    build:
+      context: ./services/analysis
+      dockerfile: Dockerfile
+    container_name: stagecoach-worker-beat
+    environment:
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://stagecoach:${POSTGRES_PASSWORD}@postgres:5432/stagecoach
+      MEDIA_ROOT: /data/stagecoach
+      STAGECOACH_ARTIFACT_KEY: ${STAGECOACH_ARTIFACT_KEY:-}
+      STAGECOACH_KEK: ${STAGECOACH_KEK:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/analysis:/app
+      - ./packages:/packages
+      - media_data:/data/stagecoach
+    command: celery -A worker.app beat --loglevel=info
+    profiles:
+      - workers
 
   mailpit:
     # Use ghcr.io mirror to avoid Docker Hub rate limits in CI

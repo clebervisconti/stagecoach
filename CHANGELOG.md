@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Retention sweeper, lifecycle backstop, envelope encryption (issue #50)
+- User retention choices: delete after analysis, 30 days (default), or keep until session delete
+- Nightly Celery beat `retention_sweeper` deletes `media_assets` past `retention_until` (time-travel test)
+- `audio16k` and the analysis proxy are removed when the job completes
+- Derived biometric JSON (`expression_metrics.json`) is SCENC2 envelope AES-GCM; local KEK in dev, KMS left as an owner decision
+- Object-storage lifecycle rules live in `infra/object-storage-lifecycle.json` (not applied in CI; minio profile skipped)
+
 ##### Added - PDF export via Playwright Chromium (issue #49)
 - `POST /sessions/{id}/export/pdf` enqueues a CPU worker job; `GET /exports/{id}` and `/file`
 - Print HTML sections follow SPEC §8.9; charts are SVG; keyframes replace video
