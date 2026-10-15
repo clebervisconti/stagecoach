@@ -1008,6 +1008,7 @@ jobs:
           echo "  - GET /research/sources, /research + /research/myths, GET /config/scoring/{version} (read-only)"
           echo "  - OTel traces when OTLP endpoint set; GET /metrics; admin analysis-costs; error tracking none pending owner Sentry decision"
           echo "  - Report axe-core + keyboard-only player/timeline; captions; hatch patterns; reduced motion"
+          echo "  - Phase 2 exit: stage/to-camera/screen N/A matrix; CPU fusion P50 stand-in; vision s/media-min on scripted frames"
           echo ""
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"
