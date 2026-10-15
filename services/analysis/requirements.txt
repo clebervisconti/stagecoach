@@ -59,3 +59,6 @@ scenedetect==0.6.6
 opencv-python-headless==4.10.0.84
 python-pptx==1.0.2
 pytesseract==0.3.13
+
+# PDF export (issue #49) — Playwright Apache-2.0; Chromium is BSD. CPU only.
+playwright==1.49.1

@@ -47,6 +47,9 @@ RUN pip install --no-cache-dir -r requirements-alignment.txt && \
 # Copy application code
 COPY . .
 
+# Playwright Chromium for PDF export (SPEC §6.8 / §8.9). Apache-2.0 / BSD.
+RUN playwright install-deps chromium && playwright install chromium
+
 # MediaPipe Tasks models are downloaded on first vision run (Apache-2.0, SHA pinned).
 ENV MEDIAPIPE_MODELS_DIR=/models
 RUN mkdir -p /models

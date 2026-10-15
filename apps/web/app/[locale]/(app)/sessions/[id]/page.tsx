@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, FileDown, Loader2, Trash2 } from "lucide-react";
 import type { AnalysisReport } from "@/lib/report-types";
 import { CategoryCards } from "@/components/report/category-cards";
 import { InsightsPanel } from "@/components/report/insights-panel";
@@ -16,6 +16,7 @@ import { SlidesTab } from "@/components/report/slides-tab";
 import { TranscriptTab } from "@/components/report/transcript-tab";
 import { VoiceTab } from "@/components/report/voice-tab";
 import type { BodyPayload, SlidesPayload } from "@/lib/body-slides";
+import { exportFileUrl, exportStatusUrl, exportUrl } from "@/lib/pdf-export";
 import { formatTimestamp } from "@/lib/player";
 import { eventsUrl, parseProgressData, shouldReloadReport } from "@/lib/progress";
 import { radarPoints } from "@/lib/report-view";
@@ -80,6 +81,8 @@ export default function SessionPage() {
   );
   const seekRef = useRef<(tStart: number) => void>(() => undefined);
   const [error, setError] = useState("");
+  const [includeTranscript, setIncludeTranscript] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const terminal = session?.status === "ready" || session?.status === "partial" || session?.status === "failed";
 
   useEffect(() => {
@@ -159,6 +162,36 @@ export default function SessionPage() {
     };
   }, [params.id, terminal, t]);
 
+  async function exportPdf() {
+    setExporting(true);
+    setError("");
+    try {
+      const created = await fetch(exportUrl(params.id), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ include_transcript: includeTranscript }),
+      });
+      if (!created.ok) throw new Error(t("exportError"));
+      const body = (await created.json()) as { id: string };
+      for (let i = 0; i < 20; i += 1) {
+        const statusResponse = await fetch(exportStatusUrl(body.id), { cache: "no-store" });
+        if (!statusResponse.ok) throw new Error(t("exportError"));
+        const status = (await statusResponse.json()) as { status: string };
+        if (status.status === "ready") {
+          window.location.assign(exportFileUrl(body.id));
+          return;
+        }
+        if (status.status === "failed") throw new Error(t("exportError"));
+        await new Promise((resolve) => window.setTimeout(resolve, 400));
+      }
+      throw new Error(t("exportError"));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t("exportError"));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function remove() {
     if (!window.confirm(t("deleteConfirm"))) return;
     const response = await fetch(`/api/stagecoach/sessions/${params.id}`, { method: "DELETE" });
@@ -209,6 +242,30 @@ export default function SessionPage() {
             {report?.overall.partial ? ` · ${t("partial")}` : ""}
           </p>
         </div>
+        <div className="flex flex-col items-end gap-2">
+          {report && (
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  data-testid="include-transcript"
+                  checked={includeTranscript}
+                  onChange={(event) => setIncludeTranscript(event.target.checked)}
+                />
+                {t("includeTranscript")}
+              </label>
+              <button
+                type="button"
+                data-testid="export-pdf"
+                onClick={() => void exportPdf()}
+                disabled={exporting}
+                className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <FileDown className="h-4 w-4" aria-hidden="true" />
+                {exporting ? t("exportQueued") : t("exportPdf")}
+              </button>
+            </div>
+          )}
         <button
           type="button"
           data-testid="delete-session"
@@ -217,6 +274,7 @@ export default function SessionPage() {
         >
           <Trash2 className="h-4 w-4" aria-hidden="true" /> {t("delete")}
         </button>
+        </div>
       </div>
 
       {error && (
