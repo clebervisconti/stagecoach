@@ -87,7 +87,7 @@ test("references, myths, and scoring-config pages render", async ({ page }) => {
   await page.goto("/research/myths", { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("myths-page")).toBeVisible();
   await expect(page.getByText(/7-38-55/i)).toBeVisible();
-  await page.goto("/config/scoring/1.0.0", { waitUntil: "domcontentloaded" });
+  await page.goto("/config/scoring", { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("scoring-config-page")).toBeVisible();
   await expect(page.getByTestId("scoring-config-yaml")).toContainText("version:");
 });

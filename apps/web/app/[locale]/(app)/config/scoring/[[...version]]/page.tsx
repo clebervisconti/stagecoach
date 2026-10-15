@@ -5,8 +5,13 @@ import { notFound } from "next/navigation";
 import { CATEGORY_IDS } from "@/lib/report-types";
 
 type PageProps = {
-  params: Promise<{ version: string }>;
+  params: Promise<{ version?: string[] }>;
 };
+
+function normalizeVersion(parts: string[] | undefined): string {
+  if (!parts?.length) return "1.0.0";
+  return parts.join(".");
+}
 
 function scoringPath(version: string): string | null {
   if (!version || version.includes("/") || version.includes("..")) return null;
@@ -15,7 +20,8 @@ function scoringPath(version: string): string | null {
 }
 
 export default async function ScoringConfigPage({ params }: PageProps) {
-  const { version } = await params;
+  const { version: parts } = await params;
+  const version = normalizeVersion(parts);
   const t = await getTranslations("research");
   const path = scoringPath(version);
   if (!path) notFound();

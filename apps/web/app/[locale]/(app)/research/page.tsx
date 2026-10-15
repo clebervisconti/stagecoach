@@ -7,7 +7,6 @@ export default async function ReferencesPage() {
   const locale = await getLocale();
   const prefix = locale === "en" ? "" : `/${locale}`;
   const sources = loadSourcesFromRepo();
-  let lastSection = "";
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-10" data-testid="references-page">
@@ -17,26 +16,21 @@ export default async function ReferencesPage() {
         <Link className="text-primary underline-offset-2 hover:underline" href={`${prefix}/research/myths`}>
           {t("mythsHeading")}
         </Link>
-        <Link className="text-primary underline-offset-2 hover:underline" href={`${prefix}/config/scoring/1.0.0`}>
+        <Link className="text-primary underline-offset-2 hover:underline" href={`${prefix}/config/scoring`}>
           {t("scoringHeading", { version: "1.0.0" })}
         </Link>
       </p>
       <ol className="mt-8 space-y-6">
-        {sources.map((source) => {
-          const showSection = source.section && source.section !== lastSection;
-          lastSection = source.section;
-          return (
-            <li key={source.key} id={source.anchor} className="scroll-mt-24">
-              {showSection ? (
-                <h2 className="mb-3 text-lg font-medium text-foreground">{source.section}</h2>
-              ) : null}
-              <p>
-                <span className="font-mono text-sm font-semibold">[{source.key}]</span>{" "}
-                {source.text}
-              </p>
-            </li>
-          );
-        })}
+        {sources.map((source, index) => (
+          <li key={source.key} id={source.anchor} className="scroll-mt-24">
+            {index === 0 || sources[index - 1]?.section !== source.section ? (
+              <h2 className="mb-3 text-lg font-medium text-foreground">{source.section}</h2>
+            ) : null}
+            <p>
+              <span className="font-mono text-sm font-semibold">[{source.key}]</span> {source.text}
+            </p>
+          </li>
+        ))}
       </ol>
     </div>
   );
