@@ -11,3 +11,4 @@ PyJWT[crypto]==2.15.1
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.32
 pyyaml==6.0.1
+prometheus_client==0.21.1

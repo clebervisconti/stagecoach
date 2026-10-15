@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - Observability: OTel, Prometheus, admin cost (issue #52)
+- API and workers start OTel when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (existing Splunk distro)
+- Prometheus `GET /metrics` with handler templates only (no PII labels)
+- Admin `GET /admin/analysis-costs` gated by `STAGECOACH_ADMIN_EMAILS`
+- Error tracking stays `none` until the owner chooses Sentry SaaS, self-hosted, or none — no Sentry SDK
+
 ##### Added - In-app References, Myths and limits, scoring config (issue #51)
 - `GET /research/sources` lists [S1]–[S56] from `docs/research/sources.md` with stable anchors
 - `/research` References page; category cards and metric info link to `#S#`

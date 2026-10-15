@@ -391,5 +391,17 @@
     "scoringReadonly": "Esta página não aceita edições. Mudanças saem como uma nova versão do scoring-config.",
     "scoringCategories": "Categorias",
     "scoringRaw": "scoring.yaml completo"
+  },
+  "admin": {
+    "heading": "Custo por análise",
+    "intro": "Duração das etapas e USD de LLM registrados. Sem transcrições, prompts ou e-mails.",
+    "forbidden": "Somente admin. Defina STAGECOACH_ADMIN_EMAILS.",
+    "sentryPending": "Decisão do owner pendente para rastreamento de erros:",
+    "sentryNone": "Rastreamento de erros está desligado (none). Sentry não é inicializado.",
+    "session": "Sessão",
+    "status": "Status",
+    "duration": "Duração (s)",
+    "cost": "Custo (USD)",
+    "unknown": "N/A"
   }
 }

@@ -391,5 +391,17 @@
     "scoringReadonly": "This page does not accept edits. Changes ship as a new scoring-config version.",
     "scoringCategories": "Categories",
     "scoringRaw": "Full scoring.yaml"
+  },
+  "admin": {
+    "heading": "Per-analysis cost",
+    "intro": "Stage durations and recorded LLM USD. No transcripts, prompts, or emails.",
+    "forbidden": "Admin only. Set STAGECOACH_ADMIN_EMAILS.",
+    "sentryPending": "Owner decision needed for error tracking:",
+    "sentryNone": "Error tracking is off (none). Sentry is not initialized.",
+    "session": "Session",
+    "status": "Status",
+    "duration": "Duration (s)",
+    "cost": "Cost (USD)",
+    "unknown": "N/A"
   }
 }
