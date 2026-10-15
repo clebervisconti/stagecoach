@@ -79,6 +79,19 @@ test("body and slides tabs render from report artifacts", async ({ page }) => {
   await expect(page.getByTestId("ai-suggestion")).toContainText(/AI suggestion/i);
 });
 
+test("references, myths, and scoring-config pages render", async ({ page }) => {
+  await mockStagecoachApi(page, { language: "en", title: "References talk" });
+  await page.goto("/research", { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("references-page")).toBeVisible();
+  await expect(page.locator("#S20")).toBeVisible();
+  await page.goto("/research/myths", { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("myths-page")).toBeVisible();
+  await expect(page.getByText(/7-38-55/i)).toBeVisible();
+  await page.goto("/config/scoring", { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("scoring-config-page")).toBeVisible();
+  await expect(page.getByTestId("scoring-config-yaml")).toContainText("version:");
+});
+
 test("pt-BR upload shows né/tipo/então disambiguation then delete", async ({ page }) => {
   const api = await mockStagecoachApi(page, { language: "pt-BR", title: "Fala de saída" });
   await page.goto("/pt-BR/sessions", { waitUntil: "domcontentloaded" });

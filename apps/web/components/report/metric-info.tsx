@@ -1,8 +1,10 @@
 "use client";
 
 import { useId, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import Link from "next/link";
 import { Info, X } from "lucide-react";
+import { referencesHref } from "@/lib/research-sources";
 
 type MetricInfoProps = {
   title: string;
@@ -24,6 +26,8 @@ export function MetricInfo({
   targetBand,
 }: MetricInfoProps) {
   const t = useTranslations("report");
+  const locale = useLocale();
+  const prefix = locale === "en" ? "" : `/${locale}`;
   const panelId = useId();
   const [open, setOpen] = useState(false);
   const sourceLabel =
@@ -66,7 +70,15 @@ export function MetricInfo({
             <dt className="text-muted-foreground">{t("rawValue")}</dt>
             <dd>{value ?? t("unavailable")}</dd>
             <dt className="text-muted-foreground">{t("sourceLabel")}</dt>
-            <dd>{sourceLabel ?? t("heuristic")}</dd>
+            <dd>
+              {source && source !== "heuristic" && source !== "H" ? (
+                <Link className="font-mono text-primary underline-offset-2 hover:underline" href={referencesHref(source, prefix)}>
+                  {sourceLabel}
+                </Link>
+              ) : (
+                sourceLabel ?? t("heuristic")
+              )}
+            </dd>
             <dt className="text-muted-foreground">{t("confidence")}</dt>
             <dd>
               {confidence === null ? t("unavailable") : `${Math.round(confidence * 100)}%`}

@@ -1005,6 +1005,7 @@ jobs:
           echo "  - PDF export via Playwright Chromium; GET /exports/{id}; no transcript unless include_transcript"
           echo "  - Nightly retention_sweeper; user retention_policy; audio16k/analysis_proxy deleted on job completion; SCENC2 envelope for biometric JSON"
           echo "  - Settings AI providers: xAI default; local/OpenAI/Anthropic/Gemini/custom; keys from env only"
+          echo "  - GET /research/sources, /research + /research/myths, GET /config/scoring/{version} (read-only)"
           echo ""
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"
