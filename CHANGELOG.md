@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 3: Talk-prep coach + objectives + trends (In Progress)
 
+##### Added - Plan-a-talk form + prep_clarify_v1 (issue #56)
+- `/prep` form fields per SPEC §9.1 (en / pt-BR); description capped at 4,000 characters
+- `POST /plans/{id}/clarify` runs `prep_clarify_v1` (≤ 5 questions); skip writes explicit assumptions
+- Stand-in extractor in tests; live LLM is an optional `generate` hook only
+
 ##### Added - talk_plans, goals, objective_scores + plan API (issue #55)
 - Reversible Alembic `008_talk_plans`
 - `POST/GET/PATCH /plans` and `POST /plans/{id}/regenerate` enqueue `prep_llm`
