@@ -7,8 +7,11 @@ import redis
 from sqlalchemy import text
 
 from app.rate_limit import TokenBucketMiddleware
-from app.routers import users, sessions, progress, evidence, exports, transparency
+from app.observability import MetricsMiddleware, error_tracking_status, init_api_otel, render_metrics
+from app.routers import users, sessions, progress, evidence, exports, transparency, admin
 from app.database import engine
+
+init_api_otel()
 
 app = FastAPI(
     title="Stage Coach API",
@@ -17,6 +20,7 @@ app = FastAPI(
 )
 
 app.add_middleware(TokenBucketMiddleware)
+app.add_middleware(MetricsMiddleware)
 
 # Include routers
 app.include_router(users.router, prefix="/api/v1", tags=["users"])
@@ -25,6 +29,7 @@ app.include_router(progress.router, prefix="/api/v1", tags=["progress"])
 app.include_router(evidence.router, prefix="/api/v1", tags=["evidence"])
 app.include_router(exports.router, prefix="/api/v1", tags=["exports"])
 app.include_router(transparency.router, prefix="/api/v1", tags=["transparency"])
+app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 
 
 @app.get("/")
@@ -34,6 +39,24 @@ async def root():
         "name": "Stage Coach API",
         "version": "0.2.0",
         "phase": "mvp",
+    }
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus scrape. Labels are handler templates only (no PII)."""
+    from fastapi.responses import Response
+
+    body, content_type = render_metrics()
+    return Response(content=body, media_type=content_type)
+
+
+@app.get("/observability")
+async def observability():
+    return {
+        "traces": bool(os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
+        "metrics": "/metrics",
+        "error_tracking": error_tracking_status(),
     }
 
 
