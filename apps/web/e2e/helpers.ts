@@ -223,6 +223,16 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
           low_vision: false,
         },
         retention_policy: "days_30",
+        llm_settings: { provider: "xai", base_url: "", model: "", leaves_machine: false },
+      });
+    }
+    if (method === "GET" && path === "/me/ai-providers") {
+      return json(route, {
+        default_provider: "xai",
+        llm_settings: { provider: "xai", base_url: "", model: "", leaves_machine: false },
+        providers: [
+          { id: "xai", default: true, leaves_machine: false, key_envs: ["XAI_API_KEY"], key_configured: false, needs_base_url: false, default_base_url: "https://api.x.ai/v1" },
+        ],
       });
     }
     if (method === "PATCH" && path === "/me") {
@@ -241,6 +251,7 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
           low_vision: false,
         },
         retention_policy: "days_30",
+        llm_settings: { provider: "xai", base_url: "", model: "", leaves_machine: false },
       });
     }
     if (method === "GET" && path === "/me/consents") {

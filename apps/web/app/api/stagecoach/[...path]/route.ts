@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SAFE_SEGMENT = /^[A-Za-z0-9_-]+$/;
-const ALLOWED_METHODS = new Set(["GET", "POST", "DELETE"]);
+const ALLOWED_METHODS = new Set(["GET", "POST", "PATCH", "DELETE"]);
 
 function apiPath(parts: string[]): string {
   if (!parts.length || parts.some((part) => !SAFE_SEGMENT.test(part))) {
@@ -55,7 +55,7 @@ async function proxy(
     method: request.method,
     headers,
   };
-  if (request.method === "POST") {
+  if (request.method === "POST" || request.method === "PATCH") {
     init.body = request.body;
     init.duplex = "half";
   }
@@ -88,4 +88,5 @@ async function proxy(
 
 export const GET = proxy;
 export const POST = proxy;
+export const PATCH = proxy;
 export const DELETE = proxy;

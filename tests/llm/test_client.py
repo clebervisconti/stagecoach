@@ -95,9 +95,7 @@ def test_client_init_no_api_key(mock_config, monkeypatch):
     """Test that client raises error when LLM_API_KEY is not set"""
     monkeypatch.delenv("LLM_API_KEY", raising=False)
 
-    with pytest.raises(
-        LLMAuthError, match="LLM_API_KEY environment variable not set"
-    ):
+    with pytest.raises(LLMAuthError, match="LLM_API_KEY"):
         LLMClient(config_path=mock_config, api_key=None)
 
 
@@ -191,37 +189,33 @@ def test_cost_tracking_reset(mock_config):
     assert client.total_cost == 0.0
 
 
-@pytest.mark.skipif(
-    not os.getenv("LLM_API_KEY"),
-    reason="LLM_API_KEY not set - skipping live test",
-)
-def test_live_api_call(mock_config):
-    """
-    Test live API call when LLM_API_KEY is set.
-    This test is skipped in CI when the key is not present.
-    """
-    client = LLMClient(config_path=mock_config, use_cassettes=False)
+def test_structured_call_uses_standin_not_network(mock_config):
+    """Stand-in transport only — never a live vendor call (ADR-038)."""
+    from services.analysis.llm.transport import StandinTransport
 
+    transport = StandinTransport(
+        {
+            "choices": [
+                {
+                    "message": {
+                        "content": '{"summary": "stand-in", "score": 3, "evidence": []}'
+                    }
+                }
+            ],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+        }
+    )
+    client = LLMClient(
+        config_path=mock_config,
+        api_key="stand-in",
+        use_cassettes=False,
+        transport=transport,
+    )
     response = client.generate_structured(
         prompt_id="test_prompt_v1",
-        inputs={
-            "context": "Evaluate this simple test.",
-            "transcript": ["Hello", "world"],
-        },
+        inputs={"context": "Evaluate this simple test."},
         schema=TEST_SCHEMA,
     )
-
-    # Check response structure
-    assert response.data is not None
-    assert "summary" in response.data
-    assert "score" in response.data
-    assert 1 <= response.data["score"] <= 5
-
-    # Check usage stats
-    assert response.usage.prompt_tokens > 0
-    assert response.usage.completion_tokens > 0
-    assert response.usage.cost_usd > 0
+    assert response.data["summary"] == "stand-in"
     assert response.usage.provider == "xai"
-
-    # Check cost tracking
-    assert client.total_cost == response.usage.cost_usd
+    assert transport.calls

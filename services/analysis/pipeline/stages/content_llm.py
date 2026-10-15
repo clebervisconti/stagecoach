@@ -511,7 +511,7 @@ def content_llm_stage(
     schema_dir = Path(__file__).parent.parent.parent / "llm" / "schemas"
 
     # Initialize LLM client
-    client = LLMClient()
+    client = LLMClient(settings_path=Path(output_dir) / "llm_settings.json")
     client.reset_cost_tracking()
 
     # Load transcript

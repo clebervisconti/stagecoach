@@ -821,6 +821,7 @@ def run_mvp_analysis_task(
     camera_setup: str = "unknown",
     accessibility_profile: Optional[dict] = None,
     retention_policy: Optional[str] = None,
+    llm_settings: Optional[dict] = None,
 ):
     """Run ingest → ASR → audio → partial scores → vision → slides → fusion → report."""
     from pipeline.accessibility import persist_accessibility
@@ -842,6 +843,10 @@ def run_mvp_analysis_task(
 
     try:
         persist_accessibility(destination, accessibility_profile)
+        from llm.settings import persist_llm_settings
+
+        persist_llm_settings(destination, llm_settings)
+        os.environ["STAGECOACH_LLM_SETTINGS_PATH"] = str(destination / "llm_settings.json")
         snapshot = persist_consent_snapshot(destination, consents)
         vision_decision_early = run_vision_if_allowed(snapshot, runner=None)
         skip_vision_now = vision_decision_early["status"] == "skipped"

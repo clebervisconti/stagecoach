@@ -1,11 +1,9 @@
 # LLM Configuration
-# Per ADR-007: Provider-neutral configuration with xAI as the first provider
-# All providers, models, and prices configured here (never hard-coded)
+# ADR-007 / ADR-038: xAI (Grok) is the owner-chosen default.
+# Keys are never stored here — only env / secret manager.
 
-# Default provider (can be overridden via LLM_PROVIDER env var)
 default_provider: xai
 
-# Provider configurations
 providers:
   xai:
     name: xAI
@@ -15,58 +13,109 @@ providers:
         display_name: Grok Beta
         supports_structured_output: true
         max_tokens: 131072
-        # Per-token prices in USD (update these based on xAI pricing)
-        price_per_input_token: 0.000005   # $5 per 1M input tokens (estimate)
-        price_per_output_token: 0.000015  # $15 per 1M output tokens (estimate)
+        price_per_input_token: 0.000005
+        price_per_output_token: 0.000015
         temperature_default: 0.4
         temperature_range: [0.0, 2.0]
-      
       grok-2-1212:
         display_name: Grok 2 (December 2024)
         supports_structured_output: true
         max_tokens: 131072
-        price_per_input_token: 0.000002   # $2 per 1M input tokens (estimate)
-        price_per_output_token: 0.000010  # $10 per 1M output tokens (estimate)
+        price_per_input_token: 0.000002
+        price_per_output_token: 0.000010
         temperature_default: 0.4
         temperature_range: [0.0, 2.0]
 
-# Model selection per prompt type (can be overridden)
+  local:
+    name: Local OpenAI-compatible
+    base_url: http://127.0.0.1:1234/v1
+    models:
+      gemma-3-12b:
+        display_name: Gemma (LM Studio)
+        supports_structured_output: true
+        max_tokens: 8192
+        price_per_input_token: 0
+        price_per_output_token: 0
+        temperature_default: 0.4
+        temperature_range: [0.0, 2.0]
+
+  openai:
+    name: OpenAI
+    base_url: https://api.openai.com/v1
+    models:
+      gpt-4o-mini:
+        display_name: GPT-4o mini
+        supports_structured_output: true
+        max_tokens: 128000
+        price_per_input_token: 0.00000015
+        price_per_output_token: 0.0000006
+        temperature_default: 0.4
+        temperature_range: [0.0, 2.0]
+
+  anthropic:
+    name: Anthropic Claude
+    base_url: https://api.anthropic.com
+    models:
+      claude-sonnet-4-5:
+        display_name: Claude Sonnet
+        supports_structured_output: true
+        max_tokens: 200000
+        price_per_input_token: 0.000003
+        price_per_output_token: 0.000015
+        temperature_default: 0.4
+        temperature_range: [0.0, 1.0]
+
+  gemini:
+    name: Google Gemini
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    models:
+      gemini-2.0-flash:
+        display_name: Gemini 2.0 Flash
+        supports_structured_output: true
+        max_tokens: 1048576
+        price_per_input_token: 0.0000001
+        price_per_output_token: 0.0000004
+        temperature_default: 0.4
+        temperature_range: [0.0, 2.0]
+
+  custom:
+    name: Custom OpenAI-compatible
+    base_url: ""
+    models:
+      default:
+        display_name: Custom model
+        supports_structured_output: true
+        max_tokens: 8192
+        price_per_input_token: 0
+        price_per_output_token: 0
+        temperature_default: 0.4
+        temperature_range: [0.0, 2.0]
+
 model_assignments:
   default: grok-beta
   slides_v1: grok-beta
-  # Future: specific models for specific prompt types
-  # outline_v1: grok-2-1212
-  # message_v1: grok-beta
 
-# Cost ceiling per analysis (USD)
-# Analysis will fail if estimated cost exceeds this
-cost_ceiling_per_analysis: 0.50  # $0.50 per analysis
+cost_ceiling_per_analysis: 0.50
 
-# Timeout settings (seconds)
 timeout:
   default: 60
-  long_form: 120  # For longer prompts like outline extraction
+  long_form: 120
 
-# Retry settings
 retry:
   max_attempts: 3
-  backoff_factor: 2  # Exponential backoff: 1s, 2s, 4s
+  backoff_factor: 2
 
-# Cassette settings for deterministic testing
 cassettes:
-  enabled: true  # Automatically use cassettes in tests
+  enabled: true
   directory: tests/fixtures/llm_cassettes
-  record_mode: once  # once, new_episodes, none, all
+  record_mode: once
   match_on:
     - method
     - uri
     - body
 
-# Logging
 logging:
-  # Never log prompts with personal content in production
-  log_prompts: false  # Set to true only in dev/test
-  log_responses: false  # Set to true only in dev/test
-  # Always log token usage and costs
+  log_prompts: false
+  log_responses: false
   log_usage: true
   log_costs: true

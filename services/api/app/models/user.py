@@ -40,6 +40,10 @@ class User(Base):
         default="days_30",
         comment="after_analysis, days_30, until_delete",
     )
+    llm_settings = Column(
+        JSONB,
+        comment="Chosen LLM provider, optional base_url and model. Never API keys.",
+    )
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True, index=True)

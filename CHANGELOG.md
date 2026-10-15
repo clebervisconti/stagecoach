@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
+##### Added - AI provider settings (owner decision 2026-10-14)
+- xAI (Grok) remains the default
+- Settings → AI providers: local OpenAI-compatible (LM Studio / Gemma), Anthropic, OpenAI, Gemini, custom URL
+- Non-default cloud providers warn that analysis text leaves the machine
+- API keys from env / secrets only; never stored in settings or the repo
+- Tests use in-memory stand-ins (no live calls)
+
 ##### Added - Retention sweeper, lifecycle backstop, envelope encryption (issue #50)
 - User retention choices: delete after analysis, 30 days (default), or keep until session delete
 - Nightly Celery beat `retention_sweeper` deletes `media_assets` past `retention_until` (time-travel test)

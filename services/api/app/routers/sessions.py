@@ -442,6 +442,7 @@ async def upload_and_analyze(
             "camera_setup": session.camera_setup,
             "accessibility_profile": current_user.accessibility_profile or {},
             "retention_policy": policy,
+            "llm_settings": getattr(current_user, "llm_settings", None) or {},
         },
         queue="cpu",
     )
