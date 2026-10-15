@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Phase 3: Talk-prep coach + objectives + trends (In Progress)
+
+##### Added - talk_plans, goals, objective_scores + plan API (issue #55)
+- Reversible Alembic `008_talk_plans`
+- `POST/GET/PATCH /plans` and `POST /plans/{id}/regenerate` enqueue `prep_llm`
+- User edits and regenerations increment `version`; history stores field names / feedback length only
+- Ownership 404; `prep_*` LLM bodies deferred to #56–#62
+
 ### Phase 2: Video, slides, full report, PDF (In Progress)
 
 ##### Added - Phase 2 exit fixtures and CPU bench (issue #54)
