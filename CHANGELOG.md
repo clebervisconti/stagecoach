@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 3: Talk-prep coach + objectives + trends (In Progress)
 
+##### Added - Plan editor, readiness scores, Markdown/PDF export (issue #61)
+- `/prep/{id}` inline edit + regenerate with feedback for every prep section
+- Readiness for categories 1–8 and 16–17 from materials; 9–15 N/A until rehearsal
+- Top 3 changes; Markdown download and print/PDF page
+
 ##### Added - Trends API + dashboard (issue #64)
 - `GET /trends` filtered by metric / category / context / language
 - Incompatible sessions (other context or scoring-config major) marked not comparable with a reason

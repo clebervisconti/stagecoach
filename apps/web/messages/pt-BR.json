@@ -439,6 +439,7 @@
     "questionsHeading": "Perguntas de esclarecimento",
     "assumptionsHeading": "Pressupostos (perguntas puladas)",
     "skip": "Pular e usar pressupostos",
+    "openEditor": "Abrir o editor do plano",
     "contexts": {
       "keynote": "Keynote",
       "breakout": "Sessão paralela",
@@ -467,5 +468,33 @@
     "status": "Estado",
     "comparable": "Comparável",
     "notComparable": "Não comparável"
+  },
+  "planEditor": {
+    "loading": "Carregando o plano…",
+    "loadError": "Não foi possível carregar o plano.",
+    "saveError": "Não foi possível salvar a seção.",
+    "regenError": "Não foi possível regenerar a seção.",
+    "untitled": "Plano sem título",
+    "audienceUnset": "público não informado",
+    "exportMarkdown": "Exportar Markdown",
+    "exportPdf": "Imprimir / PDF",
+    "feedback": "Feedback para regenerar",
+    "save": "Salvar",
+    "regenerate": "Regenerar",
+    "readiness": "Prontidão",
+    "ready": "pronto a partir do material",
+    "needsWork": "precisa de trabalho",
+    "topChanges": "3 mudanças mais importantes antes da entrega",
+    "sections": {
+      "core_message": "Mensagem central e CTA",
+      "audience": "Público",
+      "structure": "Estrutura",
+      "outline": "Roteiro",
+      "slide_review": "Revisão de slides",
+      "time_budget": "Orçamento de tempo",
+      "cut_list": "Lista de cortes",
+      "rehearsal_plan": "Plano de ensaio",
+      "objectives": "Objetivos"
+    }
   }
 }
