@@ -19,7 +19,7 @@ import type { BodyPayload, SlidesPayload } from "@/lib/body-slides";
 import { exportFileUrl, exportStatusUrl, exportUrl } from "@/lib/pdf-export";
 import { formatTimestamp } from "@/lib/player";
 import { eventsUrl, parseProgressData, shouldReloadReport } from "@/lib/progress";
-import { radarPoints } from "@/lib/report-view";
+import { goalRadarPoints, radarPoints, type GoalLike } from "@/lib/report-view";
 import { exportVtt, type TranscriptPayload } from "@/lib/transcript";
 import type { TimelinePayload } from "@/lib/timeline";
 import type { SeriesPayload } from "@/lib/voice-charts";
@@ -76,6 +76,7 @@ export default function SessionPage() {
   const [timeline, setTimeline] = useState<TimelinePayload | null>(null);
   const [body, setBody] = useState<BodyPayload | null>(null);
   const [slides, setSlides] = useState<SlidesPayload | null>(null);
+  const [goals, setGoals] = useState<GoalLike[]>([]);
   const [tab, setTab] = useState<"categories" | "transcript" | "voice" | "timeline" | "body" | "slides">(
     "categories",
   );
@@ -127,6 +128,11 @@ export default function SessionPage() {
       });
       if (slidesResponse.ok && active) {
         setSlides((await slidesResponse.json()) as SlidesPayload);
+      }
+      const goalsResponse = await fetch("/api/stagecoach/goals", { cache: "no-store" });
+      if (goalsResponse.ok && active) {
+        const payload = (await goalsResponse.json()) as { goals?: GoalLike[] };
+        setGoals(payload.goals ?? []);
       }
     }
     async function refresh() {
@@ -336,7 +342,10 @@ export default function SessionPage() {
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
             <SummaryCard report={report} />
             <section className="rounded-lg border bg-card p-6">
-              <RadarChart points={radarPoints(report)} />
+              <RadarChart
+                points={radarPoints(report)}
+                goalPoints={goalRadarPoints(radarPoints(report), goals)}
+              />
             </section>
           </div>
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">

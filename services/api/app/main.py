@@ -8,7 +8,7 @@ from sqlalchemy import text
 
 from app.rate_limit import TokenBucketMiddleware
 from app.observability import MetricsMiddleware, error_tracking_status, init_api_otel, render_metrics
-from app.routers import users, sessions, progress, evidence, exports, transparency, admin, plans, clarify, trends
+from app.routers import users, sessions, progress, evidence, exports, transparency, admin, plans, clarify, trends, goals
 from app.database import engine
 
 init_api_otel()
@@ -33,6 +33,7 @@ app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 app.include_router(plans.router, prefix="/api/v1", tags=["plans"])
 app.include_router(clarify.router, prefix="/api/v1", tags=["plans"])
 app.include_router(trends.router, prefix="/api/v1", tags=["trends"])
+app.include_router(goals.router, prefix="/api/v1", tags=["goals"])
 
 
 @app.get("/")

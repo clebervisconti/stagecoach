@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { sampleReport } from "./fixtures/report-sample.ts";
 import {
   formatOverallLine,
+  goalRadarPoints,
   keyMetricRows,
   overallHeadline,
   radarPoints,
@@ -36,6 +37,16 @@ test("unavailable pillars are gaps, never scored as zero", () => {
   assert.equal(polygon.includes("0,0"), false);
   const vertexCount = polygon.trim() ? polygon.split(" ").length : 0;
   assert.equal(vertexCount, points.filter((point) => point.available).length);
+});
+
+test("goal radar points map category targets onto pillars", () => {
+  const points = radarPoints(sampleReport);
+  const goals = goalRadarPoints(points, [{ category_id: "fluency", target: 80 }]);
+  const voice = goals.find((point) => point.id === "voice");
+  assert.equal(voice?.available, true);
+  assert.equal(voice?.score, 80);
+  const polygon = radarPolygon(goals, 100, 0, 0);
+  assert.ok(polygon.length > 0);
 });
 
 test("missing key metrics are labelled unavailable, not zero", () => {

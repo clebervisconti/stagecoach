@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { GoalsPanel } from "@/components/trends/goals-panel";
 import { sparklinePath, trendsQuery, type TrendsPayload } from "@/lib/trends";
 
 export default function TrendsPage() {
@@ -31,6 +32,9 @@ export default function TrendsPage() {
     <div className="container mx-auto max-w-4xl px-4 py-8" data-testid="trends-page">
       <h1 className="mb-2 text-3xl font-bold">{t("heading")}</h1>
       <p className="mb-6 text-sm text-muted-foreground">{t("intro")}</p>
+      <div className="mb-8">
+        <GoalsPanel />
+      </div>
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <label className="text-sm font-medium">
           {t("context")}
