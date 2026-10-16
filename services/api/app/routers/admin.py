@@ -1,10 +1,12 @@
 """Admin observability views. Gated by STAGECOACH_ADMIN_EMAILS."""
 
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.account_deletion import process_due_deletions
 from app.auth import get_current_user
 from app.database import get_db
 from app.models.analysis_job import AnalysisJob
@@ -66,3 +68,13 @@ def analysis_costs(
         "error_tracking": error_tracking_status(),
         "pii": False,
     }
+
+
+@router.post("/account-deletions/finalize")
+def finalize_account_deletions(
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Hard-delete accounts whose 7-day grace has elapsed. Counts only."""
+    finalized = process_due_deletions(db, now=datetime.utcnow())
+    return {"count": len(finalized), "finalized": finalized, "pii": False}

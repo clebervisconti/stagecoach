@@ -266,6 +266,23 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
       if (item && typeof body.granted === "boolean") item.granted = body.granted;
       return json(route, consents, 201);
     }
+    if (method === "GET" && path === "/me/deletion") {
+      return json(route, { status: "none" });
+    }
+    if (method === "POST" && path === "/me/export") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/zip",
+        headers: { "content-disposition": 'attachment; filename="stagecoach-export-user-1.zip"' },
+        body: "PK\x03\x04mock-export",
+      });
+    }
+    if (method === "DELETE" && path === "/me") {
+      return json(route, { status: "pending", due_at: "2026-10-23T12:00:00Z", grace_days: 7 }, 202);
+    }
+    if (method === "DELETE" && path === "/me/deletion") {
+      return route.fulfill({ status: 204, body: "" });
+    }
     if (method === "GET" && path === "/sessions") {
       return json(route, { sessions: created && !deleted ? [session()] : [] });
     }

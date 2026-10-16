@@ -1016,6 +1016,7 @@ jobs:
           echo "  - GET /trends + /trends dashboard; incompatible sessions marked not comparable"
           echo "  - /prep/{id} editor + readiness (1–8, 16–17); Markdown/PDF export"
           echo "  - Resend transactional email (console default; no live Resend in CI)"
+          echo "  - POST /me/export zip + 24 h media links; DELETE /me 7-day grace then hard delete"
           echo ""
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"

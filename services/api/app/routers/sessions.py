@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from celery import Celery
 
+from app.account_export import EXPORT_TTL_S, verify_export_link
 from app.auth import get_current_user, get_optional_user
 from app.auth import jwt as auth_jwt
 from app.database import get_db
@@ -808,15 +809,24 @@ async def get_playback_media(
     session_id: str,
     exp: Optional[int] = Query(default=None),
     sig: Optional[str] = Query(default=None),
+    purpose: Optional[str] = Query(default=None),
+    asset: Optional[str] = Query(default=None),
     current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     session = None
     if exp is not None and sig:
         now = int(datetime.now(timezone.utc).timestamp())
-        if exp < now or exp - now > PLAYBACK_TTL_S:
+        export_link = purpose == "export"
+        ttl = EXPORT_TTL_S if export_link else PLAYBACK_TTL_S
+        if exp < now or exp - now > ttl:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Playback URL expired")
-        if not verify_playback(session_id, exp, sig):
+        valid = (
+            verify_export_link(session_id, asset or "", exp, sig)
+            if export_link
+            else verify_playback(session_id, exp, sig)
+        )
+        if not valid:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid playback signature")
         session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
         if not session:

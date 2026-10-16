@@ -87,12 +87,12 @@ To complete with counsel:
 
 Open legal questions for counsel are in §10.
 
-## 8. Account rights (partial — export / 7-day delete still #67)
+## 8. Account rights (issue #67)
 
 SPEC §7.5 / §10.3:
 
-- **Export:** zip of JSON (sessions, scores, evidence, transcripts, plans, consents) + 24 h presigned media links. Implementation is issue #67.
-- **Delete account:** 7-day grace, then hard delete + confirmation email + audit. The confirmation email can now use Resend; the grace/hard-delete path is still the rest of #67.
+- **Export:** `POST /me/export` zip of JSON (sessions, scores, evidence, transcripts, plans, consents) + 24 h HMAC media links (`purpose=export`).
+- **Delete account:** `DELETE /me` starts a 7-day grace (account stays usable; cancel with `DELETE /me/deletion`). After the due date, `POST /admin/account-deletions/finalize` hard-deletes objects and the user, sends a confirmation email via Resend or the console stand-in, and writes a content-free audit.
 - **Delete session:** already implemented (hard delete, content-free audit).
 
 ## 9. Incident / breach-notification runbook
@@ -133,7 +133,7 @@ Write an audit row (`audit_log`) with object counts and action name only. Update
 5. Age gate 18+ and any education-tenant restrictions.
 6. Sub-processor SCCs / international transfers once a prod region is chosen.
 7. Whether Art. 50 disclosures need specific wording beyond "AI coach".
-8. Account-deletion confirmation email once the grace/hard-delete path lands; verification/reset already send via Resend or the console stand-in.
+8. Account-deletion confirmation email is implemented; delivery uses Resend or the console stand-in. Counsel still reviews wording.
 9. Apple ID token / private-relay email processing (D9, #68). Google / Microsoft are not used.
 10. Digital Omnibus / application-date recheck before launch [S51].
 

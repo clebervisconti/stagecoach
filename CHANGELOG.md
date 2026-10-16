@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 3: Talk-prep coach + objectives + trends (In Progress)
 
+##### Added - Zip data export and 7-day account deletion (issue #67)
+- `POST /me/export` zip: sessions, scores, evidence, transcripts, plans, consents + 24 h signed media links
+- `DELETE /me` starts a 7-day grace; `POST /admin/account-deletions/finalize` hard-deletes when due
+- Confirmation email + content-free audit; Settings download / delete / cancel
+- Tests use HMAC stand-ins (no live S3 or Resend)
+
 ##### Added - Resend transactional email (issue #67 / D10)
 - Resend adapter behind `send_email`; console stand-in when `RESEND_API_KEY` is unset
 - text + HTML templates for verification and password reset; retry/backoff
