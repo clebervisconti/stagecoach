@@ -68,8 +68,8 @@ List what is actually wired. Paid / unchosen vendors stay flagged.
 | Default LLM (xAI / Grok) | Prep and content JSON | Keys from env only; never stored | Confirm zero-retention / no-training with the vendor |
 | Optional LLM (OpenAI, Anthropic, Gemini, custom) | User-selected | Off unless the user picks them; "leaves the machine" warning | User choice; still a processor |
 | Local OpenAI-compatible (LM Studio) | Optional on-machine | Does not leave the machine | — |
-| Email (magic links, deletion confirmation) | Auth + compliance | Dev: Mailpit. **Prod provider not chosen (D10)** | Yes — paid transactional email |
-| Google / Microsoft Entra ID | OAuth (D9) | **Skipped (#68)** until app registrations exist | Yes |
+| Email (verification, password reset, deletion confirmation) | Auth + compliance | Dev/console stand-in. **Prod provider not chosen (D10)** | Yes — paid transactional email |
+| Sign in with Apple | OIDC (D9, 2026-10-15) | Disabled until `APPLE_*` secrets exist | Yes — Apple (private relay possible) |
 | Error tracking | Sentry or none | `STAGECOACH_ERROR_TRACKING=none`. **No Sentry SDK** | Yes — SaaS / self-hosted / none |
 | Antivirus / deck scan | Upload safety | Local sandbox | — |
 
@@ -133,13 +133,13 @@ Write an audit row (`audit_log`) with object counts and action name only. Update
 5. Age gate 18+ and any education-tenant restrictions.
 6. Sub-processor SCCs / international transfers once a prod region is chosen.
 7. Whether Art. 50 disclosures need specific wording beyond "AI coach".
-8. Account-deletion confirmation email and magic-link email once D10 is chosen.
-9. OAuth data shared with Google / Microsoft once D9 is chosen (#68).
+8. Account-deletion confirmation email once D10 is chosen. Verification/reset already use the console stand-in.
+9. Apple ID token / private-relay email processing (D9, #68). Google / Microsoft are not used.
 10. Digital Omnibus / application-date recheck before launch [S51].
 
 ## 11. Owner decisions this document does not take
 
-- **D9** Google + Microsoft Entra ID OAuth (#68)
+- **D9** decided 2026-10-15: email+password and Sign in with Apple only (#68). Google / Microsoft not used.
 - **D10** Production transactional email (#67)
 - Sentry SaaS vs self-hosted vs none
 - Production cloud region / vendor

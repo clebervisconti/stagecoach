@@ -1,6 +1,9 @@
-import { redirectToSessions } from "@/lib/redirect-to-sessions";
+import { SignInForm } from "@/components/auth/sign-in-form";
 
-export default async function SignInPage() {
-  // Cloudflare Access owns private-beta login.
-  await redirectToSessions();
+export default function SignInPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center px-4 py-12">
+      <SignInForm />
+    </div>
+  );
 }
