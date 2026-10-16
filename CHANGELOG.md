@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 3: Talk-prep coach + objectives + trends (In Progress)
 
+##### Added - Trends API + dashboard (issue #64)
+- `GET /trends` filtered by metric / category / context / language
+- Incompatible sessions (other context or scoring-config major) marked not comparable with a reason
+- Sparklines, most improved, and needs attention on `/trends`
+
 ##### Added - Plan-a-talk form + prep_clarify_v1 (issue #56)
 - `/prep` form fields per SPEC §9.1 (en / pt-BR); description capped at 4,000 characters
 - `POST /plans/{id}/clarify` runs `prep_clarify_v1` (≤ 5 questions); skip writes explicit assumptions
