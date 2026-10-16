@@ -1,4 +1,4 @@
-"""LLM provider catalog and stand-in transports — no live network (ADR-038)."""
+"""LLM provider catalog and stand-in transports — no live network (ADR-060)."""
 
 from __future__ import annotations
 
@@ -10,10 +10,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
 
-from llm.catalog import DEFAULT_PROVIDER, leaves_machine, normalize_provider_id, normalize_settings
+from llm.catalog import (
+    DEFAULT_LOCAL_MODEL,
+    DEFAULT_PROVIDER,
+    leaves_machine,
+    normalize_provider_id,
+    normalize_settings,
+)
 from llm.client import LLMClient
 from llm.exceptions import LLMAuthError
-from llm.keys import resolve_api_key
+from llm.keys import key_is_configured, resolve_api_key
 from llm.providers.anthropic import AnthropicProvider
 from llm.providers.openai_compat import OpenAICompatibleProvider
 from llm.settings import persist_llm_settings
@@ -37,12 +43,18 @@ ANTHROPIC_REPLY = {
 }
 
 
-def test_default_is_xai():
-    assert normalize_provider_id(None) == "xai" == DEFAULT_PROVIDER
-    assert leaves_machine("xai") is False
+def test_default_is_local_qwen(monkeypatch):
+    monkeypatch.delenv("LOCAL_LLM_BASE_URL", raising=False)
+    assert normalize_provider_id(None) == "local" == DEFAULT_PROVIDER
+    settings = normalize_settings(None)
+    assert settings["provider"] == "local"
+    assert settings["model"] == DEFAULT_LOCAL_MODEL
+    assert settings["base_url"] == "http://127.0.0.1:1234/v1"
+    assert leaves_machine("local", settings["base_url"]) is False
 
 
 def test_cloud_others_leave_the_machine():
+    assert leaves_machine("xai") is True
     assert leaves_machine("openai") is True
     assert leaves_machine("anthropic") is True
     assert leaves_machine("gemini") is True
@@ -59,9 +71,47 @@ def test_settings_reject_api_keys():
 def test_local_key_is_optional(monkeypatch):
     monkeypatch.delenv("LOCAL_LLM_API_KEY", raising=False)
     monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("XAI_API_KEY", raising=False)
     assert resolve_api_key("local") == "local"
+    assert key_is_configured("local") is True
+    assert key_is_configured("xai") is False
+    with pytest.raises(LLMAuthError, match="XAI_API_KEY"):
+        resolve_api_key("xai")
     with pytest.raises(LLMAuthError, match="OPENAI_API_KEY"):
         resolve_api_key("openai")
+
+
+def test_client_boots_without_xai_key(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("XAI_API_KEY", raising=False)
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("LOCAL_LLM_API_KEY", raising=False)
+    persist_llm_settings(tmp_path, None)
+    transport = StandinTransport(COMPAT_REPLY)
+    client = LLMClient(
+        settings_path=tmp_path / "llm_settings.json",
+        use_cassettes=False,
+        transport=transport,
+    )
+    assert client.provider_name == "local"
+    assert client.api_key == "local"
+    out = client.generate_structured("t", {"n": 1}, SCHEMA)
+    assert out.data["summary"] == "ok"
+
+
+def test_xai_still_selectable_with_key(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("XAI_API_KEY", "stand-in-key")
+    persist_llm_settings(tmp_path, {"provider": "xai"})
+    transport = StandinTransport(COMPAT_REPLY)
+    client = LLMClient(
+        settings_path=tmp_path / "llm_settings.json",
+        use_cassettes=False,
+        transport=transport,
+    )
+    assert client.provider_name == "xai"
+    out = client.generate_structured("t", {"n": 1}, SCHEMA)
+    assert out.data["summary"] == "ok"
+    assert json.loads((tmp_path / "llm_settings.json").read_text())["provider"] == "xai"
+    assert "stand-in-key" not in (tmp_path / "llm_settings.json").read_text()
 
 
 def test_openai_compat_standin_never_opens_a_socket():
@@ -96,22 +146,6 @@ def test_anthropic_standin():
     assert response.usage.provider == "anthropic"
     assert transport.calls[0]["url"].endswith("/v1/messages")
     assert transport.calls[0]["headers"]["x-api-key"] == "<redacted>"
-
-
-def test_client_uses_standin_and_settings_sidecar(tmp_path: Path, monkeypatch):
-    monkeypatch.setenv("XAI_API_KEY", "stand-in-key")
-    persist_llm_settings(tmp_path, {"provider": "xai"})
-    transport = StandinTransport(COMPAT_REPLY)
-    client = LLMClient(
-        settings_path=tmp_path / "llm_settings.json",
-        use_cassettes=False,
-        transport=transport,
-    )
-    assert client.provider_name == "xai"
-    out = client.generate_structured("t", {"n": 1}, SCHEMA)
-    assert out.data["summary"] == "ok"
-    assert json.loads((tmp_path / "llm_settings.json").read_text())["provider"] == "xai"
-    assert "stand-in-key" not in (tmp_path / "llm_settings.json").read_text()
 
 
 def test_sidecar_never_writes_keys(tmp_path: Path):

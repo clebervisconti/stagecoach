@@ -1,6 +1,6 @@
 export const LLM_PROVIDERS = [
-  "xai",
   "local",
+  "xai",
   "anthropic",
   "openai",
   "gemini",
@@ -9,7 +9,8 @@ export const LLM_PROVIDERS = [
 
 export type LlmProviderId = (typeof LLM_PROVIDERS)[number];
 
-export const DEFAULT_LLM_PROVIDER: LlmProviderId = "xai";
+export const DEFAULT_LLM_PROVIDER: LlmProviderId = "local";
+export const DEFAULT_LOCAL_MODEL = "qwen/qwen3.8-27b";
 
 export const DEFAULT_LLM_BASE_URLS: Record<LlmProviderId, string> = {
   xai: "https://api.x.ai/v1",
@@ -17,6 +18,15 @@ export const DEFAULT_LLM_BASE_URLS: Record<LlmProviderId, string> = {
   anthropic: "https://api.anthropic.com",
   openai: "https://api.openai.com/v1",
   gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
+  custom: "",
+};
+
+export const DEFAULT_LLM_MODELS: Record<LlmProviderId, string> = {
+  local: DEFAULT_LOCAL_MODEL,
+  xai: "grok-beta",
+  anthropic: "claude-sonnet-4-5",
+  openai: "gpt-4o-mini",
+  gemini: "gemini-2.0-flash",
   custom: "",
 };
 
@@ -46,10 +56,9 @@ export function isLoopbackUrl(url: string): boolean {
 }
 
 export function leavesMachine(provider: LlmProviderId, baseUrl = ""): boolean {
-  if (provider === "xai") return false;
   if (provider === "local") return !isLoopbackUrl(baseUrl || DEFAULT_LLM_BASE_URLS.local);
   if (provider === "custom") return !isLoopbackUrl(baseUrl);
-  return provider === "anthropic" || provider === "openai" || provider === "gemini";
+  return provider === "xai" || provider === "anthropic" || provider === "openai" || provider === "gemini";
 }
 
 export function normalizeLlmSettings(raw: unknown): LlmSettings {
@@ -65,7 +74,10 @@ export function normalizeLlmSettings(raw: unknown): LlmSettings {
   if ((provider === "local" || provider === "custom") && !base_url) {
     base_url = DEFAULT_LLM_BASE_URLS[provider];
   }
-  const model = typeof src.model === "string" ? src.model.trim() : "";
+  let model = typeof src.model === "string" ? src.model.trim() : "";
+  if (!model) {
+    model = DEFAULT_LLM_MODELS[provider];
+  }
   return {
     provider,
     base_url,

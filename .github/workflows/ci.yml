@@ -1004,7 +1004,7 @@ jobs:
           echo "  - Body tab (heat, gesture space, events, sway, yaw, notes-down, expressivity opt-in, quality) and Slides tab (filmstrip + AI titles)"
           echo "  - PDF export via Playwright Chromium; GET /exports/{id}; no transcript unless include_transcript"
           echo "  - Nightly retention_sweeper; user retention_policy; audio16k/analysis_proxy deleted on job completion; SCENC2 envelope for biometric JSON"
-          echo "  - Settings AI providers: xAI default; local/OpenAI/Anthropic/Gemini/custom; keys from env only"
+          echo "  - Settings AI providers: local LM Studio / Qwen default; xAI optional; keys from env only"
           echo "  - GET /research/sources, /research + /research/myths, GET /config/scoring/{version} (read-only)"
           echo "  - OTel traces when OTLP endpoint set; GET /metrics; admin analysis-costs; error tracking none pending owner Sentry decision"
           echo "  - Report axe-core + keyboard-only player/timeline; captions; hatch patterns; reduced motion"

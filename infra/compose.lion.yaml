@@ -1,0 +1,41 @@
+# LION host overlay. Splunk already owns :8000; another service owns :5432.
+# Publish only loopback 8870 (web), plus Redis 6380 and MinIO 9010 when used.
+#
+#   docker compose -f docker-compose.yml -f infra/compose.lion.yaml \
+#     --profile web --profile minio up -d
+#
+# Never bind host 8000 or 5432.
+
+services:
+  postgres:
+    ports: []
+
+  api:
+    ports: []
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-local}
+      LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+
+  worker:
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-local}
+      LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+
+  redis:
+    ports:
+      - "127.0.0.1:6380:6379"
+
+  minio:
+    ports:
+      - "127.0.0.1:9010:9000"
+
+  web:
+    ports:
+      - "127.0.0.1:8870:3000"
+    environment:
+      NEXTAUTH_URL: http://127.0.0.1:8870
+
+  mailpit:
+    ports: []

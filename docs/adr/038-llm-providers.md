@@ -1,7 +1,7 @@
 # ADR-038: Multi-provider LLM settings (xAI default)
 
 **Date:** 2026-10-15  
-**Status:** Accepted  
+**Status:** Superseded by ADR-060 (2026-10-16)  
 **Phase:** 2
 
 ## Context

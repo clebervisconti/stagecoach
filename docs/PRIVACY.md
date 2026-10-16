@@ -65,9 +65,8 @@ List what is actually wired. Paid / unchosen vendors stay flagged.
 |---|---|---|---|
 | Primary cloud (host + Postgres + object storage) | Hosting | Dev: local Docker / MinIO. Prod host **not chosen** | Yes — region and vendor |
 | Redis | Queue / cache | Self-hosted in compose | — |
-| Default LLM (xAI / Grok) | Prep and content JSON | Keys from env only; never stored | Confirm zero-retention / no-training with the vendor |
-| Optional LLM (OpenAI, Anthropic, Gemini, custom) | User-selected | Off unless the user picks them; "leaves the machine" warning | User choice; still a processor |
-| Local OpenAI-compatible (LM Studio) | Optional on-machine | Does not leave the machine | — |
+| Default LLM (LM Studio / Qwen on TIGER) | Prep and content JSON | Local OpenAI-compatible; `LOCAL_LLM_BASE_URL`; no key | Yes — 2026-10-16 |
+| Optional LLM (xAI/Grok, OpenAI, Anthropic, Gemini, custom) | User-selected | Off unless the user picks them; "leaves the machine" warning | User choice; still a processor. xAI key optional |
 | Email (verification, password reset, deletion confirmation) | Auth + compliance | Resend (D10, free tier) when `RESEND_API_KEY` is set; otherwise console | Yes — Resend |
 | Sign in with Apple | OIDC (D9, 2026-10-15) | Disabled until `APPLE_*` secrets exist | Yes — Apple (private relay possible) |
 | Error tracking | Sentry or none | `STAGECOACH_ERROR_TRACKING=none`. **No Sentry SDK** | Yes — SaaS / self-hosted / none |
@@ -144,7 +143,7 @@ Write an audit row (`audit_log`) with object counts and action name only. Update
 - Sentry SaaS vs self-hosted vs none
 - Production cloud region / vendor
 - KMS vs local KEK for SCENC2
-- Paid LLM spend beyond the existing xAI default
+- Paid LLM spend beyond the local Qwen default
 
 `docs/DECISIONS.md` is not edited on this branch.
 

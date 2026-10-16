@@ -100,7 +100,7 @@
   },
   "aiProviders": {
     "heading": "Provedores de IA",
-    "intro": "xAI (Grok) é o padrão. As chaves ficam no ambiente do servidor ou no gerenciador de segredos — nunca são digitadas aqui nem guardadas no repositório. As transcrições vão para o provedor escolhido.",
+    "intro": "O padrão é o LM Studio no TIGER (OpenAI-compatível local, Qwen). xAI/Grok é opcional. As chaves de nuvem ficam no ambiente do servidor ou no gerenciador de segredos — nunca são digitadas aqui nem guardadas no repositório. As transcrições vão para o provedor escolhido.",
     "loadError": "Não foi possível carregar as configurações de provedor de IA.",
     "saveError": "Não foi possível salvar as configurações de provedor de IA.",
     "baseUrl": "URL do endpoint",
@@ -108,16 +108,16 @@
     "keyMissing": "Defina {env} no servidor. Não cole uma chave nesta página.",
     "leavesMachine": "Este provedor não é o padrão. O texto da análise sairá desta máquina e será enviado a esse fornecedor.",
     "keys": {
-      "xai": "xAI (Grok) — padrão",
-      "local": "OpenAI-compatível local (LM Studio / Gemma)",
+      "xai": "xAI (Grok)",
+      "local": "OpenAI-compatível local (LM Studio / Qwen) — padrão",
       "anthropic": "Anthropic Claude",
       "openai": "OpenAI",
       "gemini": "Google Gemini",
       "custom": "URL OpenAI-compatível personalizada"
     },
     "hints": {
-      "xai": "Padrão escolhido pelo titular. Usa XAI_API_KEY ou LLM_API_KEY.",
-      "local": "Por exemplo LM Studio no TIGER servindo Gemma em http://127.0.0.1:1234/v1. Os dados ficam na máquina quando a URL é loopback.",
+      "xai": "Opcional. Usa XAI_API_KEY ou LLM_API_KEY. A aplicação sobe sem esta chave.",
+      "local": "Padrão escolhido pelo titular (16 out 2026). LM Studio no TIGER com qwen/qwen3.8-27b. URL em LOCAL_LLM_BASE_URL. Sem chave. Os dados ficam na máquina quando a URL é loopback.",
       "anthropic": "Usa ANTHROPIC_API_KEY.",
       "openai": "Usa OPENAI_API_KEY.",
       "gemini": "Usa GEMINI_API_KEY ou GOOGLE_API_KEY.",

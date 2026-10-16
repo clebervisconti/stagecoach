@@ -1,4 +1,4 @@
-"""xAI (Grok) adapter — OpenAI-compatible, owner-chosen default (ADR-007 / ADR-038)."""
+"""xAI (Grok) adapter — OpenAI-compatible, selectable (ADR-060)."""
 
 from __future__ import annotations
 

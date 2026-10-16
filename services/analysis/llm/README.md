@@ -9,7 +9,7 @@ Per ADR-007, this package provides:
 - Strict JSON Schema structured outputs
 - Token usage and cost tracking
 - VCR-style cassettes for deterministic testing
-- Support for multiple providers (xAI Grok initially)
+- Support for multiple providers (local LM Studio / Qwen default; xAI optional)
 
 ## Usage
 
@@ -93,7 +93,7 @@ def test_live_api():
 
 Configuration is in `services/analysis/config/llm.yaml`:
 
-- **Providers**: xAI (Grok) is configured initially; interface supports adding OpenAI, Anthropic, etc.
+- **Providers**: local LM Studio / Qwen is the default; xAI, OpenAI, Anthropic, Gemini, and custom URLs are selectable
 - **Models**: Model IDs, capabilities, and per-token prices
 - **Model assignments**: Default model per prompt type
 - **Cost ceiling**: Per-analysis cost limit (raises error if exceeded)
@@ -101,12 +101,18 @@ Configuration is in `services/analysis/config/llm.yaml`:
 
 ## Provider Support
 
-### xAI (Grok)
+### Local (LM Studio / Qwen) — default
+
+- **Base URL**: `LOCAL_LLM_BASE_URL` (fallback `http://127.0.0.1:1234/v1`)
+- **Model**: `qwen/qwen3.8-27b`
+- **API key**: none
+
+### xAI (Grok) — optional
 
 - **Base URL**: `https://api.x.ai/v1` (OpenAI-compatible API)
 - **Models**: `grok-beta`, `grok-2-1212`
 - **Structured outputs**: Uses `response_format` with `json_schema` and `strict: true`
-- **API key**: Set `LLM_API_KEY` environment variable
+- **API key**: optional `XAI_API_KEY` or `LLM_API_KEY`. The process starts without it.
 
 ### Adding New Providers
 
