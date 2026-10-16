@@ -4,7 +4,7 @@ An evidence-based presentation coaching platform that analyzes recorded presenta
 
 ## Project Status
 
-Private-beta MVP (`0.2.0`): upload → ASR/audio analysis → partial report → delete, served at `https://stagecoach.cybersphere.com.br` behind Cloudflare Access.
+Private-beta MVP (`0.2.0`): upload → analysis → report, plus Phase 3 talk-prep (`/prep`) on the same `docker compose` / `make dev` path. Production: `https://stagecoach.cybersphere.com.br` behind Cloudflare Access.
 
 Production: LION loopback `:3107`, LaunchAgent `com.cyberlabs.stagecoach`. See `deploy/README.md`.
 
