@@ -84,6 +84,20 @@
     "locale": "Idioma",
     "signOut": "Sair"
   },
+  "accountRights": {
+    "heading": "Os seus dados",
+    "intro": "Baixe um zip com sessões, notas, evidências, transcrições, planos e consentimentos. Os links de mídia no zip expiram em 24 horas. Excluir a conta inicia 7 dias de carência; depois apagamos tudo e enviamos um e-mail de confirmação.",
+    "export": "Baixar os meus dados",
+    "exporting": "A preparar o zip…",
+    "exportError": "Não foi possível exportar os seus dados.",
+    "delete": "Excluir a minha conta",
+    "deleteConfirm": "Excluir a conta após 7 dias? Pode cancelar até lá. Depois do prazo apagamos os dados e enviamos um e-mail de confirmação.",
+    "deleteError": "Não foi possível iniciar a exclusão da conta.",
+    "pending": "A exclusão da conta está agendada para {due}. Pode continuar a usar a conta até lá.",
+    "cancel": "Cancelar exclusão",
+    "cancelError": "Não foi possível cancelar a exclusão da conta.",
+    "loadError": "Não foi possível carregar os direitos da conta."
+  },
   "aiProviders": {
     "heading": "Provedores de IA",
     "intro": "xAI (Grok) é o padrão. As chaves ficam no ambiente do servidor ou no gerenciador de segredos — nunca são digitadas aqui nem guardadas no repositório. As transcrições vão para o provedor escolhido.",

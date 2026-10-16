@@ -4,9 +4,17 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.account_deletion import (
+    cancel_account_deletion,
+    deletion_status,
+    pending_account_deletion,
+    request_account_deletion,
+)
+from app.account_export import collect_export, export_filename, pack_zip
 from app.auth import get_current_user
 from app.consents.policy import CONSENT_PURPOSES, POLICY_ID, load_policy, localize_purpose, policy_version
 from app.consents.store import current_from_rows, records_for_user
@@ -230,3 +238,57 @@ async def post_consent(
     db.add(row)
     db.commit()
     return build_consent_payload(current_user, db, _locale(locale, current_user))
+
+
+@router.post("/export")
+async def export_me(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Zip of JSON (sessions, scores, evidence, transcripts, plans, consents) + 24 h media links."""
+    payload = collect_export(
+        db,
+        current_user,
+        request_base=str(request.base_url).rstrip("/"),
+    )
+    blob = pack_zip(payload)
+    filename = export_filename(current_user.id)
+    return Response(
+        content=blob,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/deletion")
+async def get_deletion(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return deletion_status(pending_account_deletion(db, current_user.id))
+
+
+@router.delete("/deletion", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_deletion(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if cancel_account_deletion(db, current_user) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No pending deletion")
+    return None
+
+
+@router.delete("", status_code=status.HTTP_202_ACCEPTED)
+async def delete_me(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Start the 7-day grace period. The account stays usable until finalize."""
+    row = request_account_deletion(
+        db,
+        current_user,
+        ip=request.client.host if request.client else None,
+    )
+    return deletion_status(row)

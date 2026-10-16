@@ -37,11 +37,15 @@ async function proxy(
   const locale = incoming.searchParams.get("locale");
   const t = incoming.searchParams.get("t");
   const i = incoming.searchParams.get("i");
+  const purpose = incoming.searchParams.get("purpose");
+  const asset = incoming.searchParams.get("asset");
   if (exp && /^\d+$/.test(exp)) forwarded.set("exp", exp);
   if (sig && /^[a-fA-F0-9]+$/.test(sig)) forwarded.set("sig", sig);
   if (locale === "en" || locale === "pt-BR") forwarded.set("locale", locale);
   if (t && /^\d+(\.\d+)?$/.test(t)) forwarded.set("t", t);
   if (i && /^\d+$/.test(i)) forwarded.set("i", i);
+  if (purpose === "export") forwarded.set("purpose", "export");
+  if (asset && SAFE_SEGMENT.test(asset)) forwarded.set("asset", asset);
   const query = forwarded.toString();
   if (query) path = `${path}?${query}`;
 

@@ -4,6 +4,7 @@ import { ConsentPanel } from "@/components/consents/consent-panel";
 import { AccessibilityPanel } from "@/components/settings/accessibility-panel";
 import { RetentionPanel } from "@/components/settings/retention-panel";
 import { AiProvidersPanel } from "@/components/settings/ai-providers-panel";
+import { AccountRightsPanel } from "@/components/settings/account-rights-panel";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -32,6 +33,8 @@ export default async function SettingsPage() {
         <RetentionPanel />
 
         <AccessibilityPanel />
+
+        <AccountRightsPanel />
 
         <div className="rounded-lg border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold">Session</h2>
