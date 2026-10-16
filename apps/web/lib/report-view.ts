@@ -182,6 +182,52 @@ export function radarPolygon(points: RadarPoint[], radius: number, cx: number, c
   return vertices.join(" ");
 }
 
+export const CATEGORY_PILLAR: Record<string, (typeof PILLAR_IDS)[number]> = {
+  core_message: "message",
+  structure: "message",
+  opening_close: "message",
+  clarity: "message",
+  storytelling: "story_impact",
+  audience_adaptation: "story_impact",
+  impact: "story_impact",
+  visual_aids: "visuals",
+  pace_pausing: "voice",
+  vocal_variety: "voice",
+  fluency: "voice",
+  gestures_body: "body",
+  eye_contact: "body",
+  facial_affect: "body",
+  energy_presence: "presence_time",
+  time_management: "presence_time",
+  qa: "presence_time",
+};
+
+export type GoalLike = {
+  category_id?: string | null;
+  metric_id?: string | null;
+  target: number;
+};
+
+/** Dashed goal ring: category targets are 0–100 scores mapped onto pillars. */
+export function goalRadarPoints(base: RadarPoint[], goals: GoalLike[]): RadarPoint[] {
+  const byPillar = new Map<string, number>();
+  for (const goal of goals) {
+    const pillar = goal.category_id ? CATEGORY_PILLAR[goal.category_id] : undefined;
+    if (!pillar) continue;
+    const current = byPillar.get(pillar) ?? 0;
+    byPillar.set(pillar, Math.max(current, goal.target));
+  }
+  return base.map((point) => {
+    const score = byPillar.get(point.id);
+    return {
+      ...point,
+      score: score ?? null,
+      available: score != null,
+      confidence: score != null ? 1 : null,
+    };
+  });
+}
+
 export function radarAxisPoint(
   index: number,
   count: number,

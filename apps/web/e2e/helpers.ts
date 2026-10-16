@@ -207,6 +207,9 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
     const path = url.pathname.replace(/^\/api\/stagecoach/, "");
     const method = request.method();
 
+    if (method === "GET" && path === "/goals") {
+      return json(route, { goals: [] });
+    }
     if (method === "GET" && path === "/me") {
       return json(route, {
         id: "user-1",

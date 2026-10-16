@@ -11,11 +11,13 @@ const RADIUS = 96;
 
 type RadarChartProps = {
   points: RadarPoint[];
+  goalPoints?: RadarPoint[];
 };
 
-export function RadarChart({ points }: RadarChartProps) {
+export function RadarChart({ points, goalPoints }: RadarChartProps) {
   const t = useTranslations("report");
   const polygon = radarPolygon(points, RADIUS, CX, CY);
+  const goalPolygon = goalPoints ? radarPolygon(goalPoints, RADIUS, CX, CY) : "";
   const rings = [0.25, 0.5, 0.75, 1];
 
   return (
@@ -83,6 +85,16 @@ export function RadarChart({ points }: RadarChartProps) {
             </g>
           );
         })}
+        {goalPolygon ? (
+          <polygon
+            points={goalPolygon}
+            fill="none"
+            className="stroke-primary"
+            strokeWidth="2"
+            strokeDasharray="6 4"
+            data-testid="goal-polygon"
+          />
+        ) : null}
         {polygon ? (
           <polygon
             points={polygon}

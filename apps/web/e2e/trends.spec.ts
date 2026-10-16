@@ -1,6 +1,13 @@
 import { expect, test } from "@playwright/test";
 
 test("trends dashboard marks incompatible sessions", async ({ page }) => {
+  await page.route("**/api/stagecoach/goals**", async (route) => {
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ goals: [] }),
+    });
+  });
   await page.route("**/api/stagecoach/trends**", async (route) => {
     return route.fulfill({
       status: 200,
