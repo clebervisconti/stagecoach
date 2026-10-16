@@ -83,11 +83,11 @@ def test_auth_rate_limit_bucket():
 
 def test_console_email_stand_in():
     clear_outbox()
-    send_email(to="a@example.invalid", subject="Verify", body="token: abc", purpose="verify_email")
+    send_email(to="a@example.invalid", purpose="verify_email", token="abc")
     message = last_email(purpose="verify_email")
     assert message is not None
     assert message["provider"] == "console"
-    assert "abc" in message["body"]
+    assert "abc" in message["text"]
 
 
 def test_apple_disabled_without_private_key(monkeypatch):
