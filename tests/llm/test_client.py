@@ -92,11 +92,22 @@ def mock_config(test_cassette_dir, tmp_path):
 
 
 def test_client_init_no_api_key(mock_config, monkeypatch):
-    """Test that client raises error when LLM_API_KEY is not set"""
+    """xAI still requires a key when it is the selected provider."""
     monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("XAI_API_KEY", raising=False)
 
-    with pytest.raises(LLMAuthError, match="LLM_API_KEY"):
-        LLMClient(config_path=mock_config, api_key=None)
+    with pytest.raises(LLMAuthError, match="XAI_API_KEY"):
+        LLMClient(config_path=mock_config, api_key=None, provider_name="xai")
+
+
+def test_default_client_boots_without_xai_key(monkeypatch):
+    """App default is local LM Studio; boot must not require XAI_API_KEY."""
+    monkeypatch.delenv("XAI_API_KEY", raising=False)
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("LOCAL_LLM_API_KEY", raising=False)
+    client = LLMClient(use_cassettes=True)
+    assert client.provider_name == "local"
+    assert client.api_key == "local"
 
 
 def test_client_init_with_api_key(mock_config):

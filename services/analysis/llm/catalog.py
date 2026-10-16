@@ -1,19 +1,22 @@
-"""Approved LLM providers (owner decision 2026-10-14).
+"""Approved LLM providers (owner decision 2026-10-16).
 
-xAI (Grok) stays the default. Keys are resolved from environment or a secret
-manager only — never from the repo or from user-submitted form fields.
+Local OpenAI-compatible (LM Studio on TIGER, Qwen) is the default.
+xAI stays selectable. Keys come from the environment only.
 """
 
 from __future__ import annotations
 
+import os
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-DEFAULT_PROVIDER = "xai"
+DEFAULT_PROVIDER = "local"
+DEFAULT_LOCAL_MODEL = "qwen/qwen3.8-27b"
+FALLBACK_LOCAL_BASE_URL = "http://127.0.0.1:1234/v1"
 
 PROVIDER_IDS = (
-    "xai",
     "local",
+    "xai",
     "anthropic",
     "openai",
     "gemini",
@@ -21,8 +24,8 @@ PROVIDER_IDS = (
 )
 
 KEY_ENVS = {
+    "local": ("LOCAL_LLM_API_KEY",),
     "xai": ("XAI_API_KEY", "LLM_API_KEY"),
-    "local": ("LOCAL_LLM_API_KEY", "LLM_API_KEY"),
     "anthropic": ("ANTHROPIC_API_KEY",),
     "openai": ("OPENAI_API_KEY",),
     "gemini": ("GEMINI_API_KEY", "GOOGLE_API_KEY"),
@@ -31,7 +34,7 @@ KEY_ENVS = {
 
 DEFAULT_BASE_URLS = {
     "xai": "https://api.x.ai/v1",
-    "local": "http://127.0.0.1:1234/v1",
+    "local": FALLBACK_LOCAL_BASE_URL,
     "anthropic": "https://api.anthropic.com",
     "openai": "https://api.openai.com/v1",
     "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
@@ -40,16 +43,19 @@ DEFAULT_BASE_URLS = {
 
 DEFAULT_MODELS = {
     "xai": "grok-beta",
-    "local": "gemma-3-12b",
+    "local": DEFAULT_LOCAL_MODEL,
     "anthropic": "claude-sonnet-4-5",
     "openai": "gpt-4o-mini",
     "gemini": "gemini-2.0-flash",
     "custom": "default",
 }
 
-# Cloud vendors other than the owner-chosen default. Local / loopback stay on-box.
-CLOUD_WARNING_PROVIDERS = frozenset({"anthropic", "openai", "gemini", "custom"})
+CLOUD_WARNING_PROVIDERS = frozenset({"xai", "anthropic", "openai", "gemini", "custom"})
 LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "0.0.0.0"})
+
+
+def local_base_url() -> str:
+    return (os.getenv("LOCAL_LLM_BASE_URL") or FALLBACK_LOCAL_BASE_URL).strip().rstrip("/")
 
 
 def normalize_provider_id(value: Optional[str]) -> str:
@@ -68,12 +74,10 @@ def is_loopback_url(url: Optional[str]) -> bool:
 
 
 def leaves_machine(provider: Optional[str], base_url: Optional[str] = None) -> bool:
-    """True when analysis text would be sent to a non-default cloud host."""
+    """True when analysis text would be sent to a non-local cloud host."""
     choice = normalize_provider_id(provider)
-    if choice == "xai":
-        return False
     if choice == "local":
-        return not is_loopback_url(base_url or DEFAULT_BASE_URLS["local"])
+        return not is_loopback_url(base_url or local_base_url())
     if choice == "custom":
         return not is_loopback_url(base_url)
     return choice in CLOUD_WARNING_PROVIDERS
@@ -84,7 +88,10 @@ def key_envs_for(provider: str) -> tuple[str, ...]:
 
 
 def default_base_url(provider: str) -> str:
-    return DEFAULT_BASE_URLS[normalize_provider_id(provider)]
+    choice = normalize_provider_id(provider)
+    if choice == "local":
+        return local_base_url()
+    return DEFAULT_BASE_URLS[choice]
 
 
 def default_model(provider: str) -> str:
@@ -94,24 +101,24 @@ def default_model(provider: str) -> str:
 def catalog_entries() -> list[dict[str, Any]]:
     return [
         {
+            "id": "local",
+            "label": "Local OpenAI-compatible (LM Studio / Qwen)",
+            "kind": "local_default",
+            "leaves_machine": False,
+            "key_envs": list(KEY_ENVS["local"]),
+            "default_base_url": default_base_url("local"),
+            "default_model": DEFAULT_MODELS["local"],
+            "needs_base_url": True,
+        },
+        {
             "id": "xai",
             "label": "xAI (Grok)",
-            "kind": "cloud_default",
-            "leaves_machine": False,
+            "kind": "cloud",
+            "leaves_machine": True,
             "key_envs": list(KEY_ENVS["xai"]),
             "default_base_url": DEFAULT_BASE_URLS["xai"],
             "default_model": DEFAULT_MODELS["xai"],
             "needs_base_url": False,
-        },
-        {
-            "id": "local",
-            "label": "Local OpenAI-compatible (LM Studio / Gemma)",
-            "kind": "local",
-            "leaves_machine": False,
-            "key_envs": list(KEY_ENVS["local"]),
-            "default_base_url": DEFAULT_BASE_URLS["local"],
-            "default_model": DEFAULT_MODELS["local"],
-            "needs_base_url": True,
         },
         {
             "id": "anthropic",
@@ -159,14 +166,21 @@ def catalog_entries() -> list[dict[str, Any]]:
 def normalize_settings(raw: Optional[dict[str, Any]]) -> dict[str, Any]:
     """Keep provider / URL / model only. Reject key-shaped fields."""
     src = raw or {}
-    forbidden = [key for key in src if "key" in key.lower() or "secret" in key.lower() or "token" in key.lower()]
+    forbidden = [
+        key
+        for key in src
+        if "key" in key.lower() or "secret" in key.lower() or "token" in key.lower()
+    ]
     if forbidden:
         raise ValueError(f"API keys must not be stored in settings: {forbidden}")
-    provider = normalize_provider_id(src.get("provider") if isinstance(src.get("provider"), str) else None)
+    raw_provider = src.get("provider") if isinstance(src.get("provider"), str) else None
+    provider = normalize_provider_id(raw_provider)
     base_url = str(src.get("base_url") or "").strip()
     model = str(src.get("model") or "").strip()
     if provider in {"local", "custom"} and not base_url:
         base_url = default_base_url(provider)
+    if not model:
+        model = default_model(provider)
     return {
         "provider": provider,
         "base_url": base_url,

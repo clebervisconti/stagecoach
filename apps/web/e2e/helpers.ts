@@ -226,15 +226,16 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
           low_vision: false,
         },
         retention_policy: "days_30",
-        llm_settings: { provider: "xai", base_url: "", model: "", leaves_machine: false },
+        llm_settings: { provider: "local", base_url: "http://127.0.0.1:1234/v1", model: "qwen/qwen3.8-27b", leaves_machine: false },
       });
     }
     if (method === "GET" && path === "/me/ai-providers") {
       return json(route, {
-        default_provider: "xai",
-        llm_settings: { provider: "xai", base_url: "", model: "", leaves_machine: false },
+        default_provider: "local",
+        llm_settings: { provider: "local", base_url: "http://127.0.0.1:1234/v1", model: "qwen/qwen3.8-27b", leaves_machine: false },
         providers: [
-          { id: "xai", default: true, leaves_machine: false, key_envs: ["XAI_API_KEY"], key_configured: false, needs_base_url: false, default_base_url: "https://api.x.ai/v1" },
+          { id: "local", default: true, leaves_machine: false, key_envs: ["LOCAL_LLM_API_KEY"], key_configured: true, needs_base_url: true, default_base_url: "http://127.0.0.1:1234/v1", default_model: "qwen/qwen3.8-27b" },
+          { id: "xai", default: false, leaves_machine: true, key_envs: ["XAI_API_KEY"], key_configured: false, needs_base_url: false, default_base_url: "https://api.x.ai/v1" },
         ],
       });
     }
@@ -254,7 +255,7 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
           low_vision: false,
         },
         retention_policy: "days_30",
-        llm_settings: { provider: "xai", base_url: "", model: "", leaves_machine: false },
+        llm_settings: { provider: "local", base_url: "http://127.0.0.1:1234/v1", model: "qwen/qwen3.8-27b", leaves_machine: false },
       });
     }
     if (method === "GET" && path === "/me/consents") {

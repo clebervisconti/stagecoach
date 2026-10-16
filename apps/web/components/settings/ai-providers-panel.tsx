@@ -16,6 +16,8 @@ type CatalogEntry = {
   key_configured: boolean;
   key_envs: string[];
   needs_base_url: boolean;
+  default_base_url?: string;
+  default_model?: string;
 };
 
 export function AiProvidersPanel() {
@@ -72,10 +74,14 @@ export function AiProvidersPanel() {
   }
 
   function choose(provider: LlmProviderId) {
+    const listed = entry(provider);
     const next = normalizeLlmSettings({
       provider,
-      base_url: provider === settings.provider ? settings.base_url : DEFAULT_LLM_BASE_URLS[provider],
-      model: settings.model,
+      base_url:
+        provider === settings.provider
+          ? settings.base_url
+          : listed?.default_base_url || DEFAULT_LLM_BASE_URLS[provider],
+      model: listed?.default_model || settings.model,
     });
     void save(next);
   }

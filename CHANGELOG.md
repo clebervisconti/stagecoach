@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 3: Talk-prep coach + objectives + trends (In Progress)
 
+##### Changed - Default LLM is local LM Studio / Qwen (owner decision 2026-10-16)
+- Default provider is `local`; model `qwen/qwen3.8-27b`; base URL from `LOCAL_LLM_BASE_URL`
+- No API key for the default. `XAI_API_KEY` is optional; the app boots without it
+- xAI/Grok stays selectable in Settings and warns that data leaves the machine
+- `infra/compose.lion.yaml` publishes only `127.0.0.1:8870` plus Redis `6380` and MinIO `9010`
+
 ##### Added - Zip data export and 7-day account deletion (issue #67)
 - `POST /me/export` zip: sessions, scores, evidence, transcripts, plans, consents + 24 h signed media links
 - `DELETE /me` starts a 7-day grace; `POST /admin/account-deletions/finalize` hard-deletes when due

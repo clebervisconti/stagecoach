@@ -28,7 +28,10 @@ Also declare the Compose containers (web, api, worker, postgres, redis) so
 documented as Vaultwarden-only.
 
 Dataflow: internet → `cloudflared-lion` → `http://127.0.0.1:3107`. The API is
-not published on the host (Splunk owns `:8000`).
+not published on the host (Splunk owns `:8000`). Postgres `:5432` is also
+taken. For a lab overlay that remaps web to `127.0.0.1:8870`, Redis to
+`:6380`, and MinIO to `:9010`, use `infra/compose.lion.yaml` — it never
+binds host `:8000` or `:5432`.
 
 ## Keychain (GUI session on LION)
 

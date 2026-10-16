@@ -1,6 +1,6 @@
 """LLM Client: Provider-neutral interface for structured LLM calls
 
-Per ADR-007 / ADR-038: adapters, cost tracking, cassettes. Keys from env only.
+Per ADR-007 / ADR-060: adapters, cost tracking, cassettes. Keys from env only.
 """
 
 from __future__ import annotations
@@ -72,9 +72,13 @@ class LLMClient:
         if self.provider_name not in self.config.get("providers", {}):
             raise ValueError(f"Provider {self.provider_name} not found in config")
 
+        local_env = (
+            os.getenv("LOCAL_LLM_BASE_URL", "").strip() if self.provider_name == "local" else ""
+        )
         self.base_url = (
             (base_url or "").strip()
             or (sidecar.get("base_url") or "").strip()
+            or local_env
             or os.getenv("LLM_BASE_URL", "").strip()
             or self.config["providers"][self.provider_name].get("base_url")
             or default_base_url(self.provider_name)

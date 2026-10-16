@@ -100,7 +100,7 @@
   },
   "aiProviders": {
     "heading": "AI providers",
-    "intro": "xAI (Grok) is the default. Keys stay in the server environment or a secret manager — they are never typed here or stored in the repo. Transcripts go to the selected provider.",
+    "intro": "The default is LM Studio on TIGER (local OpenAI-compatible, Qwen). xAI/Grok is optional. Cloud keys stay in the server environment or a secret manager — they are never typed here or stored in the repo. Transcripts go to the selected provider.",
     "loadError": "Could not load AI provider settings.",
     "saveError": "Could not save AI provider settings.",
     "baseUrl": "Endpoint URL",
@@ -108,16 +108,16 @@
     "keyMissing": "Set {env} on the server. Do not paste a key into this page.",
     "leavesMachine": "This provider is not the default. Analysis text will leave this machine and be sent to that vendor.",
     "keys": {
-      "xai": "xAI (Grok) — default",
-      "local": "Local OpenAI-compatible (LM Studio / Gemma)",
+      "xai": "xAI (Grok)",
+      "local": "Local OpenAI-compatible (LM Studio / Qwen) — default",
       "anthropic": "Anthropic Claude",
       "openai": "OpenAI",
       "gemini": "Google Gemini",
       "custom": "Custom OpenAI-compatible URL"
     },
     "hints": {
-      "xai": "Owner-chosen default. Uses XAI_API_KEY or LLM_API_KEY.",
-      "local": "For example LM Studio on TIGER serving Gemma at http://127.0.0.1:1234/v1. Data stays on the machine when the URL is loopback.",
+      "xai": "Optional. Uses XAI_API_KEY or LLM_API_KEY. The app boots without this key.",
+      "local": "Owner-chosen default (16 Oct 2026). LM Studio on TIGER serving qwen/qwen3.8-27b. Base URL from LOCAL_LLM_BASE_URL. No API key. Data stays on the machine when the URL is loopback.",
       "anthropic": "Uses ANTHROPIC_API_KEY.",
       "openai": "Uses OPENAI_API_KEY.",
       "gemini": "Uses GEMINI_API_KEY or GOOGLE_API_KEY.",

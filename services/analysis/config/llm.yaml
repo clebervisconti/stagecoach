@@ -1,8 +1,9 @@
 # LLM Configuration
-# ADR-007 / ADR-038: xAI (Grok) is the owner-chosen default.
-# Keys are never stored here — only env / secret manager.
+# ADR-060: local OpenAI-compatible (LM Studio on TIGER, Qwen) is the default.
+# Base URL for local comes from LOCAL_LLM_BASE_URL at runtime.
+# Keys are never stored here — only env / secret manager. XAI_API_KEY is optional.
 
-default_provider: xai
+default_provider: local
 
 providers:
   xai:
@@ -30,6 +31,14 @@ providers:
     name: Local OpenAI-compatible
     base_url: http://127.0.0.1:1234/v1
     models:
+      qwen/qwen3.8-27b:
+        display_name: Qwen 3.8 27B (LM Studio)
+        supports_structured_output: true
+        max_tokens: 32768
+        price_per_input_token: 0
+        price_per_output_token: 0
+        temperature_default: 0.4
+        temperature_range: [0.0, 2.0]
       gemma-3-12b:
         display_name: Gemma (LM Studio)
         supports_structured_output: true
@@ -92,8 +101,8 @@ providers:
         temperature_range: [0.0, 2.0]
 
 model_assignments:
-  default: grok-beta
-  slides_v1: grok-beta
+  default: qwen/qwen3.8-27b
+  slides_v1: qwen/qwen3.8-27b
 
 cost_ceiling_per_analysis: 0.50
 
