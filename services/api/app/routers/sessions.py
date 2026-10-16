@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+from uuid import UUID
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -28,6 +29,7 @@ from app.deletion import (
     session_object_prefix,
 )
 from app.consents.store import snapshot_for_user
+from app.session_plans import resolve_talk_plan
 from app.deck_safety import (
     ALLOWED_DECK_CONTENT_TYPES,
     ALLOWED_DECK_EXTENSIONS,
@@ -113,6 +115,7 @@ class SessionCreate(BaseModel):
         ...,
         pattern="^(stage|to_camera|screen_recording|audio_only)$"
     )
+    talk_plan_id: Optional[UUID] = None
 
 
 class SessionResponse(BaseModel):
@@ -246,6 +249,7 @@ async def create_session(
     db: Session = Depends(get_db)
 ):
     """Create a private-beta session and return the authenticated upload route."""
+    plan = resolve_talk_plan(db, current_user.id, session_data.talk_plan_id)
     session = SessionModel(
         user_id=current_user.id,
         title=session_data.title,
@@ -255,6 +259,7 @@ async def create_session(
         qa_in_slot=session_data.qa_in_slot,
         audience_desc=session_data.audience_desc,
         camera_setup=session_data.camera_setup,
+        talk_plan_id=plan.id if plan is not None else None,
         status="created",
     )
     
