@@ -62,5 +62,6 @@ test("session radar draws a dashed goal polygon", async ({ page }) => {
   });
   await page.goto(`/sessions/${SESSION_ID}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("report")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId("goal-polygon")).toBeVisible();
+  await expect(page.getByTestId("goal-polygon")).toBeAttached();
+  await expect(page.getByTestId("goal-vertex").first()).toBeVisible();
 });

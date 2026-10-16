@@ -95,6 +95,22 @@ export function RadarChart({ points, goalPoints }: RadarChartProps) {
             data-testid="goal-polygon"
           />
         ) : null}
+        {(goalPoints ?? []).map((point, index) => {
+          if (!point.available || point.score === null) return null;
+          const pos = radarAxisPoint(index, points.length, (point.score / 100) * RADIUS, CX, CY);
+          return (
+            <circle
+              key={`${point.id}-goal`}
+              cx={pos.x}
+              cy={pos.y}
+              r="4"
+              className="fill-background stroke-primary"
+              strokeWidth="2"
+              strokeDasharray="3 2"
+              data-testid="goal-vertex"
+            />
+          );
+        })}
         {polygon ? (
           <polygon
             points={polygon}
