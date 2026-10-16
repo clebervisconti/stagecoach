@@ -111,12 +111,7 @@ def register_user(db: Session, email: str, password: str) -> dict[str, Any]:
         db.add(user)
         db.flush()
     raw = issue_token(db, user, "verify_email")
-    send_email(
-        to=email,
-        subject="Verify your Stage Coach email",
-        body=f"Verification token: {raw}",
-        purpose="verify_email",
-    )
+    send_email(to=email, purpose="verify_email", token=raw)
     db.commit()
     return {"status": "accepted", "email": email}
 
@@ -159,12 +154,7 @@ def forgot_password(db: Session, email: str) -> dict[str, Any]:
     user = db.query(User).filter(User.email == email, User.deleted_at.is_(None)).first()
     if user and user.password_hash:
         raw = issue_token(db, user, "reset_password")
-        send_email(
-            to=email,
-            subject="Reset your Stage Coach password",
-            body=f"Reset token: {raw}",
-            purpose="reset_password",
-        )
+        send_email(to=email, purpose="reset_password", token=raw)
         db.commit()
     return {"status": "accepted"}
 

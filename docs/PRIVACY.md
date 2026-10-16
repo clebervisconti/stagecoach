@@ -68,7 +68,7 @@ List what is actually wired. Paid / unchosen vendors stay flagged.
 | Default LLM (xAI / Grok) | Prep and content JSON | Keys from env only; never stored | Confirm zero-retention / no-training with the vendor |
 | Optional LLM (OpenAI, Anthropic, Gemini, custom) | User-selected | Off unless the user picks them; "leaves the machine" warning | User choice; still a processor |
 | Local OpenAI-compatible (LM Studio) | Optional on-machine | Does not leave the machine | — |
-| Email (verification, password reset, deletion confirmation) | Auth + compliance | Dev/console stand-in. **Prod provider not chosen (D10)** | Yes — paid transactional email |
+| Email (verification, password reset, deletion confirmation) | Auth + compliance | Resend (D10, free tier) when `RESEND_API_KEY` is set; otherwise console | Yes — Resend |
 | Sign in with Apple | OIDC (D9, 2026-10-15) | Disabled until `APPLE_*` secrets exist | Yes — Apple (private relay possible) |
 | Error tracking | Sentry or none | `STAGECOACH_ERROR_TRACKING=none`. **No Sentry SDK** | Yes — SaaS / self-hosted / none |
 | Antivirus / deck scan | Upload safety | Local sandbox | — |
@@ -87,12 +87,12 @@ To complete with counsel:
 
 Open legal questions for counsel are in §10.
 
-## 8. Account rights (partial — #67 blocked on D10)
+## 8. Account rights (partial — export / 7-day delete still #67)
 
 SPEC §7.5 / §10.3:
 
 - **Export:** zip of JSON (sessions, scores, evidence, transcripts, plans, consents) + 24 h presigned media links. Implementation is issue #67.
-- **Delete account:** 7-day grace, then hard delete + confirmation email + audit. The confirmation email needs a **production email provider (D10)**. Not implemented here.
+- **Delete account:** 7-day grace, then hard delete + confirmation email + audit. The confirmation email can now use Resend; the grace/hard-delete path is still the rest of #67.
 - **Delete session:** already implemented (hard delete, content-free audit).
 
 ## 9. Incident / breach-notification runbook
@@ -133,14 +133,14 @@ Write an audit row (`audit_log`) with object counts and action name only. Update
 5. Age gate 18+ and any education-tenant restrictions.
 6. Sub-processor SCCs / international transfers once a prod region is chosen.
 7. Whether Art. 50 disclosures need specific wording beyond "AI coach".
-8. Account-deletion confirmation email once D10 is chosen. Verification/reset already use the console stand-in.
+8. Account-deletion confirmation email once the grace/hard-delete path lands; verification/reset already send via Resend or the console stand-in.
 9. Apple ID token / private-relay email processing (D9, #68). Google / Microsoft are not used.
 10. Digital Omnibus / application-date recheck before launch [S51].
 
 ## 11. Owner decisions this document does not take
 
 - **D9** decided 2026-10-15: email+password and Sign in with Apple only (#68). Google / Microsoft not used.
-- **D10** Production transactional email (#67)
+- **D10** decided 2026-10-16: Resend free tier (#67). Cyberlabs still verifies SPF/DKIM.
 - Sentry SaaS vs self-hosted vs none
 - Production cloud region / vendor
 - KMS vs local KEK for SCENC2

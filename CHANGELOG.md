@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 3: Talk-prep coach + objectives + trends (In Progress)
 
+##### Added - Resend transactional email (issue #67 / D10)
+- Resend adapter behind `send_email`; console stand-in when `RESEND_API_KEY` is unset
+- text + HTML templates for verification and password reset; retry/backoff
+- Logs never include bodies or tokens; Cyberlabs DNS steps in `docs/email.md`
+
 ##### Added - Plan editor, readiness scores, Markdown/PDF export (issue #61)
 - `/prep/{id}` inline edit + regenerate with feedback for every prep section
 - Readiness for categories 1–8 and 16–17 from materials; 9–15 N/A until rehearsal
