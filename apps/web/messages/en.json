@@ -448,5 +448,24 @@
       "class_academic": "Class / academic",
       "other": "Other"
     }
+  },
+  "trends": {
+    "heading": "Trends",
+    "intro": "Only sessions that share context and scoring-config major version are compared. Others are marked not comparable.",
+    "loadError": "Could not load trends.",
+    "context": "Context",
+    "language": "Language",
+    "metric": "Metric",
+    "any": "Any",
+    "overall": "Overall",
+    "sparkline": "Sparkline",
+    "mostImproved": "Most improved",
+    "needsAttention": "Needs attention",
+    "empty": "Not enough comparable sessions.",
+    "session": "Session",
+    "value": "Value",
+    "status": "Status",
+    "comparable": "Comparable",
+    "notComparable": "Not comparable"
   }
 }

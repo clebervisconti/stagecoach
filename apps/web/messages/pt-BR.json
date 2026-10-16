@@ -448,5 +448,24 @@
       "class_academic": "Aula / acadêmico",
       "other": "Outro"
     }
+  },
+  "trends": {
+    "heading": "Tendências",
+    "intro": "Só comparamos sessões com o mesmo contexto e a mesma versão major do scoring-config. As outras ficam marcadas como não comparáveis.",
+    "loadError": "Não foi possível carregar as tendências.",
+    "context": "Contexto",
+    "language": "Idioma",
+    "metric": "Métrica",
+    "any": "Qualquer",
+    "overall": "Geral",
+    "sparkline": "Sparkline",
+    "mostImproved": "Mais evoluída",
+    "needsAttention": "Precisa de atenção",
+    "empty": "Não há sessões comparáveis o suficiente.",
+    "session": "Sessão",
+    "value": "Valor",
+    "status": "Estado",
+    "comparable": "Comparável",
+    "notComparable": "Não comparável"
   }
 }
