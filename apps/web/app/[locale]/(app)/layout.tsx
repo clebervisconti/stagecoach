@@ -45,6 +45,13 @@ export default async function AppLayout({
               >
                 {t("research")}
               </Link>
+              <Link
+                href={`${prefix}/prep`}
+                className="text-sm font-medium hover:text-primary"
+                data-testid="nav-prep"
+              >
+                {t("prep")}
+              </Link>
             </nav>
           </div>
           
