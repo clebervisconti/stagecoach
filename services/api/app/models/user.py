@@ -1,7 +1,7 @@
 """User model."""
 
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Text
+from sqlalchemy import Column, String, DateTime, Text, Integer, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 import uuid
 
@@ -44,9 +44,30 @@ class User(Base):
         JSONB,
         comment="Chosen LLM provider, optional base_url and model. Never API keys.",
     )
+    password_hash = Column(Text, nullable=True)
+    email_verified_at = Column(DateTime, nullable=True)
+    failed_logins = Column(Integer, nullable=False, default=0)
+    locked_until = Column(DateTime, nullable=True)
+    apple_sub = Column(String(255), nullable=True, unique=True, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True, index=True)
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email={self.email})>"
+
+
+class AuthToken(Base):
+    """One-time email-verification and password-reset tokens."""
+
+    __tablename__ = "auth_tokens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid7)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    purpose = Column(String(32), nullable=False)
+    token_hash = Column(String(64), nullable=False, unique=True, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

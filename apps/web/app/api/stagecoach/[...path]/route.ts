@@ -22,8 +22,10 @@ async function proxy(
   }
 
   let path: string;
+  let parts: string[];
   try {
-    path = apiPath((await params).path);
+    parts = (await params).path;
+    path = apiPath(parts);
   } catch {
     return Response.json({ detail: "Invalid path" }, { status: 400 });
   }
@@ -60,7 +62,7 @@ async function proxy(
     init.duplex = "half";
   }
 
-  const upstream = await stagecoachApi(path, init);
+  const upstream = await stagecoachApi(path, init, { anonymous: parts[0] === "auth" });
   const responseHeaders = new Headers();
   for (const name of [
     "content-type",

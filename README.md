@@ -34,7 +34,7 @@ Stage Coach is a monorepo containing:
 - **Workers**: Celery + Redis queue
 - **Database**: PostgreSQL 16 with SQLAlchemy 2
 - **Storage**: S3-compatible object storage (MinIO locally)
-- **Auth**: Auth.js (NextAuth) with magic links + OAuth
+- **Auth**: email + password (argon2id) and Sign in with Apple (D9). Magic links retired. See `docs/apple-signin.md`.
 - **Analysis**: faster-whisper, MediaPipe, parselmouth, LLM providers
 
 ## Development Setup

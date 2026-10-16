@@ -32,18 +32,19 @@ async function apiToken(email: string): Promise<string> {
 export async function stagecoachApi(
   path: string,
   init: RequestInit = {},
+  options: { anonymous?: boolean } = {},
 ): Promise<Response> {
-  const email = await currentEmail();
-  if (!email) {
+  const email = options.anonymous ? null : await currentEmail();
+  if (!email && !options.anonymous) {
     return new Response(JSON.stringify({ detail: "Unauthorized" }), {
       status: 401,
       headers: { "content-type": "application/json" },
     });
   }
   const base = process.env.INTERNAL_API_URL || "http://127.0.0.1:8000";
-  const token = await apiToken(email);
+  const token = email ? await apiToken(email) : null;
   const headers = new Headers(init.headers);
-  headers.set("authorization", `Bearer ${token}`);
+  if (token) headers.set("authorization", `Bearer ${token}`);
   return fetch(`${base}${path}`, {
     ...init,
     headers,

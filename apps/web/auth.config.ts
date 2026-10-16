@@ -1,8 +1,8 @@
 import type { NextAuthConfig } from "next-auth";
 
 export const authConfig = {
-  // Cloudflare Access is the private-beta identity boundary. Application
-  // providers stay disabled until a production identity design is approved.
+  // D9: email+password and Sign in with Apple live in auth.ts (Credentials +
+  // Apple OIDC on the API). Magic-link and Google/Microsoft providers are retired.
   providers: [],
   pages: {
     signIn: "/sign-in",

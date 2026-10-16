@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 # Import all models so Alembic can discover them
-from app.models.user import User  # noqa: F401, E402
+from app.models.user import AuthToken, User  # noqa: F401, E402
 from app.models.consent import Consent  # noqa: F401, E402
 from app.models.session import Session  # noqa: F401, E402
 from app.models.media_asset import MediaAsset  # noqa: F401, E402
@@ -25,6 +25,7 @@ from app.models.talk_plan import Goal, ObjectiveScore, TalkPlan  # noqa: F401, E
 __all__ = [
     "Base",
     "User",
+    "AuthToken",
     "Consent",
     "Session",
     "MediaAsset",
