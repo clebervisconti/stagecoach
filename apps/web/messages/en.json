@@ -439,6 +439,7 @@
     "questionsHeading": "Clarifying questions",
     "assumptionsHeading": "Assumptions (skipped questions)",
     "skip": "Skip and use assumptions",
+    "openEditor": "Open plan editor",
     "contexts": {
       "keynote": "Keynote",
       "breakout": "Breakout",
@@ -467,5 +468,33 @@
     "status": "Status",
     "comparable": "Comparable",
     "notComparable": "Not comparable"
+  },
+  "planEditor": {
+    "loading": "Loading plan…",
+    "loadError": "Could not load the plan.",
+    "saveError": "Could not save the section.",
+    "regenError": "Could not regenerate the section.",
+    "untitled": "Untitled plan",
+    "audienceUnset": "audience not set",
+    "exportMarkdown": "Export Markdown",
+    "exportPdf": "Print / PDF",
+    "feedback": "Regenerate feedback",
+    "save": "Save",
+    "regenerate": "Regenerate",
+    "readiness": "Readiness",
+    "ready": "ready from materials",
+    "needsWork": "needs work",
+    "topChanges": "Top 3 changes before delivery",
+    "sections": {
+      "core_message": "Core message and CTA",
+      "audience": "Audience",
+      "structure": "Structure",
+      "outline": "Outline",
+      "slide_review": "Slide review",
+      "time_budget": "Time budget",
+      "cut_list": "Cut list",
+      "rehearsal_plan": "Rehearsal plan",
+      "objectives": "Objectives"
+    }
   }
 }

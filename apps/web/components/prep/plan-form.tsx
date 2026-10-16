@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import Link from "next/link";
 import { CONTEXT_TYPES, buildPlanPayload } from "@/lib/prep-form";
 
 type ClarifyResponse = {
@@ -12,6 +13,8 @@ type ClarifyResponse = {
 
 export function PlanForm() {
   const t = useTranslations("planForm");
+  const locale = useLocale();
+  const prefix = locale === "en" ? "" : `/${locale}`;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [clarify, setClarify] = useState<ClarifyResponse | null>(null);
@@ -205,6 +208,14 @@ export function PlanForm() {
             {t("skip")}
           </button>
         </div>
+      ) : null}
+
+      {planId ? (
+        <p className="text-sm">
+          <Link href={`${prefix}/prep/${planId}`} data-testid="open-editor" className="underline">
+            {t("openEditor")}
+          </Link>
+        </p>
       ) : null}
 
       {clarify && clarify.assumptions.length > 0 ? (

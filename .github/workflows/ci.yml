@@ -1014,6 +1014,7 @@ jobs:
           echo "  - talk_plans / goals / objective_scores; POST/GET/PATCH /plans; POST regenerate enqueues prep_llm"
           echo "  - /prep form + POST /plans/{id}/clarify (prep_clarify_v1 ≤5 questions; skip → assumptions)"
           echo "  - GET /trends + /trends dashboard; incompatible sessions marked not comparable"
+          echo "  - /prep/{id} editor + readiness (1–8, 16–17); Markdown/PDF export"
           echo ""
           echo "Phase 1 additions:"
           echo "  - Celery worker running and healthy"
