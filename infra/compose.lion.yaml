@@ -30,6 +30,7 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-local}
       LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
       XAI_API_KEY: ${XAI_API_KEY:-}
+      STAGECOACH_PUBLIC_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
 
   worker:
     environment:
@@ -63,7 +64,8 @@ services:
         "3000",
       ]
     environment:
-      NEXTAUTH_URL: http://127.0.0.1:8870
+      NEXTAUTH_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
+      STAGECOACH_PUBLIC_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
       NODE_ENV: production
 
   mailpit:

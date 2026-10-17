@@ -24,6 +24,8 @@ AUTH_SECRET="$(secret AUTH_SECRET)"
 PRIVATE_BETA_EMAIL="$(secret PRIVATE_BETA_EMAIL)"
 export PRIVATE_BETA_MODE=true
 export STAGECOACH_PORT=3107
+# Public origin for Auth.js and API links. Compose default is the lab bind;
+# production LION must set STAGECOACH_PUBLIC_URL in .env (not git).
 export ASR_MODEL="${ASR_MODEL:-tiny}"
 export MAX_UPLOAD_BYTES="${MAX_UPLOAD_BYTES:-83886080}"
 export AUTH_TRUST_HOST=true

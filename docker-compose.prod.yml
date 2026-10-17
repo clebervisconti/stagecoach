@@ -41,6 +41,7 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-local}
       LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
       XAI_API_KEY: ${XAI_API_KEY:-}
+      STAGECOACH_PUBLIC_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
       JWT_ISSUER: stagecoach-web
       JWT_AUDIENCE: stagecoach-api
       MEDIA_ROOT: /data/stagecoach
@@ -134,9 +135,10 @@ services:
     restart: unless-stopped
     environment:
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
-      AUTH_URL: https://stagecoach.cybersphere.com.br
+      AUTH_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
       AUTH_TRUST_HOST: "true"
-      NEXTAUTH_URL: https://stagecoach.cybersphere.com.br
+      NEXTAUTH_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
+      STAGECOACH_PUBLIC_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
       INTERNAL_API_URL: http://api:8000
       PRIVATE_BETA_MODE: "true"
       PRIVATE_BETA_EMAIL: ${PRIVATE_BETA_EMAIL:?PRIVATE_BETA_EMAIL is required}

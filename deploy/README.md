@@ -69,6 +69,15 @@ healthcheck uses `wget` against `/minio/health/live`.
 Production (`docker-compose.prod.yml` / LaunchAgent) still binds web on
 `127.0.0.1:3107` and also runs `next start`.
 
+Public URLs come from `STAGECOACH_PUBLIC_URL` (API verify/reset/export
+links and the overlay `NEXTAUTH_URL`). Compose defaults to
+`http://127.0.0.1:8870`. On LION production set the Cloudflare origin in
+`.env` — never commit it:
+
+```bash
+STAGECOACH_PUBLIC_URL=https://stagecoach.cybersphere.com.br
+```
+
 ## Keychain (GUI session on LION)
 
 Create these items; do not put values in git:

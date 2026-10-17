@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - LION and production web build Next.js and run `next start` (no source mount, no `npm run dev`)
 - Worker image installs arch-conditional CPU torch so linux/arm64 and amd64 both build; CI buildx checks the arm64 torch stage
 - API LION command is production uvicorn (no `--reload`); `make lion-build` builds the images
+- `STAGECOACH_PUBLIC_URL` (default `http://127.0.0.1:8870`) is passed to the API and the LION web `NEXTAUTH_URL`; production origin lives in `.env`
 
 ##### Changed - Default LLM is local LM Studio / Qwen (owner decision 2026-10-16)
 - Default provider is `local`; model `qwen/qwen3.8-27b`; base URL from `LOCAL_LLM_BASE_URL`
