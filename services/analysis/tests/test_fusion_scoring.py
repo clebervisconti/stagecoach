@@ -188,6 +188,62 @@ def test_missing_content_marks_text_categories_unavailable(tmp_path: Path):
     jsonschema.validate(instance=result, schema=SCHEMA)
 
 
+def test_unavailable_content_keeps_text_categories_na(tmp_path: Path):
+    _write_inputs(tmp_path, with_content=False, short=True)
+    (tmp_path / "content.json").write_text(
+        '{"unavailable": true, "unavailable_reason": "The language model was unavailable, so this category stays N/A."}\n'
+    )
+    result = run_fusion_scoring(
+        session_id="00000000-0000-4000-8000-000000000011",
+        output_dir=tmp_path,
+        context_type="keynote",
+        language="en",
+        qa_in_slot=True,
+        camera_setup="audio_only",
+        packages_dir=PACKAGES,
+        transcript_path=tmp_path / "transcript.json",
+        metrics_path=tmp_path / "metrics.json",
+        audio_metrics_path=tmp_path / "audio_metrics.json",
+    )
+    by_id = {c["id"]: c for c in result["categories"]}
+    for cid in (
+        "core_message",
+        "structure",
+        "storytelling",
+        "audience_adaptation",
+        "opening_close",
+        "clarity",
+        "impact",
+    ):
+        assert by_id[cid]["applicable"] is False
+        assert by_id[cid]["score"] is None
+        assert "language model was unavailable" in (by_id[cid]["na_reason"] or "")
+    assert by_id["qa"]["applicable"] is False
+    assert "question/answer" in (by_id["qa"]["na_reason"] or "")
+
+
+def test_qa_stays_na_when_session_has_no_qa_slot(tmp_path: Path):
+    _write_inputs(tmp_path, with_content=True)
+    result = run_fusion_scoring(
+        session_id="00000000-0000-4000-8000-000000000012",
+        output_dir=tmp_path,
+        context_type="keynote",
+        language="en",
+        slot_min=4,
+        qa_in_slot=False,
+        camera_setup="to_camera",
+        packages_dir=PACKAGES,
+        transcript_path=tmp_path / "transcript.json",
+        metrics_path=tmp_path / "metrics.json",
+        audio_metrics_path=tmp_path / "audio_metrics.json",
+        content_path=tmp_path / "content.json",
+    )
+    by_id = {c["id"]: c for c in result["categories"]}
+    assert by_id["qa"]["applicable"] is False
+    assert by_id["qa"]["score"] is None
+    assert "did not include a Q&A" in (by_id["qa"]["na_reason"] or "")
+
+
 def test_content_and_metrics_score_audio_text_categories(tmp_path: Path):
     _write_inputs(tmp_path, with_content=True)
     result = run_fusion_scoring(

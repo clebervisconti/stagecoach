@@ -1,30 +1,32 @@
 # Stage Coach Backlog
 
-## In progress
+## Done in tree (0.4.0)
 
-### SC-MVP-001 — Private-beta upload-to-report flow
-
-**Priority:** P0  
-**Risk:** High (public surface, user media, background processing)  
-**Rollback:** Revert the release commit and restart the previous Compose image set; keep the database volume.
-
-Acceptance criteria:
-
-- [ ] Access is denied before Cloudflare authentication.
-- [ ] The web BFF authenticates all API calls and the API verifies signed, expiring tokens.
-- [ ] Supported media is streamed to a size-bounded private volume with a generated filename.
-- [ ] A background job produces ingest, transcript, prosody, and partial report artifacts.
-- [ ] Session list and processing state survive browser refreshes.
-- [ ] Report shows confidence and N/A/partial coverage honestly.
-- [ ] Evidence timestamps seek the media player within ±0.5 seconds.
-- [ ] Delete removes database rows and every session file.
-- [ ] English and pt-BR UI paths pass e2e UAT.
-- [ ] CI, secret scan, dependency scan, and live production verification pass.
+- Upload, ASR, audio features, fusion scoring, evidence-linked report, session delete.
+- Consented vision, slides, timeline, Body and Slides tabs, PDF export, retention sweeper.
+- Content analysis on `tasks.run_mvp_analysis`. A down model leaves categories 1–7 N/A.
+- Talk-prep writes a real plan (message, SCR for exec briefings, 90% time budget, cut order, rehearsal dates).
+- Report Objectives tab: plan objectives, planned vs actual, rehearsal progress, baseline badge.
+- Trends, goals, password and Apple sign-in code, Resend adapter, account export and 7-day deletion.
 
 ## Next
 
-- SC-P1-002 — Add deterministic category metric functions and full scoring-config integration (#25, #30).
-- SC-P1-003 — Add content LLM categories when a zero-retention provider key is provisioned (#27–#29).
-- SC-P1-004 — Resumable object-storage uploads with tus and lifecycle policy.
-- SC-P1-005 — Golden audio fixtures and formal validation log (#35).
-- SC-P2-001 — Video, slides, and consented expression description.
+### SC-REL-001 — Production close-out
+
+**Priority:** P0  
+**Owner:** product owner. Do not flip these without an explicit decision.
+
+- [ ] Run `tests/uat/mvp-flow.md` against the live host.
+- [ ] Move ASR off `ASR_MODEL=tiny` on LION toward TIGER.
+- [ ] Set Resend secrets and DNS (`docs/email.md`) before verification mail leaves the machine.
+- [ ] Set the four Apple secrets before Sign in with Apple is offered.
+- [ ] Counsel reviews `docs/PRIVACY.md` before a launch beyond the private beta.
+- [ ] Choose KMS or keep the local envelope key.
+
+### SC-P1-005 — Licensed validation
+
+Golden tests use synthetic timestamps. Licensed human speech and inter-rater agreement are still open (`docs/VALIDATION.md`).
+
+### SC-P4-001 — Practice loop
+
+In-browser recording and the live coach overlay. Start only after a real upload produces content scores and a real plan, which the 0.4.0 job now does when the local model is up.

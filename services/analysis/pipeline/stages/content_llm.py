@@ -656,3 +656,73 @@ def content_llm_stage(
     logger.info(f"content_llm stage complete. Cost: ${client.total_cost:.4f}")
 
     return output
+
+
+MODEL_UNAVAILABLE_REASON = (
+    "The language model was unavailable, so this category stays N/A."
+)
+EMPTY_TRANSCRIPT_REASON = (
+    "The transcript has no speech segments, so content analysis was not run."
+)
+
+
+def write_unavailable_content(output_dir: Path, reason: str) -> Dict[str, Any]:
+    """Persist an explicit skip so fusion does not invent content scores."""
+    payload: Dict[str, Any] = {
+        "unavailable": True,
+        "unavailable_reason": reason,
+        "outline": None,
+        "message": None,
+        "story_impact": None,
+        "audience_clarity": None,
+        "open_close": None,
+        "fluency_disambig": None,
+        "qa": {"pairs": [], "insufficient_evidence": True},
+        "total_cost_usd": 0.0,
+        "prompt_versions": {},
+        "verification_summary": {"skipped": True, "reason": reason},
+    }
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "content.json").write_text(
+        json.dumps(payload, indent=2) + "\n", encoding="utf-8"
+    )
+    return payload
+
+
+def run_content_llm_safe(
+    transcript_path: Path,
+    output_dir: Path,
+    session_id: str,
+    context_type: str = "keynote",
+    language: str = "en",
+    audience_desc: Optional[str] = None,
+    max_duration_s: float = 5400.0,
+) -> Dict[str, Any]:
+    """Run content analysis. A down model writes content.json and does not raise."""
+    try:
+        transcript = json.loads(Path(transcript_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        write_unavailable_content(output_dir, EMPTY_TRANSCRIPT_REASON)
+        return {"status": "skipped", "reason": EMPTY_TRANSCRIPT_REASON}
+    if not transcript.get("segments"):
+        write_unavailable_content(output_dir, EMPTY_TRANSCRIPT_REASON)
+        return {"status": "skipped", "reason": EMPTY_TRANSCRIPT_REASON}
+    try:
+        result = content_llm_stage(
+            transcript_path=Path(transcript_path),
+            output_dir=Path(output_dir),
+            session_id=session_id,
+            context_type=context_type,
+            language=language,
+            audience_desc=audience_desc,
+            max_duration_s=max_duration_s,
+        )
+        return {"status": "succeeded", "cost_usd": result.total_cost_usd}
+    except Exception as exc:
+        logger.exception("content_llm unavailable session=%s", session_id)
+        write_unavailable_content(output_dir, MODEL_UNAVAILABLE_REASON)
+        return {
+            "status": "failed",
+            "reason": MODEL_UNAVAILABLE_REASON,
+            "error_type": type(exc).__name__,
+        }

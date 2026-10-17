@@ -1,5 +1,11 @@
 # Private-beta UAT — SC-MVP-001
 
+## 2026-10-17 access check
+
+`https://stagecoach.cybersphere.com.br/` returned HTTP 302 to Cloudflare Access (`clebervisconti.cloudflareaccess.com`) with no session cookie. The app was not served. Steps 1–7 below were not run: nothing was listening on `127.0.0.1:3107` or `:3000` from this machine, and the production host requires an Access login.
+
+Owner gates that stay closed until an explicit decision: ASR off `tiny`, Resend DNS and secrets, the four Apple secrets, counsel review of `docs/PRIVACY.md`, and KMS. See `deploy/README.md`.
+
 Drive these steps against the running app (local `127.0.0.1:3107` or the Access-protected hostname). Screenshots are not sufficient.
 
 1. Open `/sessions` in English. Empty state is visible. Create a session with a short `.wav` or `.mp4`.

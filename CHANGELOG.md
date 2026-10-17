@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Wired the live jobs to the coaches that were already tested
+
+- `tasks.run_mvp_analysis` calls content analysis before final scoring and passes the session's Q&A flag. A down model writes `content.json` with `unavailable` and those categories stay N/A.
+- `tasks.prep_llm` builds a real plan from the prep generators. The local model is optional for the core-message candidates; a failure keeps the deterministic ≤15-word claim.
+- `GET /sessions/{id}/coaching` feeds the report Objectives tab. `users.personal_baselines` stores median/MAD after three same-language sessions.
+
 ### Phase 3: Talk-prep coach + objectives + trends (In Progress)
 
 ##### Changed - Default LLM is local LM Studio / Qwen (owner decision 2026-10-16)

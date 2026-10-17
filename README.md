@@ -4,7 +4,7 @@ An evidence-based presentation coaching platform that analyzes recorded presenta
 
 ## Project Status
 
-Private-beta MVP (`0.2.0`): upload → analysis → report, plus Phase 3 talk-prep (`/prep`) on the same `docker compose` / `make dev` path. Production: `https://stagecoach.cybersphere.com.br` behind Cloudflare Access.
+In-tree product `0.4.0`: upload → analysis (audio, consented video, slides, content coach) → report, plus talk-prep (`/prep`), trends, and account export. Production at `https://stagecoach.cybersphere.com.br` is still the Cloudflare Access private beta on LION (`ASR_MODEL=tiny`) until the owner cuts a release.
 
 Production: LION loopback `:3107`, LaunchAgent `com.cyberlabs.stagecoach`. See `deploy/README.md`.
 
@@ -89,12 +89,14 @@ The application will be available at:
 
 ## Phase Roadmap
 
-- ✅ **Phase 0** (Week 1): Foundations - monorepo, DB, config, scoring engine
-- 🚧 **Phase 1** (Weeks 2-4): Audio + text MVP - ASR, LLM analysis, basic report
-- 🚧 **Phase 2** (Weeks 5-7): Video + slides — consents, CPU MediaPipe vision, vision events, opt-in category 14 (no emotion inference), category 12 gestures with accessibility-profile gates, category 13 audience-facing time (head orientation, not eye contact), slides stage (PySceneDetect, keyframes, deck text, Tesseract), category 8 visual aids, category 15 energy fusion (no SER), partial reports (vision failure → categories 12–14 N/A), video-synced timeline lanes, Body and Slides tabs, PDF export via Playwright Chromium, retention sweeper + envelope encryption of biometric JSON, Settings → AI providers (local LM Studio / Qwen default; xAI optional)
-- 📅 **Phase 3** (Weeks 8-10): Talk-prep coach - objectives, trends, personal baselines
+- ✅ **Phase 0**: Foundations - monorepo, DB, config, scoring engine
+- ✅ **Phase 1**: Audio + text report - ASR, fusion scoring, evidence-linked report, delete
+- ✅ **Phase 2**: Video + slides - consents, CPU MediaPipe, categories 8 and 12–15, timeline, Body and Slides tabs, PDF, retention, local LLM default
+- ✅ **Phase 3 (in tree)**: Talk-prep generators on the live job, objectives panel, trends, goals, personal-baseline badge after 3 sessions, account export/deletion
 - 📅 **Phase 4** (v2): Practice loop - in-browser recording, live feedback, drills
 - 📅 **Phase 5** (v3): Teams - organizations, coaches, cohort analytics, benchmarks
+
+Still open before a 1.0 cut: licensed-speech validation, WhisperX alignment and diarization on the live job, resumable uploads, ASR off the `tiny` model, and the owner gates in `deploy/README.md` (Resend DNS, Apple secrets, counsel review of `docs/PRIVACY.md`).
 
 ## Research Foundation
 
