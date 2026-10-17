@@ -19,10 +19,9 @@ aiohttp==3.11.11
 # Media processing
 ffmpeg-python==0.2.0
 
-# ML/AI - Install torch CPU-only first
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.4.1+cpu
-torchaudio==2.4.1+cpu
+# ML/AI — torch/torchaudio are arch-specific (see requirements-torch-amd64.txt
+# and requirements-torch-arm64.txt). The worker Dockerfile installs the matching
+# file before this one. linux/arm64 has no torch==2.4.1+cpu wheel.
 
 # ASR
 faster-whisper==1.0.3

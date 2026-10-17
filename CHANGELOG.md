@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Phase 3: Talk-prep coach + objectives + trends (In Progress)
 
+##### Fixed - LION deploy on Apple Silicon (OrbStack / arm64)
+- `infra/compose.lion.yaml` uses `!reset` / `!override` so only `127.0.0.1:8870`, `6380`, and `9010` are published (`ports: []` does not clear the base list)
+- MinIO image is `cgr.dev/chainguard/minio` pinned by multi-arch digest (quay.io/minio/minio returns 401)
+- LION and production web build Next.js and run `next start` (no source mount, no `npm run dev`)
+- Worker image installs arch-conditional CPU torch so linux/arm64 and amd64 both build; CI buildx checks the arm64 torch stage
+- API LION command is production uvicorn (no `--reload`); `make lion-build` builds the images
+
 ##### Changed - Default LLM is local LM Studio / Qwen (owner decision 2026-10-16)
 - Default provider is `local`; model `qwen/qwen3.8-27b`; base URL from `LOCAL_LLM_BASE_URL`
 - No API key for the default. `XAI_API_KEY` is optional; the app boots without it

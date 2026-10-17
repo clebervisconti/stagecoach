@@ -148,6 +148,15 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    command:
+      [
+        "node_modules/.bin/next",
+        "start",
+        "-H",
+        "0.0.0.0",
+        "-p",
+        "3000",
+      ]
     ports:
       - "127.0.0.1:${STAGECOACH_PORT:-3107}:3000"
     healthcheck:
