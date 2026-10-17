@@ -29,6 +29,7 @@ from app.deletion import (
     local_session_dir,
     session_object_prefix,
 )
+from app.coaching import coaching_document, remember_baseline
 from app.consents.store import snapshot_for_user
 from app.session_plans import resolve_talk_plan
 from app.deck_safety import (
@@ -49,6 +50,7 @@ from app.models.user import User
 from app.models.session import Session as SessionModel
 from app.models.media_asset import MediaAsset
 from app.models.metric_value import MetricValue
+from app.models.talk_plan import ObjectiveScore, TalkPlan
 from app.models.overall_score import OverallScore
 from app.models.transcript import Transcript
 from app.retention import (
@@ -449,6 +451,8 @@ async def upload_and_analyze(
             "accessibility_profile": current_user.accessibility_profile or {},
             "retention_policy": policy,
             "llm_settings": getattr(current_user, "llm_settings", None) or {},
+            "qa_in_slot": bool(session.qa_in_slot),
+            "audience_desc": session.audience_desc,
         },
         queue="cpu",
     )
@@ -535,6 +539,96 @@ async def get_report(
     _, outputs = _outputs_or_conflict(session, db)
     report_path = _artifact_from_outputs(outputs, "report")
     return json.loads(report_path.read_text())
+
+
+def _coaching_inputs(session: SessionModel, user: User, db: Session) -> dict:
+    plan = None
+    if session.talk_plan_id:
+        plan = (
+            db.query(TalkPlan)
+            .filter(TalkPlan.id == session.talk_plan_id, TalkPlan.user_id == user.id)
+            .first()
+        )
+    outputs = plan.outputs if plan and isinstance(plan.outputs, dict) else {}
+    groups: list[list[dict]] = []
+    if plan:
+        linked = (
+            db.query(SessionModel)
+            .filter(SessionModel.talk_plan_id == plan.id, SessionModel.user_id == user.id)
+            .order_by(SessionModel.created_at.asc())
+            .all()
+        )
+        for linked_session in linked:
+            job_ids = [
+                row.id
+                for row in db.query(AnalysisJob).filter(AnalysisJob.session_id == linked_session.id).all()
+            ]
+            if not job_ids:
+                continue
+            scores = (
+                db.query(ObjectiveScore)
+                .filter(ObjectiveScore.job_id.in_(job_ids), ObjectiveScore.talk_plan_id == plan.id)
+                .all()
+            )
+            if not scores:
+                continue
+            groups.append(
+                [
+                    {"objective_id": row.objective_id, "status": row.status, "score": row.score}
+                    for row in scores
+                ]
+            )
+    history_rows = (
+        db.query(MetricValue.metric_id, MetricValue.raw_value, SessionModel.id)
+        .join(AnalysisJob, MetricValue.job_id == AnalysisJob.id)
+        .join(SessionModel, AnalysisJob.session_id == SessionModel.id)
+        .filter(
+            SessionModel.user_id == user.id,
+            SessionModel.language == session.language,
+            MetricValue.raw_value.isnot(None),
+        )
+        .all()
+    )
+    history: dict[str, list[float]] = {}
+    session_ids: set = set()
+    for metric_id, raw_value, session_id in history_rows:
+        history.setdefault(str(metric_id), []).append(float(raw_value))
+        session_ids.add(session_id)
+    current_job = (
+        db.query(AnalysisJob)
+        .filter(AnalysisJob.session_id == session.id)
+        .order_by(AnalysisJob.created_at.desc())
+        .first()
+    )
+    current_metrics = []
+    if current_job is not None:
+        for row in db.query(MetricValue).filter(MetricValue.job_id == current_job.id).all():
+            current_metrics.append(
+                {"metric_id": row.metric_id, "raw_value": row.raw_value, "score": row.score}
+            )
+    return coaching_document(
+        objectives=list(outputs.get("objectives") or []),
+        outline=list(outputs.get("outline") or []),
+        rehearsal_groups=groups,
+        language=session.language or "en",
+        history=history,
+        n_sessions=len(session_ids),
+        current_metrics=current_metrics,
+        linked_plan=plan is not None,
+    )
+
+
+@router.get("/{session_id}/coaching")
+async def get_coaching(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    session = _owned_session(session_id, current_user, db)
+    document = _coaching_inputs(session, current_user, db)
+    if remember_baseline(current_user, session.language or "en", document["baseline"]):
+        db.commit()
+    return document
 
 
 @router.get("/{session_id}/analysis")

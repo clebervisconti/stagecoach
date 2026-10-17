@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-17
+
+### Added
+
+- Content analysis runs inside the upload job. If the language model is down, message and structure categories stay N/A.
+- Talk-prep regeneration writes a core message, structure, time budget, cut list, and rehearsal plan from the existing generators.
+- Report Objectives tab with planned section times and a personal-baseline badge after three sessions in the same language. The badge does not replace the population score.
+
+### Notes
+
+- Production remains the 0.2.0 private beta until the owner cuts a release and closes the gates in `deploy/README.md`.
+
 ## [0.2.0] - 2026-10-10
 
 ### Added

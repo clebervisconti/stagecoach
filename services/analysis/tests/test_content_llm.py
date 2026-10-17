@@ -342,3 +342,27 @@ class TestContentLLMLiveAPI:
 
         # Check cost was tracked
         assert response.usage.cost_usd > 0
+
+
+def test_down_model_writes_unavailable_content(tmp_path: Path):
+    transcript = tmp_path / "transcript.json"
+    transcript.write_text(
+        json.dumps({"segments": [{"text": "Hello", "start": 0, "end": 1}]}),
+        encoding="utf-8",
+    )
+    with patch(
+        "pipeline.stages.content_llm.content_llm_stage",
+        side_effect=ConnectionError("connection refused"),
+    ):
+        from pipeline.stages.content_llm import run_content_llm_safe
+
+        outcome = run_content_llm_safe(
+            transcript_path=transcript,
+            output_dir=tmp_path,
+            session_id="session",
+        )
+    assert outcome["status"] == "failed"
+    payload = json.loads((tmp_path / "content.json").read_text())
+    assert payload["unavailable"] is True
+    assert "language model was unavailable" in payload["unavailable_reason"]
+    assert payload["message"] is None

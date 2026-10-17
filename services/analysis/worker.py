@@ -262,14 +262,15 @@ def prep_llm_task(
     feedback: str = "",
     llm_settings: Optional[dict] = None,
 ) -> dict:
-    """Enqueue target for POST /plans and /regenerate. LLM bodies land in #56–#62."""
-    from pipeline.prep_llm import apply_prep_placeholder
+    """Build talk-prep outputs from the plan row. The local model is optional."""
+    from pipeline.prep_llm import apply_prep_plan
 
-    return apply_prep_placeholder(
+    return apply_prep_plan(
         plan_id,
         section=section,
         feedback=feedback,
         llm_settings=llm_settings or {},
+        use_llm=True,
     )
 
 
@@ -841,6 +842,8 @@ def run_mvp_analysis_task(
     accessibility_profile: Optional[dict] = None,
     retention_policy: Optional[str] = None,
     llm_settings: Optional[dict] = None,
+    qa_in_slot: bool = False,
+    audience_desc: Optional[str] = None,
 ):
     """Run ingest → ASR → audio → partial scores → vision → slides → fusion → report."""
     from pipeline.accessibility import persist_accessibility
@@ -995,7 +998,7 @@ def run_mvp_analysis_task(
             context_type=context_type if context_type != "other" else "keynote",
             language=resolved_language,
             slot_min=slot_min,
-            qa_in_slot=False,
+            qa_in_slot=bool(qa_in_slot),
             camera_setup=camera_setup if camera_setup else "unknown",
             ingest=ingest_dict,
             transcript_path=transcript_path,
@@ -1168,15 +1171,52 @@ def run_mvp_analysis_task(
             )
             emit_progress(job_id, "slides", "failed", pct=87, message="Slides failed; scoring continues")
 
+        from pipeline.stages.content_llm import run_content_llm_safe
+
         started = datetime.utcnow()
-        emit_progress(job_id, "fusion_scoring", "running", pct=88, message="Scoring from measured signals")
+        emit_progress(job_id, "content_llm", "running", pct=87, message="Reading the talk for content scores")
+        duration_s = float(((ingest_dict or {}).get("media_info") or {}).get("duration") or 0) or 5400.0
+        content_outcome = run_content_llm_safe(
+            transcript_path=transcript_path,
+            output_dir=destination,
+            session_id=session_id,
+            context_type=context_type if context_type != "other" else "keynote",
+            language=resolved_language,
+            audience_desc=audience_desc,
+            max_duration_s=duration_s,
+        )
+        content_status = str(content_outcome.get("status") or "failed")
+        _record_job_step(
+            job_id=job_id,
+            stage="content_llm",
+            status="succeeded" if content_status == "succeeded" else content_status,
+            started_at=started,
+            outputs={"content": str(destination / "content.json")},
+            metrics={
+                "cost_usd": content_outcome.get("cost_usd"),
+                "reason": content_outcome.get("reason"),
+                "error_type": content_outcome.get("error_type"),
+            },
+        )
+        emit_progress(
+            job_id,
+            "content_llm",
+            "succeeded" if content_status == "succeeded" else "skipped",
+            pct=88,
+            message="Content scores ready"
+            if content_status == "succeeded"
+            else "Content analysis unavailable; those categories stay N/A",
+        )
+
+        started = datetime.utcnow()
+        emit_progress(job_id, "fusion_scoring", "running", pct=90, message="Scoring from measured signals")
         analysis = run_fusion_scoring(
             session_id=session_id,
             output_dir=destination,
             context_type=context_type if context_type != "other" else "keynote",
             language=resolved_language,
             slot_min=slot_min,
-            qa_in_slot=False,
+            qa_in_slot=bool(qa_in_slot),
             camera_setup=camera_setup if camera_setup else "unknown",
             ingest=ingest_dict,
             transcript_path=transcript_path,

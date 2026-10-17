@@ -105,5 +105,10 @@ Do not `launchctl kickstart -k` while Compose is the foreground process.
 ## Constraints recorded here
 
 - This product currently lives in a **public** GitHub repo. Homelab policy prefers a private repo; keep Cloudflare Access on until that changes.
-- The worker runs CPU ASR (`ASR_MODEL=tiny`) on LION. Larger models belong on TIGER or a remote API.
-- Alignment (#93) and diarization (#94) are deferred; the private-beta report marks Q&A/video/content categories N/A.
+- The worker runs CPU ASR (`ASR_MODEL=tiny`) on LION. Larger models belong on TIGER. Moving ASR is an owner decision; do not point LION at a remote ASR API until that contract exists.
+- The upload job runs content analysis before final scoring. If the local model on TIGER is down, categories 1–7 stay N/A. Video categories score only when `video_analysis` consent is on. Q&A stays N/A unless the session includes a Q&A segment; diarization still needs `HF_TOKEN` and is not on the live job.
+- WhisperX alignment is implemented and not called by `tasks.run_mvp_analysis`.
+- Production mail stays on the console stand-in until `RESEND_API_KEY`, `STAGECOACH_EMAIL_FROM`, and the domain DNS in `docs/email.md` are set by the owner.
+- Sign in with Apple stays disabled until `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, and `APPLE_PRIVATE_KEY` are set. Cloudflare Access remains the private-beta login.
+- `docs/PRIVACY.md` is an engineering draft. Counsel reviews it before a public launch. Envelope encryption uses a local key; KMS is an owner decision.
+- Live UAT in `tests/uat/mvp-flow.md` is still a manual pass against the running host. It was not executed as part of the 2026-10-17 wiring change.

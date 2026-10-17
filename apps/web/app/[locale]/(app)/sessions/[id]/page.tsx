@@ -12,6 +12,7 @@ import { ReportPlayer } from "@/components/report/player";
 import { RadarChart } from "@/components/report/radar-chart";
 import { SummaryCard } from "@/components/report/summary-card";
 import { BodyTab } from "@/components/report/body-tab";
+import { ObjectivesTab, type CoachingPayload } from "@/components/report/objectives-tab";
 import { SlidesTab } from "@/components/report/slides-tab";
 import { TranscriptTab } from "@/components/report/transcript-tab";
 import { VoiceTab } from "@/components/report/voice-tab";
@@ -77,9 +78,10 @@ export default function SessionPage() {
   const [body, setBody] = useState<BodyPayload | null>(null);
   const [slides, setSlides] = useState<SlidesPayload | null>(null);
   const [goals, setGoals] = useState<GoalLike[]>([]);
-  const [tab, setTab] = useState<"categories" | "transcript" | "voice" | "timeline" | "body" | "slides">(
-    "categories",
-  );
+  const [coaching, setCoaching] = useState<CoachingPayload | null>(null);
+  const [tab, setTab] = useState<
+    "categories" | "transcript" | "voice" | "timeline" | "body" | "slides" | "objectives"
+  >("categories");
   const seekRef = useRef<(tStart: number) => void>(() => undefined);
   const [error, setError] = useState("");
   const [includeTranscript, setIncludeTranscript] = useState(false);
@@ -116,6 +118,12 @@ export default function SessionPage() {
       });
       if (timelineResponse.ok && active) {
         setTimeline((await timelineResponse.json()) as TimelinePayload);
+      }
+      const coachingResponse = await fetch(`/api/stagecoach/sessions/${params.id}/coaching`, {
+        cache: "no-store",
+      });
+      if (coachingResponse.ok && active) {
+        setCoaching((await coachingResponse.json()) as CoachingPayload);
       }
       const bodyResponse = await fetch(`/api/stagecoach/sessions/${params.id}/body`, {
         cache: "no-store",
@@ -361,7 +369,7 @@ export default function SessionPage() {
           <InsightsPanel report={report} onSeek={(time) => seekRef.current(time)} />
           <div>
             <div role="tablist" aria-label={t("tabs")} className="mb-4 flex flex-wrap gap-2">
-              {(["categories", "transcript", "voice", "timeline", "body", "slides"] as const).map((id) => (
+              {(["categories", "transcript", "voice", "timeline", "body", "slides", "objectives"] as const).map((id) => (
                 <button
                   key={id}
                   type="button"
@@ -383,7 +391,9 @@ export default function SessionPage() {
                             ? "timeline"
                             : id === "body"
                               ? "bodyTab"
-                              : "slidesTab",
+                              : id === "slides"
+                                ? "slidesTab"
+                                : "objectivesTab",
                   )}
                 </button>
               ))}
@@ -406,6 +416,7 @@ export default function SessionPage() {
               />
             )}
             {tab === "body" && <BodyTab payload={body} onSeek={(time) => seekRef.current(time)} />}
+            {tab === "objectives" && <ObjectivesTab payload={coaching} />}
             {tab === "slides" && (
               <SlidesTab
                 sessionId={params.id}

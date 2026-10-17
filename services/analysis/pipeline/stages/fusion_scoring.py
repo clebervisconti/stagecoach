@@ -32,6 +32,16 @@ VIDEO_CATEGORIES = {
     "eye_contact": "Vision stage was not run; gaze metrics need a visible face.",
     "facial_affect": "Expression analysis is off and vision was not run.",
 }
+CONTENT_TEXT_CATEGORIES = {
+    "core_message",
+    "structure",
+    "storytelling",
+    "audience_adaptation",
+    "opening_close",
+    "clarity",
+    "impact",
+}
+QA_NOT_IN_SLOT_REASON = "This session did not include a Q&A segment."
 
 PILLAR_OF = {
     "core_message": "message",
@@ -945,9 +955,16 @@ def run_fusion_scoring(
             break
     audio = _read_json(audio_metrics_path) or _read_json(output_dir / "audio_metrics.json") or {}
     bundle = _read_json(metrics_path) or _read_json(output_dir / "metrics.json") or {"metrics": {}}
-    content = _read_json(content_path) or _read_json(output_dir / "content.json")
+    content_raw = _read_json(content_path) or _read_json(output_dir / "content.json")
+    content_unavailable = bool(content_raw and content_raw.get("unavailable"))
+    content = None if content_unavailable else content_raw
+    content_na_reason = (
+        str((content_raw or {}).get("unavailable_reason") or "").strip() or None
+        if content_unavailable
+        else None
+    )
     sidecar = _read_json(output_dir / "fluency_disambig.json")
-    if sidecar and sidecar.get("disambiguations"):
+    if sidecar and sidecar.get("disambiguations") and not content_unavailable:
         content = dict(content or {})
         existing = (content.get("fluency_disambig") or {}).get("disambiguations") or []
         if not existing:
@@ -1157,21 +1174,19 @@ def run_fusion_scoring(
             if not ok:
                 applicable = False
                 na_reason = reason
-            if category_id in {
-                "core_message",
-                "structure",
-                "storytelling",
-                "audience_adaptation",
-                "opening_close",
-                "clarity",
-                "impact",
-            } and not content:
+            if category_id in CONTENT_TEXT_CATEGORIES and not content:
                 applicable = False
-                na_reason = "Content analysis was not run, so this category has no inputs."
+                na_reason = (
+                    content_na_reason
+                    or "Content analysis was not run, so this category has no inputs."
+                )
             if category_id == "vocal_variety" and music_flag:
                 applicable = False
                 na_reason = "Background music makes vocal-variety scoring unavailable."
-            if category_id == "qa" and not extras["qa_detected"]:
+            if category_id == "qa" and not qa_in_slot:
+                applicable = False
+                na_reason = QA_NOT_IN_SLOT_REASON
+            elif category_id == "qa" and not extras["qa_detected"]:
                 applicable = False
                 na_reason = "Q&A analysis has no detected question/answer pairs."
             if category_id == "energy_presence" and not grouped["energy_presence"]:
