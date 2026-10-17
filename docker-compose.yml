@@ -34,10 +34,11 @@ services:
       start_period: 5s
 
   minio:
-    # MinIO S3-compatible storage - pinned to specific release tag
-    # Note: MinIO images have auth/rate-limit issues in GitHub Actions CI
-    # CI smoke test skips this service via profile; works locally with --profile minio
-    image: quay.io/minio/minio:RELEASE.2024-10-02T17-50-41Z
+    # Chainguard public MinIO (AGPL). quay.io/minio/minio returns 401.
+    # latest-dev is multi-arch (amd64/arm64) and includes wget for healthcheck;
+    # the distroless :latest image has no HTTP client. Index digest, not a
+    # platform digest, so OrbStack/arm64 and CI/amd64 share one pin.
+    image: cgr.dev/chainguard/minio:latest-dev@sha256:8534c7e8768711491b353aec5c88d89a7de97d3592e055f551e0975529b87ec0
     container_name: stagecoach-minio
     command: server /data --console-address ":9001"
     environment:
@@ -49,7 +50,13 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      test:
+        [
+          "CMD",
+          "/bin/sh",
+          "-c",
+          "wget -qO /dev/null http://127.0.0.1:9000/minio/health/live",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -81,6 +88,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       STAGECOACH_ERROR_TRACKING: ${STAGECOACH_ERROR_TRACKING:-none}
       STAGECOACH_ADMIN_EMAILS: ${STAGECOACH_ADMIN_EMAILS:-}
+      STAGECOACH_PUBLIC_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     depends_on:
       postgres:

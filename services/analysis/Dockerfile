@@ -1,8 +1,19 @@
 # Use GCR mirror to avoid Docker Hub / public ECR rate limits in CI
 # Use Bookworm (Debian 12) for ffmpeg compatibility with av==11.*
-FROM mirror.gcr.io/library/python:3.11-slim-bookworm
+# TARGETARCH is amd64 or arm64. torch==2.4.1+cpu has no aarch64 wheel.
+FROM mirror.gcr.io/library/python:3.11-slim-bookworm AS torch
 
 WORKDIR /app
+RUN pip install --upgrade pip
+ARG TARGETARCH
+COPY requirements-torch-amd64.txt requirements-torch-arm64.txt ./
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+      pip install --no-cache-dir -r requirements-torch-arm64.txt; \
+    else \
+      pip install --no-cache-dir -r requirements-torch-amd64.txt; \
+    fi
+
+FROM torch
 
 # Install system dependencies including ffmpeg for media processing
 # Plus pkg-config and ffmpeg dev libraries for building PyAV (faster-whisper dep)
@@ -30,11 +41,7 @@ RUN apt-get update && apt-get install -y \
     poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-# Upgrade pip first for better wheel support
-RUN pip install --upgrade pip
-
-# Install base dependencies (including CPU-only torch) plus OTEL
+# Install base dependencies plus OTEL (torch already installed in the torch stage)
 COPY requirements.txt requirements-otel.txt ./
 RUN pip install --no-cache-dir -r requirements.txt -r requirements-otel.txt
 

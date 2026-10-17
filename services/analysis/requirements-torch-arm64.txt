@@ -1,0 +1,4 @@
+# linux/arm64: the PyTorch cpu extra index has no torch==2.4.1+cpu aarch64 wheel.
+# PyPI torch==2.4.1 / torchaudio==2.4.1 ship CPU-only manylinux aarch64 wheels.
+torch==2.4.1
+torchaudio==2.4.1

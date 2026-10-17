@@ -204,6 +204,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           cd services/analysis
+          pip install -r requirements-torch-amd64.txt
           pip install -r requirements.txt
       
       - name: Run worker tests
@@ -213,6 +214,24 @@ jobs:
 
       - name: Golden fixtures
         run: python scripts/process_local.py --golden
+
+  worker-arm64-torch:
+    name: Worker arm64 torch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build worker torch stage for linux/arm64
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            --target torch \
+            --progress plain \
+            -f services/analysis/Dockerfile \
+            services/analysis
 
   validate-config:
     name: Validate Scoring Config
@@ -309,6 +328,42 @@ jobs:
             echo "PRIVATE_BETA_EMAIL=ci@example.invalid"
             echo "STAGECOACH_ARTIFACT_KEY=$(openssl rand -hex 32)"
           } > .env
+
+      - name: Assert LION overlay publishes only 8870/6380/9010
+        run: |
+          python3 << 'PY'
+          import json, os, subprocess
+          env = os.environ.copy()
+          result = subprocess.run(
+              [
+                  "docker", "compose",
+                  "-f", "docker-compose.yml",
+                  "-f", "infra/compose.lion.yaml",
+                  "--profile", "web", "--profile", "minio", "--profile", "workers",
+                  "config", "--format", "json",
+              ],
+              check=True, capture_output=True, text=True, env=env,
+          )
+          data = json.loads(result.stdout)
+          published = []
+          for name, svc in data["services"].items():
+              for p in svc.get("ports") or []:
+                  if not isinstance(p, dict):
+                      raise SystemExit(f"{name} unexpected port mapping: {p!r}")
+                  host_port = p.get("published")
+                  if host_port in (None, ""):
+                      continue
+                  host_ip = p.get("host_ip") or "0.0.0.0"
+                  host_port = str(host_port)
+                  assert host_ip == "127.0.0.1", f"{name} {host_ip}:{host_port}"
+                  assert host_port not in {"8000", "5432"}, f"{name} bound :{host_port}"
+                  published.append((name, host_port))
+          ports = {port for _, port in published}
+          assert ports == {"8870", "6380", "9010"}, ports
+          names = {name for name, _ in published}
+          assert names == {"web", "redis", "minio"}, names
+          print("LION merged ports:", published)
+          PY
       
       - name: Pre-pull images with retries
         run: |
@@ -1029,9 +1084,8 @@ jobs:
       - name: MinIO status
         run: |
           echo "=== MinIO Status ==="
-          echo "MinIO service uses --profile minio and is skipped in CI smoke test"
-          echo "Reason: MinIO container images have auth/rate-limit issues in GitHub Actions"
-          echo "Local usage: docker compose --profile minio up -d"
+          echo "MinIO uses cgr.dev/chainguard/minio (pinned digest); --profile minio is skipped in CI smoke"
+          echo "Local / LION: docker compose --profile minio up -d"
       
       - name: Show service logs on failure
         if: failure()

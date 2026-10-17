@@ -30,7 +30,9 @@ tests/
 ## Development
 
 ```bash
-# Install dependencies
+# Install dependencies (amd64 CI / Linux x86). On Apple Silicon use
+# requirements-torch-arm64.txt — torch==2.4.1+cpu has no aarch64 wheel.
+pip install -r requirements-torch-amd64.txt
 pip install -r requirements.txt
 
 # Start worker (CPU queue)

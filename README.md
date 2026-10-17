@@ -6,7 +6,7 @@ An evidence-based presentation coaching platform that analyzes recorded presenta
 
 Private-beta MVP (`0.2.0`): upload → analysis → report, plus Phase 3 talk-prep (`/prep`) on the same `docker compose` / `make dev` path. Production: `https://stagecoach.cybersphere.com.br` behind Cloudflare Access.
 
-Production: LION loopback `:3107`, LaunchAgent `com.cyberlabs.stagecoach`. See `deploy/README.md`.
+Production: LION loopback `:3107`, LaunchAgent `com.cyberlabs.stagecoach`. Lab overlay: `make lion-build` / `infra/compose.lion.yaml` (loopback `8870` / `6380` / `9010` only). See `deploy/README.md`.
 
 ## Quick Links
 
