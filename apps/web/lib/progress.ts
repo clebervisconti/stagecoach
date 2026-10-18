@@ -76,3 +76,91 @@ export function shouldReloadReport(event: ProgressEvent | null): boolean {
 export function eventsUrl(sessionId: string): string {
   return `/api/stagecoach/sessions/${sessionId}/events`;
 }
+
+export const PIPELINE_STAGES = [
+  "ingest",
+  "asr",
+  "audio_features",
+  "partial_scoring",
+  "vision",
+  "slides",
+  "content_llm",
+  "fusion_scoring",
+  "report",
+] as const;
+
+export type StageState = "pending" | "running" | "succeeded" | "failed" | "skipped";
+
+export type StepSnapshot = {
+  stage: string;
+  status: string;
+  message?: string | null;
+  error?: string | null;
+};
+
+export type StageView = {
+  stage: string;
+  status: StageState;
+  detail: string | null;
+  problem: "visionUnavailable" | null;
+};
+
+function asStageState(status: string): StageState {
+  if (
+    status === "pending" ||
+    status === "running" ||
+    status === "succeeded" ||
+    status === "failed" ||
+    status === "skipped"
+  ) {
+    return status;
+  }
+  if (status === "unavailable") return "skipped";
+  return "running";
+}
+
+export function stageProblem(error: string | null | undefined): "visionUnavailable" | null {
+  if (!error) return null;
+  if (/mediapipe|modulenotfounderror/i.test(error)) return "visionUnavailable";
+  return null;
+}
+
+export function pipelineTimeline(
+  steps: StepSnapshot[],
+  live?: StageProgressEvent | null,
+): StageView[] {
+  const byStage = new Map<string, StepSnapshot>();
+  for (const step of steps) byStage.set(step.stage, step);
+  if (live?.type === "stage") {
+    const previous = byStage.get(live.stage);
+    byStage.set(live.stage, {
+      stage: live.stage,
+      status: live.status,
+      message: live.message ?? previous?.message ?? null,
+      error: previous?.error ?? null,
+    });
+  }
+
+  const names = [...PIPELINE_STAGES] as string[];
+  for (const step of steps) {
+    if (!names.includes(step.stage)) names.push(step.stage);
+  }
+  if (live?.type === "stage" && !names.includes(live.stage)) names.push(live.stage);
+
+  return names.map((stage) => {
+    const step = byStage.get(stage);
+    if (!step) return { stage, status: "pending", detail: null, problem: null };
+    const status = asStageState(step.status);
+    const problem =
+      status === "failed" || status === "skipped"
+        ? stageProblem(step.error) || stageProblem(step.message)
+        : null;
+    const raw = status === "failed" ? step.error || step.message : step.message;
+    return {
+      stage,
+      status,
+      detail: problem ? null : raw?.trim() || null,
+      problem,
+    };
+  });
+}

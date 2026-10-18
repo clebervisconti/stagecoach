@@ -291,7 +291,22 @@ async def list_sessions(
     sessions = db.query(SessionModel).filter(
         SessionModel.user_id == current_user.id
     ).order_by(SessionModel.created_at.desc()).limit(20).all()
-    
+    session_ids = [s.id for s in sessions]
+    latest_jobs: dict = {}
+    if session_ids:
+        for job in (
+            db.query(AnalysisJob)
+            .filter(AnalysisJob.session_id.in_(session_ids))
+            .order_by(AnalysisJob.created_at.desc())
+            .all()
+        ):
+            latest_jobs.setdefault(job.session_id, job)
+    score_by_job = {}
+    job_ids = [job.id for job in latest_jobs.values()]
+    if job_ids:
+        for row in db.query(OverallScore).filter(OverallScore.job_id.in_(job_ids)).all():
+            score_by_job[row.job_id] = row
+
     return {"sessions": [
         {
             "id": str(s.id),
@@ -302,6 +317,9 @@ async def list_sessions(
             "slot_min": s.slot_min,
             "created_at": s.created_at.isoformat(),
             "updated_at": s.updated_at.isoformat(),
+            "overall": score_by_job[latest_jobs[s.id].id].overall
+            if s.id in latest_jobs and latest_jobs[s.id].id in score_by_job
+            else None,
         }
         for s in sessions
     ]}
@@ -349,6 +367,14 @@ async def get_session(
                         "stage": step.stage,
                         "status": step.status,
                         "metrics": step.metrics,
+                        "message": (
+                            step.metrics.get("message") or step.metrics.get("reason")
+                            if isinstance(step.metrics, dict)
+                            else None
+                        ),
+                        "error": step.error.get("message")
+                        if isinstance(step.error, dict)
+                        else None,
                         "started_at": step.started_at.isoformat() if step.started_at else None,
                         "finished_at": step.finished_at.isoformat() if step.finished_at else None,
                     }

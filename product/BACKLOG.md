@@ -11,13 +11,31 @@
 
 ## Next
 
+### SC-UX-001 — Analysis status the user can see
+
+**Priority:** P0
+
+- [x] Show the full pipeline while a job runs, including the current step, elapsed time, and a plain-language note when a step fails.
+- [x] Persist a running job step when a stage starts, and return that step's message and error on the session.
+- [x] Show upload percent and a human status on the session list.
+- [x] Install an arm64 MediaPipe wheel, or skip vision before it throws, so pose tracking does not fail on LION.
+- [ ] Move speech recognition onto TIGER. The live default is already `small`; `ASR_MODEL` is unset on LION.
+
+### SC-UX-002 — Report and navigation
+
+**Priority:** P1
+
+- [x] Give the report one reading order: score, what to practice, evidence.
+- [x] Put Sessions, Talk Prep, and Trends first. The session list shows the score and the next action.
+- [x] Surface the content-coach "model unavailable" reason on the report, in the step log, not only in the worker log.
+
 ### SC-REL-001 — Production close-out
 
 **Priority:** P0  
 **Owner:** product owner. Do not flip these without an explicit decision.
 
 - [ ] Run `tests/uat/mvp-flow.md` against the live host.
-- [ ] Move ASR off `ASR_MODEL=tiny` on LION toward TIGER.
+- [ ] Run speech recognition on TIGER. The in-tree default model is already `small`.
 - [ ] Set Resend secrets and DNS (`docs/email.md`) before verification mail leaves the machine.
 - [ ] Set the four Apple secrets before Sign in with Apple is offered.
 - [ ] Counsel reviews `docs/PRIVACY.md` before a launch beyond the private beta.

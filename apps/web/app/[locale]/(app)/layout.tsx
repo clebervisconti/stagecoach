@@ -26,24 +26,9 @@ export default async function AppLayout({
             <Link href={`${prefix}/sessions`} className="text-xl font-bold">
               Stage Coach
             </Link>
-            <nav className="flex gap-6">
-              <Link
-                href={`${prefix}/sessions`}
-                className="text-sm font-medium hover:text-primary"
-              >
+            <nav className="flex flex-wrap items-center gap-x-5 gap-y-1">
+              <Link href={`${prefix}/sessions`} className="text-sm font-medium hover:text-primary">
                 {t("sessions")}
-              </Link>
-              <Link
-                href={`${prefix}/settings`}
-                className="text-sm font-medium hover:text-primary"
-              >
-                {t("settings")}
-              </Link>
-              <Link
-                href={`${prefix}/research`}
-                className="text-sm font-medium hover:text-primary"
-              >
-                {t("research")}
               </Link>
               <Link
                 href={`${prefix}/prep`}
@@ -58,6 +43,12 @@ export default async function AppLayout({
                 data-testid="nav-trends"
               >
                 {t("trends")}
+              </Link>
+              <Link href={`${prefix}/research`} className="text-sm text-muted-foreground hover:text-primary">
+                {t("research")}
+              </Link>
+              <Link href={`${prefix}/settings`} className="text-sm text-muted-foreground hover:text-primary">
+                {t("settings")}
               </Link>
             </nav>
           </div>

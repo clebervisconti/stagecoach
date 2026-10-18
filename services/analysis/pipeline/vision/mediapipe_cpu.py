@@ -12,6 +12,15 @@ from pipeline.vision.models import ensure_models
 from pipeline.vision.tracking import bbox_from_landmarks
 
 
+def mediapipe_available() -> bool:
+    """False on hosts that do not have a MediaPipe wheel, such as linux/arm64."""
+    try:
+        import mediapipe  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
 class CpuLandmarkers:
     """Pose every frame; face + hands at 10 fps. Delegate is CPU."""
 

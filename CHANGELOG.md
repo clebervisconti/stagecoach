@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Analysis status on the session
+
+- The report page lists every pipeline step, names the one that is running, and shows a short reason when a step fails.
+- A stage is stored as running when it starts, so a refresh still shows where the job is.
+- The upload button reports percent complete, and the session list uses status labels, the overall score, and a next action.
+- The report reads score, then what to practice, then the recording.
+- Vision skips with `mediapipe_unavailable` when the package is not installed, instead of failing the stage.
+
 ### Wired the live jobs to the coaches that were already tested
 
 - `tasks.run_mvp_analysis` calls content analysis before final scoring and passes the session's Q&A flag. A down model writes `content.json` with `unavailable` and those categories stay N/A.

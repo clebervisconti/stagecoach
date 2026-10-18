@@ -13,6 +13,7 @@ type Session = {
   context_type: string;
   language: string;
   created_at: string;
+  overall: number | null;
 };
 
 export default function SessionsPage() {
@@ -24,6 +25,8 @@ export default function SessionsPage() {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
+  const [uploadName, setUploadName] = useState("");
   const [error, setError] = useState("");
 
   const loadSessions = useCallback(async () => {
@@ -74,16 +77,16 @@ export default function SessionsPage() {
 
       const uploadBody = new FormData();
       uploadBody.set("file", file);
-      const upload = await fetch(`/api/stagecoach/sessions/${created.id}/upload`, {
-        method: "POST",
-        body: uploadBody,
-      });
-      const uploaded = await upload.json();
-      if (!upload.ok) throw new Error(uploaded.detail || t("uploadError"));
+      setUploadName(file.name);
+      setUploadPct(0);
+      const uploaded = await uploadRecording(`/api/stagecoach/sessions/${created.id}/upload`, uploadBody, setUploadPct);
+      if (!uploaded.ok) throw new Error(uploaded.detail || t("uploadError"));
       router.push(`${prefix}/sessions/${created.id}`);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t("createError"));
+      const message = reason instanceof Error ? reason.message : "";
+      setError(message && message !== "upload failed" ? message : t("uploadError"));
       setSubmitting(false);
+      setUploadPct(null);
     }
   }
 
@@ -167,8 +170,27 @@ export default function SessionsPage() {
               className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground disabled:opacity-50"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              {submitting ? t("uploading") : t("uploadAndAnalyze")}
+              {submitting ? (
+                <span>
+                  {uploadPct === null
+                    ? t("uploading")
+                    : t("uploadProgress", {
+                        name: uploadName,
+                        pct: String(uploadPct),
+                      })}
+                </span>
+              ) : (
+                t("uploadAndAnalyze")
+              )}
             </button>
+            {submitting && (
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                <div
+                  className="h-full bg-primary transition-[width]"
+                  style={{ width: `${uploadPct ?? 0}%` }}
+                />
+              </div>
+            )}
           </div>
         </form>
       )}
@@ -194,13 +216,75 @@ export default function SessionsPage() {
                   {new Date(session.created_at).toLocaleString()}
                 </div>
               </div>
-              <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium capitalize">
-                {session.status}
-              </span>
+              <div className="flex shrink-0 items-center gap-4">
+                {typeof session.overall === "number" && (
+                  <span className="text-2xl font-semibold tabular-nums">{session.overall}</span>
+                )}
+                <span className="text-sm text-primary">{nextAction(session.status, t)}</span>
+                <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusClass(session.status)}`}>
+                  {statusLabel(session.status, t)}
+                </span>
+              </div>
             </button>
           ))}
         </div>
       )}
     </div>
   );
+}
+
+function uploadRecording(
+  url: string,
+  body: FormData,
+  onProgress: (pct: number) => void,
+): Promise<{ ok: boolean; detail?: string }> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", url);
+    request.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+    };
+    request.onerror = () => reject(new Error("upload failed"));
+    request.onload = () => {
+      let detail = "";
+      try {
+        const payload = JSON.parse(request.responseText) as { detail?: string };
+        detail = payload.detail || "";
+      } catch {
+        detail = "";
+      }
+      resolve({ ok: request.status >= 200 && request.status < 300, detail });
+    };
+    request.send(body);
+  });
+}
+
+function nextAction(
+  status: string,
+  t: (key: "openReport" | "watchProgress" | "seeFailure" | "startAnalysis") => string,
+): string {
+  if (status === "ready" || status === "partial") return t("openReport");
+  if (status === "failed") return t("seeFailure");
+  if (status === "processing" || status === "uploaded") return t("watchProgress");
+  return t("startAnalysis");
+}
+
+function statusClass(status: string): string {
+  if (status === "ready") return "bg-emerald-500/15 text-emerald-700";
+  if (status === "failed") return "bg-destructive/10 text-destructive";
+  if (status === "partial") return "bg-amber-500/15 text-amber-700";
+  if (status === "processing" || status === "uploaded") return "bg-primary/10 text-primary";
+  return "bg-muted text-muted-foreground";
+}
+
+function statusLabel(
+  status: string,
+  t: (key: "statusReady" | "statusFailed" | "statusPartial" | "statusProcessing" | "statusCreated") => string,
+): string {
+  if (status === "ready") return t("statusReady");
+  if (status === "failed") return t("statusFailed");
+  if (status === "partial") return t("statusPartial");
+  if (status === "processing" || status === "uploaded") return t("statusProcessing");
+  return t("statusCreated");
 }

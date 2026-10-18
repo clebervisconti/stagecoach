@@ -19,7 +19,8 @@ import { VoiceTab } from "@/components/report/voice-tab";
 import type { BodyPayload, SlidesPayload } from "@/lib/body-slides";
 import { exportFileUrl, exportStatusUrl, exportUrl } from "@/lib/pdf-export";
 import { formatTimestamp } from "@/lib/player";
-import { eventsUrl, parseProgressData, shouldReloadReport } from "@/lib/progress";
+import { eventsUrl, parseProgressData, shouldReloadReport, type StageProgressEvent, type StepSnapshot } from "@/lib/progress";
+import { ProcessingTimeline } from "@/components/report/processing-timeline";
 import { goalRadarPoints, radarPoints, type GoalLike } from "@/lib/report-view";
 import { exportVtt, type TranscriptPayload } from "@/lib/transcript";
 import type { TimelinePayload } from "@/lib/timeline";
@@ -36,27 +37,10 @@ type SessionDetail = {
   job: null | {
     status: string;
     error: { message?: string } | null;
-    steps: Array<{ stage: string; status: string }>;
+    created_at?: string;
+    steps: StepSnapshot[];
   };
 };
-
-const FALLBACK_STAGES = [
-  "ingest",
-  "asr",
-  "audio_features",
-  "partial_scoring",
-  "fusion_scoring",
-  "report",
-];
-const STAGE_LABELS = new Set([
-  "ingest",
-  "asr",
-  "audio_features",
-  "partial_scoring",
-  "fusion_scoring",
-  "content_llm",
-  "report",
-]);
 
 function isReport(value: unknown): value is AnalysisReport {
   if (!value || typeof value !== "object") return false;
@@ -83,6 +67,7 @@ export default function SessionPage() {
     "categories" | "transcript" | "voice" | "timeline" | "body" | "slides" | "objectives"
   >("categories");
   const seekRef = useRef<(tStart: number) => void>(() => undefined);
+  const [live, setLive] = useState<StageProgressEvent | null>(null);
   const [error, setError] = useState("");
   const [includeTranscript, setIncludeTranscript] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -166,6 +151,7 @@ export default function SessionPage() {
     source.onmessage = (message) => {
       if (!active) return;
       const event = parseProgressData(message.data);
+      if (event?.type === "stage") setLive(event);
       if (shouldReloadReport(event)) void loadArtifacts();
       if (event?.type === "done") void refresh();
     };
@@ -224,10 +210,6 @@ export default function SessionPage() {
     );
   }
 
-  const stages =
-    session?.job?.steps.length
-      ? session.job.steps.map((step) => step.stage)
-      : FALLBACK_STAGES;
   const durationMin = report?.media?.duration_s ? report.media.duration_s / 60 : null;
   const slotLabel =
     session?.slot_min && durationMin
@@ -297,43 +279,21 @@ export default function SessionPage() {
         </div>
       )}
 
-      {!terminal && (
-        <section className="rounded-lg border bg-card p-6" data-testid="processing">
-          <div className="mb-5 flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <h2 className="text-xl font-semibold">{t("processing")}</h2>
-          </div>
-          <p className="mb-4 text-sm text-muted-foreground">{t("processingHint")}</p>
-          <div className="grid gap-3 md:grid-cols-4">
-            {stages.map((stage) => {
-              const complete = session?.job?.steps.some(
-                (step) => step.stage === stage && step.status === "succeeded",
-              );
-              const label = STAGE_LABELS.has(stage)
-                ? t(
-                    stage as
-                      | "ingest"
-                      | "asr"
-                      | "audio_features"
-                      | "partial_scoring"
-                      | "fusion_scoring"
-                      | "content_llm"
-                      | "report",
-                  )
-                : stage.replaceAll("_", " ");
-              return (
-                <div key={stage} className="flex items-center gap-2 rounded-md bg-muted p-3 text-sm">
-                  {complete ? (
-                    <span className="h-2 w-2 rounded-full bg-emerald-600" aria-hidden="true" />
-                  ) : (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  )}
-                  {label}
-                </div>
-              );
-            })}
-          </div>
-        </section>
+      {!terminal && session && (
+        <ProcessingTimeline
+          steps={session.job?.steps ?? []}
+          live={live}
+          startedAt={session.job?.created_at ?? session.created_at}
+        />
+      )}
+
+      {terminal && session && (
+        <ProcessingTimeline
+          mode="notes"
+          steps={session.job?.steps ?? []}
+          live={live}
+          startedAt={null}
+        />
       )}
 
       {session?.status === "failed" && (
@@ -346,7 +306,7 @@ export default function SessionPage() {
       )}
 
       {report && (
-        <div data-testid="report">
+        <div data-testid="report" className="space-y-8">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
             <SummaryCard report={report} />
             <section className="rounded-lg border bg-card p-6">
@@ -356,6 +316,7 @@ export default function SessionPage() {
               />
             </section>
           </div>
+          <InsightsPanel report={report} onSeek={(time) => seekRef.current(time)} />
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
             <ReportPlayer
               sessionId={params.id}
@@ -366,7 +327,6 @@ export default function SessionPage() {
             />
             <KeyMetrics report={report} />
           </div>
-          <InsightsPanel report={report} onSeek={(time) => seekRef.current(time)} />
           <div>
             <div role="tablist" aria-label={t("tabs")} className="mb-4 flex flex-wrap gap-2">
               {(["categories", "transcript", "voice", "timeline", "body", "slides", "objectives"] as const).map((id) => (
