@@ -115,6 +115,8 @@ def emit_progress(
             message=message,
         ),
     )
+    if status == "running":
+        _note_running_stage(job_id, stage, message)
 
 
 def emit_partial_ready(
@@ -182,6 +184,69 @@ def _set_job_state(job_id: str, session_id: str, status: str, error: Optional[di
         )
 
 
+def _note_running_stage(job_id: str, stage: str, message: Optional[str]) -> None:
+    """Persist the stage that is in progress so the report page can show it before it finishes."""
+    if not DATABASE_URL:
+        return
+    now = datetime.utcnow()
+    metrics = json.dumps({"message": message}) if message else None
+    try:
+        engine = create_engine(DATABASE_URL)
+        with engine.begin() as conn:
+            existing = conn.execute(
+                text(
+                    """
+                    SELECT id, status FROM job_steps
+                    WHERE job_id = CAST(:job_id AS UUID) AND stage = :stage
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    """
+                ),
+                {"job_id": job_id, "stage": stage},
+            ).first()
+            if existing and existing.status not in {"succeeded", "failed", "skipped"}:
+                conn.execute(
+                    text(
+                        """
+                        UPDATE job_steps
+                        SET status = 'running',
+                            metrics = COALESCE(CAST(:metrics AS JSONB), metrics),
+                            finished_at = NULL
+                        WHERE id = CAST(:id AS UUID)
+                        """
+                    ),
+                    {"id": str(existing.id), "metrics": metrics},
+                )
+                return
+            if existing:
+                return
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO job_steps (
+                        id, job_id, stage, stage_version, status, attempt,
+                        metrics, started_at, finished_at, created_at
+                    ) VALUES (
+                        CAST(:id AS UUID), CAST(:job_id AS UUID), :stage, '1.0.0', 'running', 1,
+                        CAST(:metrics AS JSONB), :started_at, NULL, :created_at
+                    )
+                    """
+                ),
+                {
+                    "id": str(uuid.uuid4()),
+                    "job_id": job_id,
+                    "stage": stage,
+                    "metrics": metrics,
+                    "started_at": now,
+                    "created_at": now,
+                },
+            )
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "could not record running stage %s for job %s", stage, job_id
+        )
+
+
 def _record_job_step(
     *,
     job_id: str,
@@ -195,7 +260,41 @@ def _record_job_step(
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL is required for job persistence")
     engine = create_engine(DATABASE_URL)
+    finished_at = datetime.utcnow()
+    params = {
+        "job_id": job_id,
+        "stage": stage,
+        "status": status,
+        "outputs": json.dumps(outputs) if outputs else None,
+        "metrics": json.dumps(metrics) if metrics else None,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "error": json.dumps(error) if error else None,
+        "created_at": started_at,
+        "id": str(uuid.uuid4()),
+    }
     with engine.begin() as conn:
+        updated = conn.execute(
+            text(
+                """
+                UPDATE job_steps
+                SET status = :status,
+                    finished_at = :finished_at,
+                    output_uris = COALESCE(CAST(:outputs AS JSONB), output_uris),
+                    metrics = COALESCE(CAST(:metrics AS JSONB), metrics),
+                    error = CAST(:error AS JSONB)
+                WHERE id = (
+                    SELECT id FROM job_steps
+                    WHERE job_id = CAST(:job_id AS UUID) AND stage = :stage
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                )
+                """
+            ),
+            params,
+        )
+        if updated.rowcount:
+            return
         conn.execute(
             text(
                 """
@@ -209,18 +308,7 @@ def _record_job_step(
                 )
                 """
             ),
-            {
-                "id": str(uuid.uuid4()),
-                "job_id": job_id,
-                "stage": stage,
-                "status": status,
-                "outputs": json.dumps(outputs) if outputs else None,
-                "metrics": json.dumps(metrics) if metrics else None,
-                "started_at": started_at,
-                "finished_at": datetime.utcnow(),
-                "error": json.dumps(error) if error else None,
-                "created_at": started_at,
-            },
+            params,
         )
 
 

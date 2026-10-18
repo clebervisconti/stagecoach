@@ -124,6 +124,10 @@ def run_vision_stage(
     if frames is None:
         if video_path is None or not Path(video_path).exists():
             return VisionOutput(skipped=True, skip_reason="no_video_stream")
+        from pipeline.vision import mediapipe_cpu
+
+        if not mediapipe_cpu.mediapipe_available():
+            return VisionOutput(skipped=True, skip_reason="mediapipe_unavailable")
         frames = list(_detect_video(Path(video_path), decision, models_dir=models_dir))
 
     tracker = PrimaryTracker()

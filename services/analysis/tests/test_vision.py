@@ -200,6 +200,24 @@ def test_expression_opt_in_adds_blendshape_columns(tmp_path: Path):
     assert "emotion" not in face.column_names
 
 
+def test_missing_mediapipe_skips(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(
+        "pipeline.vision.mediapipe_cpu.mediapipe_available",
+        lambda: False,
+    )
+    video = tmp_path / "talk.mp4"
+    video.write_bytes(b"not-a-real-video")
+    result = run_vision_stage(
+        output_dir=tmp_path,
+        session_id="s",
+        decision=VIDEO_ON,
+        video_path=video,
+        encryption_key=TEST_KEY,
+    )
+    assert result.skipped is True
+    assert result.skip_reason == "mediapipe_unavailable"
+
+
 def test_no_video_skips(tmp_path: Path):
     result = run_vision_stage(
         output_dir=tmp_path,
