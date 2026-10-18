@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -10,6 +10,16 @@ type AppShellProps = {
   email?: string | null;
   children: React.ReactNode;
 };
+
+function subscribeTheme(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  return () => observer.disconnect();
+}
+
+function themeSnapshot() {
+  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+}
 
 const LINKS = [
   { key: "sessions", href: "/sessions", testId: undefined },
@@ -23,17 +33,12 @@ export function AppShell({ locale, email, children }: AppShellProps) {
   const t = useTranslations("nav");
   const pathname = usePathname();
   const prefix = locale === "en" ? "" : `/${locale}`;
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-
-  useEffect(() => {
-    setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
-  }, []);
+  const theme = useSyncExternalStore(subscribeTheme, themeSnapshot, () => "dark");
 
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
     localStorage.setItem("cs-theme", next);
-    setTheme(next);
   }
 
   return (
@@ -89,9 +94,8 @@ export function AppShell({ locale, email, children }: AppShellProps) {
                 <Link
                   key={link.key}
                   href={href}
-                  data-testid={link.testId}
-                  data-active={active ? "true" : "false"}
-                  className="cs-nav-link border-b-2 border-l-0 px-3"
+                data-active={active ? "true" : "false"}
+                className="cs-nav-link border-b-2 border-l-0 px-3"
                 >
                   {t(link.key)}
                 </Link>
