@@ -22,7 +22,7 @@ export function SummaryCard({ report }: SummaryCardProps) {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm text-muted-foreground">{t("measuredScore")}</p>
-          <p id="report-summary-heading" className="mt-1 text-4xl font-bold tracking-tight">
+          <p id="report-summary-heading" className="cs-stat mt-1 text-4xl">
             {line}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -32,7 +32,7 @@ export function SummaryCard({ report }: SummaryCardProps) {
         </div>
         {headline.partial && (
           <span
-            className="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900"
+            className="cs-status-warning px-3 py-1 text-sm"
             title={t("partialHint")}
           >
             {t("partialBadge")}
@@ -45,7 +45,7 @@ export function SummaryCard({ report }: SummaryCardProps) {
       </p>
       <p className="mt-4 leading-7">{report.insights.summary}</p>
       {warnings.map((warning) => (
-        <p key={warning} className="mt-3 flex items-start gap-2 text-sm text-amber-800">
+        <p key={warning} className="mt-3 flex items-start gap-2 text-sm text-[color:var(--status-warning)]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           {warning}
         </p>

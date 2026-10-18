@@ -67,7 +67,7 @@ function LineChart({
             y={120 - ((band[1] - min) / range) * 100}
             width="600"
             height={((band[1] - band[0]) / range) * 100}
-            className="fill-emerald-200/40"
+            className="fill-[color:var(--data-4)]"
           />
         )}
         <line x1="0" y1="120" x2="600" y2="120" className="stroke-border" />
@@ -162,7 +162,7 @@ export function VoiceTab({
               y1={140 - (FILLER_REF_LOW / maxFiller) * 120}
               x2={fillers.length * 48}
               y2={140 - (FILLER_REF_LOW / maxFiller) * 120}
-              className="stroke-emerald-600"
+              className="stroke-[color:var(--status-success)]"
               strokeDasharray="4 3"
             />
             <line
@@ -170,7 +170,7 @@ export function VoiceTab({
               y1={140 - (FILLER_REF_HIGH / maxFiller) * 120}
               x2={fillers.length * 48}
               y2={140 - (FILLER_REF_HIGH / maxFiller) * 120}
-              className="stroke-red-600"
+              className="stroke-[color:var(--status-critical)]"
               strokeDasharray="4 3"
             />
             {fillers.map((item, index) => {

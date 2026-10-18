@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Cybersphere visual system
+
+- The app uses the Cybersphere tokens, D-DIN and Geist, a side navigation, and a light/dark control that remembers the choice.
+- Status color is limited to success, warning, critical, and info. Panels use a hairline and a 4px corner.
+
 ### Analysis status on the session
 
 - The report page lists every pipeline step, names the one that is running, and shows a short reason when a step fails.

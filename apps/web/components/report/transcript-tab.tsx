@@ -25,12 +25,12 @@ const TOGGLES: HighlightKind[] = [
 ];
 
 const KIND_CLASS: Record<HighlightKind, string> = {
-  filler_sound: "bg-red-200 text-red-950",
-  filler_word: "bg-amber-200 text-amber-950",
-  hedge: "bg-purple-200 text-purple-950",
+  filler_sound: "cs-status-critical",
+  filler_word: "cs-status-warning",
+  hedge: "cs-status-info",
   vague: "underline decoration-dotted decoration-muted-foreground",
-  clt: "bg-emerald-200 text-emerald-950",
-  core_message: "bg-sky-200 font-semibold text-sky-950",
+  clt: "cs-status-success",
+  core_message: "bg-accent font-medium",
   pause: "text-muted-foreground",
 };
 

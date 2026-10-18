@@ -198,8 +198,8 @@ export default function SessionsPage() {
       {loading ? (
         <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
       ) : sessions.length === 0 ? (
-        <div className="rounded-lg border bg-card p-8 text-center text-card-foreground" data-testid="empty-sessions">
-          <p className="text-muted-foreground">{t("noSessions")}</p>
+        <div className="cs-empty rounded-lg border p-8 text-center" data-testid="empty-sessions">
+          <p className="relative text-muted-foreground">{t("noSessions")}</p>
         </div>
       ) : (
         <div className="grid gap-3">
@@ -207,7 +207,7 @@ export default function SessionsPage() {
             <button
               key={session.id}
               onClick={() => router.push(`${prefix}/sessions/${session.id}`)}
-              className="flex items-center justify-between rounded-lg border bg-card p-5 text-left hover:border-primary/50"
+              className="flex items-center justify-between rounded-lg border bg-card p-5 text-left hover:bg-muted"
             >
               <div>
                 <div className="font-semibold">{session.title}</div>
@@ -218,7 +218,7 @@ export default function SessionsPage() {
               </div>
               <div className="flex shrink-0 items-center gap-4">
                 {typeof session.overall === "number" && (
-                  <span className="text-2xl font-semibold tabular-nums">{session.overall}</span>
+                  <span className="cs-stat text-3xl tabular-nums">{session.overall}</span>
                 )}
                 <span className="text-sm text-primary">{nextAction(session.status, t)}</span>
                 <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusClass(session.status)}`}>
@@ -271,11 +271,11 @@ function nextAction(
 }
 
 function statusClass(status: string): string {
-  if (status === "ready") return "bg-emerald-500/15 text-emerald-700";
-  if (status === "failed") return "bg-destructive/10 text-destructive";
-  if (status === "partial") return "bg-amber-500/15 text-amber-700";
-  if (status === "processing" || status === "uploaded") return "bg-primary/10 text-primary";
-  return "bg-muted text-muted-foreground";
+  if (status === "ready") return "cs-status-success px-3 py-1";
+  if (status === "failed") return "cs-status-critical px-3 py-1";
+  if (status === "partial") return "cs-status-warning px-3 py-1";
+  if (status === "processing" || status === "uploaded") return "cs-status-info px-3 py-1";
+  return "bg-muted px-3 py-1 text-xs uppercase tracking-[0.08em] text-muted-foreground";
 }
 
 function statusLabel(
