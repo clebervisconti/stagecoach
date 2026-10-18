@@ -6,9 +6,9 @@ import { keyMetricRows } from "@/lib/report-view";
 import { MetricInfo } from "./metric-info";
 
 const LIGHT_CLASS = {
-  green: "bg-emerald-100 text-emerald-900",
-  yellow: "bg-amber-100 text-amber-900",
-  red: "bg-red-100 text-red-900",
+  green: "cs-status-success",
+  yellow: "cs-status-warning",
+  red: "cs-status-critical",
 } as const;
 
 type KeyMetricsProps = {

@@ -17,7 +17,11 @@
     "trends": "Trends",
     "settings": "Settings",
     "research": "References",
-    "prep": "Talk Prep"
+    "prep": "Talk Prep",
+    "themeToLight": "Light",
+    "themeToDark": "Dark",
+    "themeToLightAria": "Switch to light theme",
+    "themeToDarkAria": "Switch to dark theme"
   },
   "marketing": {
     "tagline": "Evidence-based presentation coaching",

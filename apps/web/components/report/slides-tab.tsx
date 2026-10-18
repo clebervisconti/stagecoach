@@ -74,7 +74,7 @@ export function SlidesTab({ sessionId, payload, onSeek }: SlidesTabProps) {
               </dl>
               {slide.suggested_title && (
                 <p className="mt-2 text-xs" data-testid="ai-suggestion">
-                  <span className="rounded bg-amber-100 px-1 py-0.5 font-medium text-amber-900">
+                  <span className="cs-status-warning px-1 py-0.5 font-medium">
                     {t("aiSuggestion")}
                   </span>{" "}
                   {slide.suggested_title}

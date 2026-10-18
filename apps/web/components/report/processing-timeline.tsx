@@ -64,7 +64,7 @@ export function ProcessingTimeline({
   if (mode === "notes") {
     if (!problems.length) return null;
     return (
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4" data-testid="stage-log">
+      <div className="rounded-xl border border-[color:var(--status-warning)] bg-[color:var(--status-warning-subtle)] p-4" data-testid="stage-log">
         <h2 className="text-sm font-semibold">{t("activityLog")}</h2>
         <ul className="mt-2 space-y-2 text-sm">
           {problems.map((stage) => (
@@ -134,7 +134,7 @@ export function ProcessingTimeline({
       </ol>
 
       {problems.length > 0 && (
-        <div className="mt-6 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4" data-testid="stage-log">
+        <div className="mt-6 rounded-lg border border-[color:var(--status-warning)] bg-[color:var(--status-warning-subtle)] p-4" data-testid="stage-log">
           <h3 className="text-sm font-semibold">{t("activityLog")}</h3>
           <ul className="mt-2 space-y-2 text-sm">
             {problems.map((stage) => (
@@ -155,10 +155,10 @@ export function ProcessingTimeline({
 
 function StageMark({ status }: { status: string }) {
   if (status === "succeeded") {
-    return <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />;
+    return <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-success)]" aria-hidden="true" />;
   }
   if (status === "failed") {
-    return <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />;
+    return <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-critical)]" aria-hidden="true" />;
   }
   if (status === "running") {
     return <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden="true" />;

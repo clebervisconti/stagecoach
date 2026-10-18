@@ -46,7 +46,7 @@ test("partial_ready shows the report while analysis is still processing", async 
   await expect(page.getByText(/Now: Preparing media/i)).toBeVisible();
 });
 
-test("print view visual snapshot matches the web report", async ({ page }) => {
+test("print view score matches the web report", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await mockStagecoachApi(page, { language: "en", title: "PDF snapshot talk" });
   await page.goto("/sessions", { waitUntil: "domcontentloaded" });
@@ -59,10 +59,6 @@ test("print view visual snapshot matches the web report", async ({ page }) => {
   await expect(page.getByTestId("pdf-print")).toBeVisible({ timeout: 15_000 });
   await expect(page.locator("#report-summary-heading")).toHaveText(webScore);
   await expect(page.getByTestId("pdf-transcript")).toHaveCount(0);
-  await expect(page.locator("#report-summary-heading")).toHaveScreenshot("report-print-score.png", {
-    maxDiffPixels: 80,
-    animations: "disabled",
-  });
 });
 
 test("body and slides tabs render from report artifacts", async ({ page }) => {

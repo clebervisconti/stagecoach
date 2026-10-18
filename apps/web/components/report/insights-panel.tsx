@@ -25,9 +25,9 @@ function InsightList({
 }) {
   const t = useTranslations("report");
   const toneClass = {
-    opp: "bg-primary/10",
-    str: "bg-emerald-500/10",
-    weak: "bg-amber-500/10",
+    opp: "bg-muted",
+    str: "bg-[color:var(--status-success-subtle)]",
+    weak: "bg-[color:var(--status-warning-subtle)]",
   }[tone];
   if (!items.length) {
     return <p className="text-sm text-muted-foreground">{empty}</p>;

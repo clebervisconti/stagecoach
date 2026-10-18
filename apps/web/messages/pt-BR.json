@@ -17,7 +17,11 @@
     "trends": "Progresso",
     "settings": "Configurações",
     "research": "Referências",
-    "prep": "Preparação"
+    "prep": "Preparação",
+    "themeToLight": "Claro",
+    "themeToDark": "Escuro",
+    "themeToLightAria": "Usar tema claro",
+    "themeToDarkAria": "Usar tema escuro"
   },
   "marketing": {
     "tagline": "Coaching de apresentações baseado em evidências",
