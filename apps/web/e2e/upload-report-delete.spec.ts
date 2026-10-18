@@ -43,7 +43,7 @@ test("partial_ready shows the report while analysis is still processing", async 
   await expect(page.getByTestId("processing")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByTestId("report")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("processing")).toBeVisible();
-  await expect(page.getByText(/audio and text categories appear first/i)).toBeVisible();
+  await expect(page.getByText(/Now: Preparing media/i)).toBeVisible();
 });
 
 test("print view visual snapshot matches the web report", async ({ page }) => {
