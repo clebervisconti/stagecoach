@@ -272,6 +272,7 @@ jobs:
           load: true
           tags: stagecoach-worker:arm64
           provenance: false
+          # Cache probe after the ADR-077 cold write (scope=worker-arm64).
           cache-from: type=gha,scope=worker-arm64
           cache-to: type=gha,mode=max,scope=worker-arm64
       - name: Record time and size
