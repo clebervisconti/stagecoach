@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 from pathlib import Path
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 
 def _region_for(layout: dict[str, Any], role: str) -> Optional[dict[str, Any]]:
@@ -94,4 +97,15 @@ def write_region_tracks(
         artifacts[role] = str(dest)
         artifacts[f"{role}_spans"] = str(spans_path)
         artifacts[f"{role}_px"] = {"x": x, "y": y, "w": w, "h": h}
+        if role == "camera":
+            from pipeline.layout.face_visibility import write_camera_face_quality
+
+            try:
+                quality = write_camera_face_quality(dest, output_dir)
+            except Exception as exc:
+                logger.warning("camera face visibility failed: %s", exc)
+                quality = None
+            if quality is not None:
+                artifacts["camera_face_quality"] = str(output_dir / "camera_face_quality.json")
+                artifacts["face_visible_ratio"] = quality["face_visible_ratio"]
     return artifacts
