@@ -1,23 +1,77 @@
-# Use GCR mirror to avoid Docker Hub / public ECR rate limits in CI
-# Use Bookworm (Debian 12) for ffmpeg compatibility with av==11.*
-FROM mirror.gcr.io/library/python:3.11-slim-bookworm
+# Worker image. Builds on linux/amd64 and linux/arm64 from this file with no
+# local override (ADR-073). Compilers stay in the build stage.
+#
+# torch==2.4.1+cpu has no aarch64 wheel. TARGETARCH selects the pin:
+#   amd64 → PyTorch CPU index (+cpu)
+#   arm64 → PyPI CPU wheels
+# CMAKE_POLICY_VERSION_MINIMUM=3.5 lets praat-parselmouth's old CMake configure
+# on Bookworm. g++ / make / ninja are required to build that wheel on arm64.
+
+FROM mirror.gcr.io/library/python:3.11-slim-bookworm AS build
 
 WORKDIR /app
 
-# Install system dependencies including ffmpeg for media processing
-# Plus pkg-config and ffmpeg dev libraries for building PyAV (faster-whisper dep)
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    libpq-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    g++ \
+    make \
+    ninja-build \
+    cmake \
     git \
     pkg-config \
+    libpq-dev \
     libavformat-dev \
     libavcodec-dev \
     libavdevice-dev \
     libavutil-dev \
     libswscale-dev \
     libswresample-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN pip install --upgrade pip
+
+ARG TARGETARCH
+COPY requirements-torch-amd64.txt requirements-torch-arm64.txt ./
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+      pip install --no-cache-dir -r requirements-torch-arm64.txt; \
+    else \
+      pip install --no-cache-dir -r requirements-torch-amd64.txt; \
+    fi
+
+COPY requirements.txt requirements-otel.txt requirements-alignment.txt ./
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+      CONSTRAINT=requirements-torch-arm64.txt; \
+    else \
+      CONSTRAINT=requirements-torch-amd64.txt; \
+    fi && \
+    pip install --no-cache-dir -r requirements.txt -r requirements-otel.txt && \
+    pip install --no-cache-dir -r requirements-alignment.txt -c "$CONSTRAINT" && \
+    pip install --no-cache-dir --no-deps git+https://github.com/m-bain/whisperX.git@v3.8.6 && \
+    python -c "import torch, torchaudio; assert torch.__version__.startswith('2.4.1'), torch.__version__; assert torchaudio.__version__.startswith('2.4.1'), torchaudio.__version__"
+
+COPY . .
+
+ENV MEDIAPIPE_MODELS_DIR=/models
+ENV SILERO_VAD_DIR=/models/silero-vad
+RUN python scripts/prefetch_models.py && \
+    python -c "from pathlib import Path; \
+p=Path('/models/face_detection_yunet_2023mar.onnx'); \
+assert p.is_file(), p; \
+s=Path('/models/silero-vad/hubconf.py'); \
+assert s.is_file(), s"
+
+FROM mirror.gcr.io/library/python:3.11-slim-bookworm AS runtime
+
+WORKDIR /app
+
+# Runtime libs only — no g++, make, ninja, or cmake.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    git \
+    libpq5 \
     libglib2.0-0 \
     libgomp1 \
     libgl1 \
@@ -32,34 +86,17 @@ RUN apt-get update && apt-get install -y \
     poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-# Upgrade pip first for better wheel support
-RUN pip install --upgrade pip
-
-# Install base dependencies (including CPU-only torch) plus OTEL
-COPY requirements.txt requirements-otel.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-otel.txt
-
-# Install alignment dependencies (whisperx, pyannote)
-# Force rebuild: 2026-10-09T23:45
-COPY requirements-alignment.txt .
-RUN pip install --no-cache-dir -r requirements-alignment.txt && \
-    pip install --no-cache-dir --no-deps git+https://github.com/m-bain/whisperX.git@v3.8.6
-
-# Copy application code
-COPY . .
+COPY --from=build /usr/local /usr/local
+COPY --from=build /models /models
+COPY --from=build /app /app
 
 # Playwright Chromium for PDF export (SPEC §6.8 / §8.9). Apache-2.0 / BSD.
 RUN playwright install-deps chromium && playwright install chromium
 
-# MediaPipe Tasks models are downloaded on first vision run (Apache-2.0, SHA pinned).
 ENV MEDIAPIPE_MODELS_DIR=/models
-RUN mkdir -p /models
-
-# Create temp directory for processing
-RUN mkdir -p /tmp/stagecoach
-
-# Make packages available
+ENV SILERO_VAD_DIR=/models/silero-vad
 ENV PYTHONPATH=/app:/packages
+
+RUN mkdir -p /tmp/stagecoach
 
 CMD ["celery", "-A", "worker.app", "worker", "-Q", "cpu", "--loglevel=info"]

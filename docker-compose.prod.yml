@@ -41,6 +41,7 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-local}
       LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
       XAI_API_KEY: ${XAI_API_KEY:-}
+      STAGECOACH_PUBLIC_URL: ${STAGECOACH_PUBLIC_URL:-https://stagecoach.cybersphere.com.br}
       JWT_ISSUER: stagecoach-web
       JWT_AUDIENCE: stagecoach-api
       MEDIA_ROOT: /data/stagecoach
@@ -83,6 +84,8 @@ services:
       LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
       XAI_API_KEY: ${XAI_API_KEY:-}
       HF_HOME: /models/huggingface
+      MEDIAPIPE_MODELS_DIR: /models
+      SILERO_VAD_DIR: /models/silero-vad
       STAGECOACH_ARTIFACT_KEY: ${STAGECOACH_ARTIFACT_KEY:-}
       STAGECOACH_KEK: ${STAGECOACH_KEK:-}
       OTEL_SERVICE_NAME: stagecoach
@@ -99,7 +102,8 @@ services:
         condition: service_healthy
     volumes:
       - media_data:/data/stagecoach
-      - model_cache:/models
+      # Only the HF cache is a volume. /models keeps the baked YuNet + Silero copies.
+      - model_cache:/models/huggingface
       - ./packages:/packages:ro
     command: celery -A worker.app worker -Q cpu --loglevel=info --concurrency=2
 
@@ -134,9 +138,10 @@ services:
     restart: unless-stopped
     environment:
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
-      AUTH_URL: https://stagecoach.cybersphere.com.br
+      AUTH_URL: ${STAGECOACH_PUBLIC_URL:-https://stagecoach.cybersphere.com.br}
       AUTH_TRUST_HOST: "true"
-      NEXTAUTH_URL: https://stagecoach.cybersphere.com.br
+      NEXTAUTH_URL: ${STAGECOACH_PUBLIC_URL:-https://stagecoach.cybersphere.com.br}
+      STAGECOACH_PUBLIC_URL: ${STAGECOACH_PUBLIC_URL:-https://stagecoach.cybersphere.com.br}
       INTERNAL_API_URL: http://api:8000
       PRIVATE_BETA_MODE: "true"
       PRIVATE_BETA_EMAIL: ${PRIVATE_BETA_EMAIL:?PRIVATE_BETA_EMAIL is required}

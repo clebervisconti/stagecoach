@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### LION arm64 worker and O1 real-stack
+
+- Worker image builds on linux/arm64 from this tree: torch/torchaudio **2.4.1+cpu** (amd64, PyTorch CPU index) and **2.4.1** (arm64, PyPI). Alignment cannot float torch. `g++` / `make` / Ninja stay in the build stage with `CMAKE_POLICY_VERSION_MINIMUM=3.5` so parselmouth compiles; the runtime image does not keep compilers.
+- CI builds the worker for `linux/arm64` (buildx + QEMU) and imports `torch`, `torchaudio`, `parselmouth`, `mediapipe`, and `cv2`.
+- Silero VAD is prefetched into `/models/silero-vad` (v6.2.3, hash-checked) and loaded with `trust_repo=True`, so torch.hub no longer prompts and dies with `EOF when reading a line`.
+- YuNet is baked into `/models` at build time (SHA-256 from ADR-062). Runtime download remains a fallback. Production Compose no longer mounts a volume over `/models`.
+- `composite_pip_tr` now has a generated CC0 synthetic face in the camera tile. YuNet classifies `composite` with camera and screen IoU ≥ 0.85.
+- `generate_online_fixtures.py` accepts `--duration` and `--resolution` for 120 s and 60 min timing clips.
+- LION overlay uses `!reset` / `!override` so only loopback 8870 / 6380 / 9010 are published. MinIO is Chainguard (quay.io returns 401). Lab web runs `node server.js`, not `npm run dev`.
+
 ### Online and recorded sessions (Phase O1)
 
 - Full-page wizard at `/sessions/new` (four mode cards, one file, deck before media). Stage path stays the inline form when the flag is off.

@@ -1,5 +1,8 @@
 # Alignment stage dependencies (optional, kept separate to reduce base image size)
-# Install after base requirements.txt
+# Install after base requirements.txt.
+# Pin torch/torchaudio to the same 2.4.1 used by requirements-torch-*.txt.
+# The image installs this file with `pip install -c requirements-torch-$ARCH.txt`
+# so pyannote.audio cannot pull a newer torch (2.14.1 was observed on LION).
 
 # WhisperX and its dependencies
 transformers==4.43.4

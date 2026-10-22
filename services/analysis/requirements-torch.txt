@@ -1,0 +1,10 @@
+# Arch-conditional torch/torchaudio 2.4.1. Used for host installs (CI worker tests).
+# The worker image selects requirements-torch-amd64.txt or requirements-torch-arm64.txt
+# via TARGETARCH so alignment cannot float a newer torch.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.4.1+cpu; sys_platform == "linux" and platform_machine == "x86_64"
+torchaudio==2.4.1+cpu; sys_platform == "linux" and platform_machine == "x86_64"
+torch==2.4.1; sys_platform == "linux" and platform_machine == "aarch64"
+torchaudio==2.4.1; sys_platform == "linux" and platform_machine == "aarch64"
+torch==2.4.1; sys_platform == "darwin"
+torchaudio==2.4.1; sys_platform == "darwin"

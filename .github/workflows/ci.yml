@@ -204,7 +204,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           cd services/analysis
-          pip install -r requirements.txt
+          pip install -r requirements-torch.txt -r requirements.txt
       
       - name: Run worker tests
         run: |
@@ -213,6 +213,44 @@ jobs:
 
       - name: Golden fixtures
         run: python scripts/process_local.py --golden
+
+  worker-arm64-image:
+    name: Worker arm64 image
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build linux/arm64 worker image
+        run: |
+          set -euo pipefail
+          start=$(date +%s)
+          docker buildx build \
+            --platform linux/arm64 \
+            --load \
+            --progress plain \
+            -t stagecoach-worker:arm64 \
+            -f services/analysis/Dockerfile \
+            services/analysis
+          end=$(date +%s)
+          seconds=$((end - start))
+          size=$(docker image inspect stagecoach-worker:arm64 --format '{{.Size}}')
+          echo "arm64_build_seconds=${seconds}"
+          echo "arm64_image_bytes=${size}"
+          {
+            echo "## Worker linux/arm64 image"
+            echo "- build time: ${seconds}s"
+            echo "- size bytes: ${size}"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Import smoke
+        run: |
+          docker run --rm --platform linux/arm64 stagecoach-worker:arm64 \
+            python -c "import torch, torchaudio, parselmouth, mediapipe, cv2; print('torch', torch.__version__); print('torchaudio', torchaudio.__version__); print('parselmouth', parselmouth.__version__); print('mediapipe', mediapipe.__version__); print('cv2', cv2.__version__)"
 
   validate-config:
     name: Validate Scoring Config

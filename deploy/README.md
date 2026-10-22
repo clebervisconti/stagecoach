@@ -29,9 +29,55 @@ documented as Vaultwarden-only.
 
 Dataflow: internet → `cloudflared-lion` → `http://127.0.0.1:3107`. The API is
 not published on the host (Splunk owns `:8000`). Postgres `:5432` is also
-taken. For a lab overlay that remaps web to `127.0.0.1:8870`, Redis to
-`:6380`, and MinIO to `:9010`, use `infra/compose.lion.yaml` — it never
-binds host `:8000` or `:5432`.
+taken.
+
+## Lab overlay (`infra/compose.lion.yaml`)
+
+Compose **merges** `ports` lists. `ports: []` does not unpublish the base
+file's `:8000` / `:5432`. The overlay uses `!reset []` and `!override` so
+the merged config publishes only:
+
+- `127.0.0.1:8870` → web (`node server.js` standalone, no source mount, no `npm run dev`)
+- `127.0.0.1:6380` → Redis
+- `127.0.0.1:9010` → MinIO
+
+Postgres, API, and Mailpit stay unpublished. Confirm with:
+
+```bash
+make lion-config
+# or:
+docker compose -f docker-compose.yml -f infra/compose.lion.yaml \
+  --profile web --profile minio --profile workers config --format json
+```
+
+Build images on LION (OrbStack / linux/arm64) from a checkout with `.env`:
+
+```bash
+make lion-build
+make lion-up
+```
+
+The API overlay command is production uvicorn (no `--reload`). The worker
+image is a multi-stage build: `g++` / `make` / `ninja` stay in the build
+stage so `praat-parselmouth` can compile on arm64. Torch is `2.4.1+cpu`
+from the PyTorch CPU index on amd64 and `2.4.1` from PyPI on arm64.
+YuNet and Silero VAD are baked into `/models` at build time.
+
+MinIO is `cgr.dev/chainguard/minio:latest-dev` pinned by image-index digest
+(quay.io/minio/minio returns 401; the image is multi-arch and AGPL). The
+healthcheck uses `wget` against `/minio/health/live`.
+
+Production (`docker-compose.prod.yml` / LaunchAgent) still binds web on
+`127.0.0.1:3107` and also runs the standalone Next server.
+
+Public URLs come from `STAGECOACH_PUBLIC_URL` (API verify/reset/export
+links and the overlay `NEXTAUTH_URL`). The lab overlay defaults to
+`http://127.0.0.1:8870`. On LION production set the Cloudflare origin in
+`.env` — never commit it:
+
+```bash
+STAGECOACH_PUBLIC_URL=https://stagecoach.cybersphere.com.br
+```
 
 ## Keychain (GUI session on LION)
 

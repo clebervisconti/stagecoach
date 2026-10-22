@@ -1,4 +1,6 @@
-.PHONY: help install dev down logs test lint type clean migrate generate-types check-generated
+.PHONY: help install dev down logs test lint type clean migrate generate-types check-generated lion-build lion-config lion-up
+
+LION_COMPOSE = docker compose -f docker-compose.yml -f infra/compose.lion.yaml --profile web --profile minio --profile workers
 
 help:
 	@echo "Stage Coach Development Commands"
@@ -14,6 +16,9 @@ help:
 	@echo "  make lint            - Run linters"
 	@echo "  make type            - Run type checkers"
 	@echo "  make clean           - Clean build artifacts"
+	@echo "  make lion-build      - Build API/web/worker images for LION (linux/arm64 or host)"
+	@echo "  make lion-config     - Print merged LION compose (ports must be 8870/6380/9010)"
+	@echo "  make lion-up         - Start the LION overlay (loopback 8870/6380/9010)"
 
 install:
 	@echo "Installing Python dependencies..."
@@ -65,6 +70,17 @@ generate-types:
 check-generated:
 	@echo "Checking generated code..."
 	bash scripts/check_generated.sh
+
+lion-build:
+	@echo "Building LION images (web=node server.js, API no reload, worker torch for this arch)..."
+	$(LION_COMPOSE) build
+
+lion-config:
+	$(LION_COMPOSE) config --format json
+
+lion-up:
+	@echo "Starting LION overlay on 127.0.0.1:8870 (web), :6380 (Redis), :9010 (MinIO)..."
+	$(LION_COMPOSE) up -d
 
 clean:
 	@echo "Cleaning build artifacts..."
