@@ -34,6 +34,10 @@ At `stagecoach.cybersphere.com.br`, an authenticated beta user can:
 - Production-grade resumable 2 GB uploads; the private beta uses a bounded streaming upload.
 - Paid LLM analysis unless a provider key is explicitly provisioned.
 
+## Planned: online and recorded sessions
+
+A presenter can upload a webinar, an online talk, or a recorded video and get delivery feedback that separates the camera tile from the screen. The draft is `docs/online-sessions/SPEC.md`. It does not score whether the subject matter is correct. Stage uploads keep today's behavior. The flag `ONLINE_MODES_ENABLED` is off until the owner closes OD-1 through OD-10 and signs off at phase O4.
+
 ## Success criteria
 
 - Live upload → report → delete flow works in English and pt-BR.

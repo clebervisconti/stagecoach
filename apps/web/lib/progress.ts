@@ -80,6 +80,7 @@ export function eventsUrl(sessionId: string): string {
 export const PIPELINE_STAGES = [
   "ingest",
   "asr",
+  "alignment",
   "audio_features",
   "partial_scoring",
   "vision",

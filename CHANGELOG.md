@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Blank delivery categories on a scored talk
+
+- A failed quote check on the claims list no longer zeroes audience fit and clarity when those levels agreed across samples.
+- Vocal variety and energy stay N/A, with a reason, when every measured signal is below the 0.40 confidence floor. They no longer appear as an empty score.
+
+### Online and recorded sessions (spec only)
+
+- `docs/online-sessions/SPEC.md` is the draft for delivery modes, layout review, and four new categories. `ONLINE_MODES_ENABLED` stays off. Owner decisions OD-1–OD-10 are listed in `product/BACKLOG.md` and are not approved.
+
+### Pose tracking on the LION worker
+
+- MediaPipe 1.1.1 is the arm64 build. The worker image installs `libegl1` and `libgles2`, which that build loads when it opens the pose landmarker.
+
+### Content scores when the local model returns an empty JSON schema body
+
+- A strict JSON-schema request that comes back with an empty answer is retried as a plain completion.
+- The local Qwen request uses LM Studio's native chat API with reasoning off. The OpenAI-compatible endpoint ignores that switch and spends the token budget thinking.
+
+### Word alignment on the live job
+
+- `tasks.run_mvp_analysis` aligns the transcript after speech recognition when WhisperX is installed.
+- A missing package records the step as skipped and the rest of the report still finishes.
+
 ### Cybersphere visual system
 
 - The app uses the Cybersphere tokens, D-DIN and Geist, a side navigation, and a light/dark control that remembers the choice.
