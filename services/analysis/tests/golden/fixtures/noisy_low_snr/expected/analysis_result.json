@@ -301,17 +301,17 @@
     {
       "id": "pace_pausing",
       "pillar": "voice",
-      "applicable": true,
-      "na_reason": null,
+      "applicable": false,
+      "na_reason": "These signals were measured, but their confidence is below 0.40, so this category stays N/A.",
       "score": null,
       "level": null,
-      "confidence": 0.0,
-      "confidence_label": "low",
+      "confidence": null,
+      "confidence_label": null,
       "weight_used": 5.0,
       "capped_by_gate": null,
       "top_contributors": [],
       "evidence_ids": [
-        "ev-0002"
+        "ev-0001"
       ],
       "sources": [
         "S13",
@@ -324,12 +324,12 @@
     {
       "id": "vocal_variety",
       "pillar": "voice",
-      "applicable": true,
-      "na_reason": null,
+      "applicable": false,
+      "na_reason": "These signals were measured, but their confidence is below 0.40, so this category stays N/A.",
       "score": null,
       "level": null,
-      "confidence": 0.0,
-      "confidence_label": "low",
+      "confidence": null,
+      "confidence_label": null,
       "weight_used": 7.0,
       "capped_by_gate": null,
       "top_contributors": [],
@@ -347,18 +347,16 @@
     {
       "id": "fluency",
       "pillar": "voice",
-      "applicable": true,
-      "na_reason": null,
+      "applicable": false,
+      "na_reason": "These signals were measured, but their confidence is below 0.40, so this category stays N/A.",
       "score": null,
       "level": null,
-      "confidence": 0.0,
-      "confidence_label": "low",
+      "confidence": null,
+      "confidence_label": null,
       "weight_used": 4.0,
       "capped_by_gate": null,
       "top_contributors": [],
-      "evidence_ids": [
-        "ev-0001"
-      ],
+      "evidence_ids": [],
       "sources": [
         "S12",
         "S21",
@@ -373,7 +371,7 @@
       "id": "gestures_body",
       "pillar": "body",
       "applicable": false,
-      "na_reason": "Vision stage was not run; body metrics need a visible person.",
+      "na_reason": "Audio-only media has no pose landmarks, so gestures & body is unavailable.",
       "score": null,
       "level": null,
       "confidence": null,
@@ -401,7 +399,7 @@
       "id": "eye_contact",
       "pillar": "body",
       "applicable": false,
-      "na_reason": "Vision stage was not run; gaze metrics need a visible face.",
+      "na_reason": "Audio-only media has no face landmarks, so audience-facing time is unavailable.",
       "score": null,
       "level": null,
       "confidence": null,
@@ -488,7 +486,7 @@
       "id": "qa",
       "pillar": "presence_time",
       "applicable": false,
-      "na_reason": "Q&A analysis has no detected question/answer pairs.",
+      "na_reason": "This session did not include a Q&A segment.",
       "score": null,
       "level": null,
       "confidence": null,
@@ -506,283 +504,21 @@
       "counterfactual": null
     }
   ],
-  "metrics": [
-    {
-      "id": "pp_wpm",
-      "category_id": "pace_pausing",
-      "raw_value": 145.0,
-      "unit": "words_per_minute",
-      "score": 95.0,
-      "weight": 0.2,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "heuristic",
-        "source": "H_S13"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "pp_pace_cv",
-      "category_id": "pace_pausing",
-      "raw_value": 0.12,
-      "unit": "coefficient_of_variation",
-      "score": 95.0,
-      "weight": 0.15,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "heuristic",
-        "source": "heuristic"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "pp_rush_index",
-      "category_id": "pace_pausing",
-      "raw_value": 1.02,
-      "unit": "ratio",
-      "score": 95.0,
-      "weight": 0.15,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "heuristic",
-        "source": "heuristic"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "pp_boundary_pause_ratio",
-      "category_id": "pace_pausing",
-      "raw_value": 0.6,
-      "unit": "ratio",
-      "score": 91.66666666666667,
-      "weight": 0.2,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "heuristic",
-        "source": "heuristic"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "pp_unplanned_long_pauses_per_10min",
-      "category_id": "pace_pausing",
-      "raw_value": 0.5,
-      "unit": "per_10min",
-      "score": 92.5,
-      "weight": 0.15,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "heuristic",
-        "source": "heuristic"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "pp_mean_length_of_run",
-      "category_id": "pace_pausing",
-      "raw_value": 9.0,
-      "unit": "words",
-      "score": 95.0,
-      "weight": 0.15,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "heuristic",
-        "source": "heuristic"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "vv_pvq_median",
-      "category_id": "vocal_variety",
-      "raw_value": 0.18,
-      "unit": "ratio",
-      "score": 92.0,
-      "weight": 0.3,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "research",
-        "source": "S24"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "vv_pitch_range_st",
-      "category_id": "vocal_variety",
-      "raw_value": 8.0,
-      "unit": "semitones",
-      "score": 95.0,
-      "weight": 0.2,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "heuristic",
-        "source": "heuristic"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "vv_monotone_windows_ratio",
-      "category_id": "vocal_variety",
-      "raw_value": 0.08,
-      "unit": "ratio",
-      "score": 84.0,
-      "weight": 0.2,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "heuristic",
-        "source": "heuristic"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "vv_intensity_variation_db",
-      "category_id": "vocal_variety",
-      "raw_value": 4.0,
-      "unit": "decibels",
-      "score": 90.0,
-      "weight": 0.15,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "heuristic",
-        "source": "heuristic"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "vv_emphasis_rate_per_min",
-      "category_id": "vocal_variety",
-      "raw_value": 10.0,
-      "unit": "per_minute",
-      "score": 95.0,
-      "weight": 0.15,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "heuristic",
-        "source": "heuristic"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "fl_filler_sounds_per_min",
-      "category_id": "fluency",
-      "raw_value": 2.0,
-      "unit": "per_minute",
-      "score": 85.0,
-      "weight": 0.4,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "research",
-        "source": "S12"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "fl_filler_words_per_min",
-      "category_id": "fluency",
-      "raw_value": 1.0,
-      "unit": "per_minute",
-      "score": 95.0,
-      "weight": 0.2,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "research",
-        "source": "S12"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "fl_hedges_apologies_per_10min",
-      "category_id": "fluency",
-      "raw_value": 1.0,
-      "unit": "per_10min",
-      "score": 92.5,
-      "weight": 0.15,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "heuristic",
-        "source": "heuristic"
-      },
-      "target_band": null,
-      "details": {}
-    },
-    {
-      "id": "fl_repetitions_restarts_per_min",
-      "category_id": "fluency",
-      "raw_value": 0.2,
-      "unit": "per_minute",
-      "score": 97.0,
-      "weight": 0.15,
-      "confidence": 0.3,
-      "included": false,
-      "basis": {
-        "kind": "heuristic",
-        "source": "heuristic"
-      },
-      "target_band": null,
-      "details": {}
-    }
-  ],
+  "metrics": [],
   "evidence": [
     {
       "id": "ev-0001",
-      "category_id": "fluency",
-      "metric_id": "fl_filler_sounds_per_min",
-      "t_start": 0.0,
-      "t_end": 5.0,
-      "modality": "audio",
-      "kind": "observation",
-      "text": "Measured filler-sound rate 2.00 per minute.",
-      "quote": null,
-      "seg_ids": [],
-      "measurement": {
-        "metric_id": "fl_filler_sounds_per_min",
-        "value": null
-      },
-      "confidence": 0.3,
-      "user_disputed": false
-    },
-    {
-      "id": "ev-0002",
       "category_id": "pace_pausing",
-      "metric_id": "pp_wpm",
+      "metric_id": null,
       "t_start": 0.0,
-      "t_end": 10.0,
+      "t_end": 179.91724137931033,
       "modality": "audio",
       "kind": "observation",
-      "text": "Speaking rate 145.0 words per minute.",
+      "text": "Audio/text analysis ran; most categories lack enough evidence for a score.",
       "quote": null,
       "seg_ids": [],
-      "measurement": {
-        "metric_id": "pp_wpm",
-        "value": null
-      },
-      "confidence": 0.3,
+      "measurement": null,
+      "confidence": 0.4,
       "user_disputed": false
     }
   ],
@@ -793,10 +529,10 @@
     "opportunities": []
   },
   "series": {
-    "pace": "/tmp/tmpm8ppgdn6/series_pace.json",
-    "pitch": "/tmp/tmpm8ppgdn6/series_pitch.json",
-    "loudness": "/tmp/tmpm8ppgdn6/series_loudness.json",
-    "energy": "/tmp/tmpm8ppgdn6/series_energy.json"
+    "pace": "/tmp/tmpp31j00bu/series_pace.json",
+    "pitch": "/tmp/tmpp31j00bu/series_pitch.json",
+    "loudness": "/tmp/tmpp31j00bu/series_loudness.json",
+    "energy": "/tmp/tmpp31j00bu/series_energy.json"
   },
   "transcript_ref": "/workspace/services/analysis/tests/golden/fixtures/noisy_low_snr/transcript.json"
 }

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A failed quote check on the claims list no longer zeroes audience fit and clarity when those levels agreed across samples.
 - Vocal variety and energy stay N/A, with a reason, when every measured signal is below the 0.40 confidence floor. They no longer appear as an empty score.
+- The `noisy_low_snr` golden now expects pace, vocal variety, and fluency to be N/A for the same reason (confidence 0.3 < 0.40), not applicable-with-a-blank-score.
 
 ### Online and recorded sessions (spec only)
 
