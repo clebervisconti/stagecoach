@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from sqlalchemy import Column, String, DateTime, Integer, Boolean, ForeignKey, Text, ARRAY
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from app.models import Base
 from app.models.user import uuid7
@@ -32,13 +32,33 @@ class Session(Base):
     camera_setup = Column(
         String(50),
         nullable=False,
-        comment="stage, to_camera, screen_recording, audio_only"
+        comment="stage, to_camera, screen_recording, audio_only, unknown"
     )
+    delivery_mode = Column(
+        String(30),
+        nullable=False,
+        default="stage",
+        comment="stage, webinar, online_talk, recorded_video",
+    )
+    source_kind = Column(
+        String(20),
+        nullable=False,
+        default="upload",
+        comment="upload, two_track, url",
+    )
+    source_url = Column(Text, nullable=True)
+    rights_attested_at = Column(DateTime, nullable=True)
+    analysis_window = Column(
+        JSONB,
+        nullable=True,
+        comment='{"start_s": float, "end_s": float}',
+    )
+    target_length_min = Column(Integer, nullable=True)
     status = Column(
         String(20),
         nullable=False,
         default="created",
-        comment="created, uploaded, processing, ready, partial, failed"
+        comment="created, uploaded, preparing, layout_review, processing, ready, partial, failed"
     )
     primary_speaker_label = Column(String(50), nullable=True, comment="For diarization")
     focus_areas = Column(ARRAY(String), nullable=True, comment="Up to 3 focus category IDs")

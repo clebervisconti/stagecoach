@@ -8,6 +8,7 @@ Base = declarative_base()
 from app.models.user import AuthToken, User  # noqa: F401, E402
 from app.models.consent import Consent  # noqa: F401, E402
 from app.models.session import Session  # noqa: F401, E402
+from app.models.session_layout import SessionLayout  # noqa: F401, E402
 from app.models.media_asset import MediaAsset  # noqa: F401, E402
 from app.models.analysis_job import AnalysisJob  # noqa: F401, E402
 from app.models.job_step import JobStep  # noqa: F401, E402
@@ -28,6 +29,7 @@ __all__ = [
     "AuthToken",
     "Consent",
     "Session",
+    "SessionLayout",
     "MediaAsset",
     "AnalysisJob",
     "JobStep",

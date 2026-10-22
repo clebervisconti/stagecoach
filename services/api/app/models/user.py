@@ -49,6 +49,12 @@ class User(Base):
         nullable=True,
         comment="Per-language median/MAD after 3 sessions. Does not replace scores.",
     )
+    layout_review_pref = Column(
+        String(20),
+        nullable=False,
+        default="when_unsure",
+        comment="always, when_unsure, never",
+    )
     password_hash = Column(Text, nullable=True)
     email_verified_at = Column(DateTime, nullable=True)
     failed_logins = Column(Integer, nullable=False, default=0)

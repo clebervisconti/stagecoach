@@ -117,6 +117,7 @@ class Id(Enum):
     voice = 'voice'
     body = 'body'
     presence_time = 'presence_time'
+    production = 'production'
 
 
 class Pillar(BaseModel):
@@ -144,6 +145,10 @@ class Id1(Enum):
     energy_presence = 'energy_presence'
     time_management = 'time_management'
     qa = 'qa'
+    screen_flow = 'screen_flow'
+    on_camera_presence = 'on_camera_presence'
+    online_engagement = 'online_engagement'
+    production_quality = 'production_quality'
 
 
 class ConfidenceLabel(Enum):
