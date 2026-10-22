@@ -263,7 +263,8 @@
       "visuals": "Visuais",
       "voice": "Voz",
       "body": "Corpo",
-      "presence_time": "Presença e tempo"
+      "presence_time": "Presença e tempo",
+      "production": "Produção"
     },
     "categoriesNamed": {
       "core_message": "Mensagem central e propósito",
@@ -282,7 +283,11 @@
       "facial_affect": "Expressividade facial e sinais de afeto",
       "energy_presence": "Energia e presença",
       "time_management": "Gestão do tempo",
-      "qa": "Condução de perguntas e respostas"
+      "qa": "Condução de perguntas e respostas",
+      "screen_flow": "Tela e fluxo",
+      "on_camera_presence": "Presença na câmera",
+      "online_engagement": "Retenção do espectador",
+      "production_quality": "Qualidade de produção"
     },
     "enableHint": {
       "visual_aids": "Grave os slides visíveis ou anexe um deck para habilitar esta categoria.",
