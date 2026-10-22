@@ -17,4 +17,15 @@ Walking skeleton for webinar / online talk / recorded video.
 - Unit / API / fixture tests in this PR
 - `python scripts/bench_online_cpu.py --run --out /tmp/bench-online-o1.json`
 
+### §13 budgets (fixture-scale, 22 Oct 2026)
+
+Synthetic `composite_pip_tr` (2 s, 1920×1080) on Linux x86_64 Xeon, 4 CPUs. Not a 60-min LION run.
+
+| Stage | Budget (s) | Measured (s) |
+|---|---|---|
+| ingest | 240 | 0.622 |
+| layout | 90 | 0.201 |
+| region_crops | 240 | 0.192 |
+| production_quality | 60 | 0.116 |
+
 Stage users without the flag keep the existing inline form (scenario 12).
