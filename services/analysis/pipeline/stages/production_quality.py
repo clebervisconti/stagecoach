@@ -160,6 +160,7 @@ def run_production_quality(
             _metric("pq_source_height_px", height, "px", confidence=1.0),
         ],
     }
+    output_dir.mkdir(parents=True, exist_ok=True)
     dest = output_dir / "production_quality.json"
     dest.write_text(json.dumps(payload, indent=2) + "\n")
     return payload

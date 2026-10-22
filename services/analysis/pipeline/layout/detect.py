@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 DETECTOR_VERSION = "1.0.0"
 LAYOUT_VERSION = 1
-FACE_FULL_RATIO = 0.12
+# PiP tiles sit around 0.15–0.22 of frame height; a full-frame face is larger.
+FACE_FULL_RATIO = 0.28
 LUMA_BLACK = 8.0
 
 

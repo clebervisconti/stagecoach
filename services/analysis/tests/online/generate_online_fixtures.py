@@ -20,6 +20,30 @@ def _run(cmd: list[str]) -> None:
     subprocess.run(cmd, check=True, capture_output=True)
 
 
+def _mux_silence(dest: Path, duration: float) -> None:
+    tmp = dest.with_suffix(".vid.mp4")
+    dest.replace(tmp)
+    _run(
+        [
+            "ffmpeg",
+            "-i",
+            str(tmp),
+            "-f",
+            "lavfi",
+            "-i",
+            f"anullsrc=r=16000:cl=mono:d={duration}",
+            "-c:v",
+            "copy",
+            "-c:a",
+            "aac",
+            "-shortest",
+            "-y",
+            str(dest),
+        ]
+    )
+    tmp.unlink(missing_ok=True)
+
+
 def write_screen_only(dest: Path, duration: float, width: int, height: int, fps: int) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     _run(
@@ -39,6 +63,7 @@ def write_screen_only(dest: Path, duration: float, width: int, height: int, fps:
             str(dest),
         ]
     )
+    _mux_silence(dest, duration)
 
 
 def write_camera_only(dest: Path, duration: float, width: int, height: int, fps: int) -> None:
@@ -64,6 +89,7 @@ def write_camera_only(dest: Path, duration: float, width: int, height: int, fps:
             str(dest),
         ]
     )
+    _mux_silence(dest, duration)
 
 
 def write_composite_pip_tr(dest: Path, duration: float, width: int, height: int, fps: int) -> None:
@@ -95,6 +121,7 @@ def write_composite_pip_tr(dest: Path, duration: float, width: int, height: int,
             str(dest),
         ]
     )
+    _mux_silence(dest, duration)
 
 
 def write_no_regions(dest: Path, duration: float, width: int, height: int, fps: int) -> None:
@@ -114,6 +141,7 @@ def write_no_regions(dest: Path, duration: float, width: int, height: int, fps: 
             str(dest),
         ]
     )
+    _mux_silence(dest, duration)
 
 
 GENERATORS = {

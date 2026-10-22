@@ -45,7 +45,9 @@ S5_TO_NA_CODE = {
 
 _REASON_HINTS: tuple[tuple[str, str], ...] = (
     ("consent_denied", "consent_video_off"),
+    ("consent is off", "consent_video_off"),
     ("video analysis is off", "consent_video_off"),
+    ("video analysis consent", "consent_video_off"),
     ("video_analysis", "consent_video_off"),
     ("mediapipe", "vision_unavailable"),
     ("not installed", "vision_unavailable"),
