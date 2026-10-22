@@ -37,16 +37,10 @@ SILERO_HUBCONF_SHA256 = "2637a3a91d061a6e921853f5de5430f873c292662b46e5fd61edaf6
 # Systran/faster-whisper-small (MIT). Hashes from the HF main blob on 22 Oct 2026.
 FASTER_WHISPER_REPO = "Systran/faster-whisper-small"
 FASTER_WHISPER_DIRNAME = "small"
-def _sha256_hex(*parts: str) -> str:
-    """Join hex fragments so secret scanners do not treat a public checksum as a key."""
-    return "".join(parts)
-
-
 FASTER_WHISPER_FILES = (
     ("model.bin", "3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671"),
     ("config.json", "b55496ac7940a7ae47d2c01eab40edfd8701feec1229d9cce3b40014383fb828"),
-    # Filename contains "token"; keep the public SHA-256 split across literals.
-    ("tokenizer.json", _sha256_hex("fb7b63191e9bb045082c79fd742a3106", "a12c99513ab30df4a0d47fa6cb6fd0ab")),
+    ("tokenizer.json", "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab"),
     ("vocabulary.txt", "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913"),
 )
 

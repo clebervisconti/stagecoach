@@ -1,11 +1,11 @@
-# Extend the default rules. prefetch_models.py only pins public model checksums.
+# Extend the default rules. Allow only this public model checksum, not the file.
 title = "stagecoach"
 
 [extend]
 useDefault = true
 
 [[allowlists]]
-description = "Public SHA-256 pins for baked worker models (YuNet, Silero, faster-whisper, NLTK)"
-paths = [
-  '''(^|/)services/analysis/scripts/prefetch_models\.py$''',
+description = "Public Systran/faster-whisper-small companion-file SHA-256 from Hugging Face (MIT)"
+regexes = [
+  '''fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab''',
 ]
