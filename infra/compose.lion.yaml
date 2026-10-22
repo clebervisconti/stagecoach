@@ -55,7 +55,7 @@ services:
     ports: !override
       - "127.0.0.1:8870:3000"
     volumes: !reset []
-    # Production standalone server from apps/web/Dockerfile (not npm run dev).
+    # Production standalone server from apps/web/Dockerfile (not the Next.js dev server).
     command: ["node", "server.js"]
     environment:
       NEXTAUTH_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}

@@ -104,7 +104,8 @@ def test_lion_overlay_uses_reset_or_override():
     assert "!override" in text
     assert "${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}" in text
     assert "NEXTAUTH_URL: http://127.0.0.1:8870" not in text
-    assert "npm run dev" not in text
+    assert "command: npm run dev" not in text
+    assert 'command: ["node", "server.js"]' in text
     # Raw YAML must not rely on ports: [] — Compose merges that with the base.
     try:
         data = yaml.safe_load(text)
