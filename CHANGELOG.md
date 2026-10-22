@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Online and recorded sessions (Phase O1)
+
+- Full-page wizard at `/sessions/new` (four mode cards, one file, deck before media). Stage path stays the inline form when the flag is off.
+- `tasks.prepare_session` runs ingest + single-layout detection. Layout review is read-only. Crops come from the original file.
+- `na_code` enum sits next to `na_reason`. Production quality is scored from cheap signals. New online categories are N/A except that one.
+- Report shows a mode badge, core delivery, and a NOT MEASURED section. BODY is hidden for online modes.
+- Upload limits are 2 GB and 120 minutes. Online modes require the flag and an allowlisted email (OD-10).
+- Processing timeline and PARTIAL badge follow CYBERSPHERE v2 (icon + word, no colour-only status).
+
 ### Blank delivery categories on a scored talk
 
 - A failed quote check on the claims list no longer zeroes audience fit and clarity when those levels agreed across samples.

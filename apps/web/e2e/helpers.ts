@@ -227,6 +227,7 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
         },
         retention_policy: "days_30",
         llm_settings: { provider: "local", base_url: "http://127.0.0.1:1234/v1", model: "qwen/qwen3.8-27b", leaves_machine: false },
+        online_modes_enabled: false,
       });
     }
     if (method === "GET" && path === "/me/ai-providers") {
