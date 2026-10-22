@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Info } from "lucide-react";
-import type { AnalysisReport } from "@/lib/report-types";
+import { CATEGORY_IDS, type AnalysisReport } from "@/lib/report-types";
 import { isNaCode } from "@/lib/online";
 
 export function NotMeasured({ report }: { report: AnalysisReport }) {
   const t = useTranslations("online");
+  const reportT = useTranslations("report");
   const locale = useLocale();
   const prefix = locale === "en" ? "" : `/${locale}`;
   const rows = report.categories.filter((category) => !category.applicable || category.score == null);
@@ -32,10 +33,8 @@ export function NotMeasured({ report }: { report: AnalysisReport }) {
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--text-tertiary)]" aria-hidden="true" />
               <div>
                 <p className="text-sm font-medium">
-                  {["screen_flow", "on_camera_presence", "online_engagement", "production_quality", "gestures_body", "eye_contact", "facial_affect"].includes(
-                    category.id,
-                  )
-                    ? t(`categories.${category.id}`)
+                  {(CATEGORY_IDS as readonly string[]).includes(category.id)
+                    ? reportT(`categoriesNamed.${category.id}`)
                     : category.id.replaceAll("_", " ")}
                 </p>
                 <p className="mt-1 text-sm text-[color:var(--text-secondary)]">{reason}</p>

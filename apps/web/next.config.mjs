@@ -7,6 +7,7 @@ const isProduction = process.env.NODE_ENV === "production";
 const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
+  devIndicators: false,
   // Auto-instrumentation patches modules at require time; bundling it breaks that.
   serverExternalPackages: ["@splunk/otel"],
   async headers() {

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { AlertTriangle, FileDown, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, FileDown, Trash2 } from "lucide-react";
 import type { AnalysisReport } from "@/lib/report-types";
 import { CategoryCards } from "@/components/report/category-cards";
 import { InsightsPanel } from "@/components/report/insights-panel";
@@ -23,6 +23,7 @@ import { eventsUrl, parseProgressData, shouldReloadReport, type StageProgressEve
 import { ProcessingTimeline } from "@/components/report/processing-timeline";
 import { NotMeasured } from "@/components/report/not-measured";
 import { PreparingPanel } from "@/components/sessions/preparing-panel";
+import { WizardStepper } from "@/components/sessions/new/wizard-stepper";
 import { formatClock, type DeliveryMode } from "@/lib/online";
 import { Globe, Mic, Play, Users } from "lucide-react";
 import { goalRadarPoints, radarPoints, type GoalLike } from "@/lib/report-view";
@@ -142,7 +143,7 @@ export default function SessionPage() {
         if (!active) return;
         setSession(body);
         const ready = body.status === "ready" || body.status === "partial";
-        if (ready || body.status === "processing" || body.status === "preparing") {
+        if (ready) {
           await loadArtifacts();
         }
       } catch (reason) {
@@ -158,8 +159,7 @@ export default function SessionPage() {
       if (!active) return;
       const event = parseProgressData(message.data);
       if (event?.type === "stage") setLive(event);
-      if (shouldReloadReport(event)) void loadArtifacts();
-      if (event?.type === "done") void refresh();
+      if (event?.type === "done" || shouldReloadReport(event)) void refresh();
     };
     return () => {
       active = false;
@@ -209,13 +209,13 @@ export default function SessionPage() {
   }
 
   if (!session && !error) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <SessionSkeleton />;
   }
 
+  const showPrepare =
+    session?.status === "preparing" ||
+    session?.status === "layout_review" ||
+    (session?.status === "failed" && !report);
   const durationMin = report?.media?.duration_s ? report.media.duration_s / 60 : null;
   const slotLabel =
     session?.slot_min && durationMin
@@ -226,6 +226,13 @@ export default function SessionPage() {
 
   return (
     <div className="container mx-auto space-y-8 px-4 py-8">
+      {session?.delivery_mode && session.delivery_mode !== "stage" && (showPrepare || session.status === "processing") && (
+        <WizardStepper
+          mode={session.delivery_mode as DeliveryMode}
+          current="layout"
+          layoutDone={session.status === "processing" || Boolean(session.job?.steps?.some((step) => step.stage === "layout_review" && step.status === "succeeded"))}
+        />
+      )}
       <div className="flex items-start justify-between gap-4">
         <div>
           <button
@@ -243,17 +250,17 @@ export default function SessionPage() {
                 kinds={report?.layout_summary?.kinds}
                 camera={report?.layout_summary?.camera_visible_ratio}
                 screen={report?.layout_summary?.screen_visible_ratio}
+                compact={!report}
               />
             )}
-            <p>
-              {session?.created_at ? new Date(session.created_at).toLocaleString(locale) : ""}
-              {session?.language ? ` · ${session.language}` : ""}
-              {report?.media?.duration_s ? ` · ${formatClock(report.media.duration_s)}` : ""}
+            <p className="font-mono text-xs uppercase tracking-[0.08em]">
+              {sessionMeta(session?.created_at, locale, report?.media?.duration_s, session?.language)}
               {slotLabel ? ` · ${t("slotVsActual")}: ${slotLabel}` : ""}
               {report?.overall.partial ? ` · ${t("partial")}` : ""}
             </p>
           </div>
         </div>
+        {!showPrepare && (
         <div className="flex flex-col items-end gap-2">
           {report && (
             <div className="flex flex-wrap items-center gap-2">
@@ -287,12 +294,25 @@ export default function SessionPage() {
           <Trash2 className="h-4 w-4" aria-hidden="true" /> {t("delete")}
         </button>
         </div>
+        )}
       </div>
 
       {error && (
         <div role="alert" className="rounded-md bg-destructive/10 p-4 text-destructive">
           {error}
         </div>
+      )}
+
+      {showPrepare && session && (
+        <PreparingPanel
+          title={session.title}
+          posterUrl={`/api/stagecoach/sessions/${session.id}/poster`}
+          durationS={540}
+          steps={session.job?.steps ?? []}
+          startedAt={session.job?.created_at ?? session.created_at}
+          failed={session.status === "failed" ? session.job?.error?.message || "unreadable" : null}
+          skipReview={Boolean(session.job?.steps?.some((step) => step.stage === "layout_review" && step.status === "succeeded"))}
+        />
       )}
 
       {session?.status === "layout_review" && (
@@ -306,25 +326,15 @@ export default function SessionPage() {
         </div>
       )}
 
-      {session?.status === "preparing" && (
-        <PreparingPanel
-          title={session.title}
-          posterUrl={`/api/stagecoach/sessions/${session.id}/poster`}
-          durationS={report?.media?.duration_s ?? null}
-          steps={session.job?.steps ?? []}
-          startedAt={session.job?.created_at ?? session.created_at}
-          failed={session.job?.error?.message}
-        />
-      )}
-
-      {!terminal && session && session.status !== "preparing" && session.status !== "layout_review" && (
+      {!terminal && session && !showPrepare && (
         <ProcessingTimeline
           steps={session.job?.steps ?? []}
           live={live}
           startedAt={session.job?.created_at ?? session.created_at}
           deliveryMode={session.delivery_mode}
           sourceKind={session.source_kind}
-          autoConfirmed={session.job?.steps?.some((step) => step.stage === "layout_review" && step.status === "succeeded")}
+          sessionStatus={session.status}
+          autoConfirmed={session.job?.steps?.some((step) => step.stage === "layout_review" && step.status === "succeeded") || session.job?.steps?.some((step) => step.message === "Confirmed automatically")}
         />
       )}
 
@@ -337,7 +347,7 @@ export default function SessionPage() {
         />
       )}
 
-      {session?.status === "failed" && (
+      {session?.status === "failed" && !showPrepare && (
         <section className="rounded-lg border border-destructive/40 bg-destructive/10 p-6">
           <div className="flex items-center gap-2 font-semibold">
             <AlertTriangle className="h-5 w-5" /> {t("failed")}
@@ -346,7 +356,7 @@ export default function SessionPage() {
         </section>
       )}
 
-      {report && (
+      {report && !showPrepare && (
         <div data-testid="report" className="space-y-8">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
             <SummaryCard report={report} />
@@ -475,16 +485,46 @@ export default function SessionPage() {
   );
 }
 
+function sessionMeta(
+  createdAt: string | undefined,
+  locale: string,
+  durationS?: number | null,
+  language?: string | null,
+): string {
+  const parts: string[] = [];
+  if (createdAt) {
+    parts.push(new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric" }).format(new Date(createdAt)));
+  }
+  if (durationS) parts.push(formatClock(durationS));
+  if (language) parts.push(language.replace("pt-BR", "PT-BR").toUpperCase());
+  return parts.join(" · ");
+}
+
+function SessionSkeleton() {
+  return (
+    <div className="container mx-auto space-y-8 px-4 py-8" data-testid="session-skeleton">
+      <div className="h-4 w-24 bg-[color:var(--bg-muted)]" />
+      <div className="h-10 w-72 bg-[color:var(--bg-muted)]" />
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="aspect-video bg-[color:var(--bg-muted)]" />
+        <div className="h-64 bg-[color:var(--bg-muted)]" />
+      </div>
+    </div>
+  );
+}
+
 function ModeBadge({
   mode,
   kinds,
   camera,
   screen,
+  compact = false,
 }: {
   mode: DeliveryMode;
   kinds?: string[];
   camera?: number | null;
   screen?: number | null;
+  compact?: boolean;
 }) {
   const Icon = mode === "stage" ? Mic : mode === "webinar" ? Users : mode === "online_talk" ? Globe : Play;
   const hasCamera = (camera ?? 0) > 0 || kinds?.some((kind) => kind.includes("camera") || kind === "composite");
@@ -495,10 +535,10 @@ function ModeBadge({
   return (
     <span
       className="inline-flex items-center gap-2 rounded-full border border-[color:var(--line-strong)] px-3 py-1 text-xs uppercase tracking-[0.08em] text-[color:var(--text-strong)]"
-      aria-label={`Mode: ${label.toLowerCase()}, ${half.toLowerCase()}`}
+      aria-label={compact ? `Mode: ${label.toLowerCase()}` : `Mode: ${label.toLowerCase()}, ${half.toLowerCase()}`}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-      {label} · {half}
+      {compact ? label : `${label} · ${half}`}
     </span>
   );
 }

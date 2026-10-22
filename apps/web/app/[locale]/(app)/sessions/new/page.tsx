@@ -178,7 +178,7 @@ function NewSessionWizard() {
   }
 
   return (
-    <div className="px-5 py-8 md:px-16 md:pt-12">
+    <div className="min-w-0 overflow-x-hidden px-5 py-8 md:px-16 md:pt-12">
       <WizardStepper
         mode={mode}
         current={step}

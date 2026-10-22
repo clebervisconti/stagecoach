@@ -31,13 +31,20 @@ export function LayoutLegend({ roles }: { roles: LayoutRole[] }) {
       <ul className="mt-3 space-y-3">
         {roles.map((role) => {
           const item = COPY[role];
+          const ignored = role === "ignore" || role === "other_participant";
           return (
             <li key={role} className="flex items-start gap-3">
               <span
                 aria-hidden="true"
-                className={`mt-1 h-[26px] w-10 shrink-0 border-2 border-[color:var(--text-strong)] ${item.style} ${
-                  role === "ignore" || role === "other_participant" ? "bg-[repeating-linear-gradient(45deg,#0000008c_0_2px,transparent_2px_6px)]" : ""
-                }`}
+                className={`mt-1 h-[26px] w-10 shrink-0 border-2 border-current text-[color:var(--text-strong)] ${item.style}`}
+                style={
+                  ignored
+                    ? {
+                        background:
+                          "repeating-linear-gradient(45deg, currentColor 0 1px, transparent 1px 6px)",
+                      }
+                    : undefined
+                }
               />
               <span>
                 <span className="block text-xs uppercase tracking-[0.08em]">{item.name}</span>

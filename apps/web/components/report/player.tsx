@@ -32,8 +32,9 @@ export function ReportPlayer({
 }: PlayerProps) {
   const t = useTranslations("report");
   const mediaRef = useRef<HTMLVideoElement>(null);
-  const [src, setSrc] = useState(`/api/stagecoach/sessions/${sessionId}/media`);
+  const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [mediaReady, setMediaReady] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [focusedLaneId, setFocusedLaneId] = useState<string | null>(null);
 
@@ -66,9 +67,15 @@ export function ReportPlayer({
         const response = await fetch(`/api/stagecoach/sessions/${sessionId}/media/playback`, {
           cache: "no-store",
         });
-        if (!response.ok) return;
+        if (!response.ok) {
+          if (active) setError(t("playbackError"));
+          return;
+        }
         const body = (await response.json()) as { url?: string };
-        if (active) setSrc(playbackProxyUrl(sessionId, body));
+        if (active) {
+          setSrc(playbackProxyUrl(sessionId, body));
+          setMediaReady(true);
+        }
       } catch {
         if (active) setError(t("playbackError"));
       }
@@ -122,25 +129,34 @@ export function ReportPlayer({
       </h2>
       <div
         role="region"
-        tabIndex={0}
-        onKeyDown={onKeyDown}
+        tabIndex={mediaReady ? 0 : undefined}
+        onKeyDown={mediaReady ? onKeyDown : undefined}
         className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label={t("playerRegion")}
       >
-        <video
-          ref={mediaRef}
-          controls
-          preload="metadata"
-          className="w-full rounded-md bg-black"
-          src={src}
-          onTimeUpdate={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
-          onSeeked={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
-          onError={() => setError(t("playbackError"))}
-        >
-          {captionUrl && (
-            <track kind="captions" srcLang="en" src={captionUrl} label={t("transcript")} default />
-          )}
-        </video>
+        {mediaReady && src ? (
+          <video
+            ref={mediaRef}
+            controls
+            preload="metadata"
+            className="w-full rounded-md bg-black"
+            src={src}
+            onTimeUpdate={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
+            onSeeked={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
+            onError={() => {
+              setMediaReady(false);
+              setError(t("playbackError"));
+            }}
+          >
+            {captionUrl && (
+              <track kind="captions" srcLang="en" src={captionUrl} label={t("transcript")} default />
+            )}
+          </video>
+        ) : (
+          <div className="flex aspect-video flex-col items-center justify-center bg-[color:var(--bg-muted)] px-6 text-center" data-testid="player-empty">
+            <p className="text-sm text-[color:var(--text-secondary)]">{t("playerEmpty")}</p>
+          </div>
+        )}
       </div>
       <p className="mt-2 text-xs text-muted-foreground">{t("playerHelp")}</p>
       <ReportTimeline

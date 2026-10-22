@@ -133,10 +133,19 @@ export function stageProblem(error: string | null | undefined): "visionUnavailab
   return null;
 }
 
+const PREPARE_STAGES = new Set(["ingest", "layout", "layout_review", "sync", "region_crops"]);
+const PAST_REVIEW = new Set(["processing", "ready", "partial", "failed"]);
+const TERMINAL = new Set(["ready", "partial", "failed"]);
+
 export function pipelineTimeline(
   steps: StepSnapshot[],
   live?: StageProgressEvent | null,
-  options?: { deliveryMode?: string; sourceKind?: string },
+  options?: {
+    deliveryMode?: string;
+    sourceKind?: string;
+    sessionStatus?: string;
+    layoutConfirmed?: "user" | "auto" | null;
+  },
 ): StageView[] {
   const deliveryMode = options?.deliveryMode ?? "stage";
   const foldAlignment = deliveryMode !== "stage";
@@ -174,9 +183,9 @@ export function pipelineTimeline(
     names.push(live.stage);
   }
 
-  return names.map((stage) => {
+  const rows = names.map((stage) => {
     const step = byStage.get(stage);
-    if (!step) return { stage, status: "pending", detail: null, problem: null };
+    if (!step) return { stage, status: "pending" as StageState, detail: null, problem: null };
     const status = asStageState(step.status);
     const problem =
       status === "failed" || status === "skipped"
@@ -190,4 +199,24 @@ export function pipelineTimeline(
       problem,
     };
   });
+
+  if (foldAlignment) {
+    const review = rows.find((row) => row.stage === "layout_review");
+    const laterDone = rows.some(
+      (row) => !PREPARE_STAGES.has(row.stage) && (row.status === "succeeded" || row.status === "running"),
+    );
+    const pastReview = PAST_REVIEW.has(options?.sessionStatus ?? "");
+    if (review && (pastReview || laterDone) && (review.status === "pending" || review.status === "waiting")) {
+      review.status = "succeeded";
+      review.detail =
+        options?.layoutConfirmed === "auto" ? "confirmed_automatically" : "by_you";
+    }
+    const busy = rows.some((row) => row.status === "running" || row.status === "waiting");
+    if (!busy && !TERMINAL.has(options?.sessionStatus ?? "")) {
+      const firstPending = rows.find((row) => row.status === "pending");
+      if (firstPending) firstPending.status = "running";
+    }
+  }
+
+  return rows;
 }

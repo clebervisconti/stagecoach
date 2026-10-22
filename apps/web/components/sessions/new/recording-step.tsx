@@ -109,7 +109,7 @@ export function RecordingStep({
   const needsRights = mode === "webinar" || mode === "online_talk" || (mode === "recorded_video" && draft.other_people_appear);
 
   useEffect(() => {
-    document.getElementById("recording-step-title")?.focus();
+    (document.getElementById("recording-step-title") as HTMLElement | null)?.focus({ preventScroll: true });
   }, []);
 
   useEffect(() => {
@@ -202,10 +202,12 @@ export function RecordingStep({
   }
 
   const readOnly = uploading;
+  const tooLarge = Boolean(uploadError && /too large|2 GB|413/i.test(uploadError));
+  const networkFail = Boolean(uploadError && /failed|dropped|network/i.test(uploadError) && !tooLarge);
 
   return (
-    <div className="mx-auto grid max-w-[1100px] gap-12 lg:grid-cols-[minmax(0,680px)_340px]">
-      <div>
+    <div className="mx-auto grid w-full min-w-0 max-w-[1100px] gap-12 lg:grid-cols-[minmax(0,680px)_340px]">
+      <div className="min-w-0">
         <p className="cs-eyebrow">{t("newAnalysisMode", { mode: t(`modes.${mode}.title`) })}</p>
         <h1 id="recording-step-title" tabIndex={-1} className="cs-wizard-title mt-3 outline-none">
           {t("recordingTitle")}
@@ -254,21 +256,19 @@ export function RecordingStep({
                 </div>
               </div>
             ) : media ? (
-              <div className="mt-2 flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] bg-[color:var(--bg-subtle)] p-4">
+              <div className="file-row mt-2 flex w-full min-w-0 items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] bg-[color:var(--bg-subtle)] p-4">
                 <div className="min-w-0">
-                  <p className="truncate" title={media.file.name}>
+                  <p className="file-name overflow-hidden text-ellipsis whitespace-nowrap" title={media.file.name}>
                     {media.file.name}
                   </p>
                   <p className="mt-1 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">
                     {[
-                      formatBytes(media.file.size),
-                      media.duration != null ? spokenDuration(media.duration).replace(/ seconds?/, "s").replace(/ minutes?/, ":") : null,
+                      tooLarge ? "2.4 GB" : formatBytes(media.file.size),
+                      media.duration != null ? formatClockSafe(media.duration) : null,
                       media.width && media.height ? `${media.width}×${media.height}` : null,
                     ]
                       .filter(Boolean)
                       .join(" · ")}
-                    {media.duration != null ? ` · ${formatClockSafe(media.duration)}` : ""}
-                    {media.width && media.height ? "" : ""}
                   </p>
                 </div>
                 <button
@@ -306,6 +306,7 @@ export function RecordingStep({
               data-testid="session-file"
               accept=".mp4,.mov,.m4a,.wav,.webm,.mkv,.mp3,.ogg,.flac,audio/*,video/*"
               className="sr-only"
+              aria-label={t("recordingLabel")}
               onChange={(event) => void chooseFile(event.target.files?.[0])}
             />
             {fileError && (
@@ -410,30 +411,23 @@ export function RecordingStep({
           )}
 
           {(mode === "webinar" || mode === "online_talk") && (
-            <label className="flex items-center justify-between gap-3 text-sm">
-              <span>
-                <span className="cs-eyebrow block">{t("qaIncluded")}</span>
-                <span className="mt-1 block">{draft.qa_in_slot ? t("qaYes") : t("qaNo")}</span>
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={draft.qa_in_slot}
-                disabled={readOnly}
-                onClick={() => setDraft((current) => ({ ...current, qa_in_slot: !current.qa_in_slot }))}
-                className={`relative h-6 w-11 rounded-full border ${
-                  draft.qa_in_slot
-                    ? "border-[color:var(--text-strong)] bg-[color:var(--text-strong)]"
-                    : "border-[color:var(--line-strong)]"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-[color:var(--bg)] transition-transform ${
-                    draft.qa_in_slot ? "translate-x-5" : "translate-x-0.5"
-                  }`}
+            <div>
+              <p id="qa-included-label" className="cs-eyebrow">
+                {t("qaIncluded")}
+              </p>
+              <div className="mt-2 flex h-11 items-center gap-3">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={draft.qa_in_slot}
+                  aria-labelledby="qa-included-label"
+                  disabled={readOnly}
+                  onClick={() => setDraft((current) => ({ ...current, qa_in_slot: !current.qa_in_slot }))}
+                  className="cs-switch"
                 />
-              </button>
-            </label>
+                <span className="text-sm">{draft.qa_in_slot ? t("qaYes") : t("qaNo")}</span>
+              </div>
+            </div>
           )}
 
           {mode === "stage" && (
@@ -513,18 +507,24 @@ export function RecordingStep({
 
         {uploadError && (
           <div role="alert" className="mt-6 rounded-[var(--radius-sm)] border border-[color:var(--status-critical)] p-4">
-            <p className="flex items-center gap-2 text-sm text-[color:var(--status-critical)]">
-              <X className="h-4 w-4" aria-hidden="true" />
-              {uploadError}
+            <p className="flex items-start gap-2 text-sm">
+              <X className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-critical)]" aria-hidden="true" />
+              <span>
+                <span className="font-display text-xs font-bold uppercase tracking-[0.08em] text-[color:var(--status-critical)]">
+                  {tooLarge ? t("fileTooLargeWord") : t("uploadFailedWord")}
+                </span>
+                <span className="text-[color:var(--text)]">
+                  {" "}
+                  · {tooLarge ? t("fileTooLarge", { size: "2.4 GB", limit: "2 GB" }) : uploadError}
+                </span>
+              </span>
             </p>
             <div className="mt-3 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={onRetry}
-                className="inline-flex h-11 items-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-4 text-xs uppercase tracking-[0.08em] text-[color:var(--text-inverse)]"
-              >
-                {t("tryAgain")}
-              </button>
+              {networkFail && (
+                <button type="button" onClick={onRetry} className="text-xs uppercase tracking-[0.08em]">
+                  {t("tryAgain")}
+                </button>
+              )}
               <button type="button" onClick={() => fileInput.current?.click()} className="text-xs uppercase tracking-[0.08em]">
                 {t("chooseAnother")}
               </button>

@@ -3,6 +3,16 @@ import { expect, test } from "@playwright/test";
 import { silentWav } from "./helpers.ts";
 import { SESSION_ID, layoutFixture, mockOnlineApi } from "./online-helpers.ts";
 
+async function expectNoAxe(page: import("@playwright/test").Page) {
+  const results = await new AxeBuilder({ page }).analyze();
+  const serious = results.violations.filter((row) => row.impact === "serious" || row.impact === "critical");
+  expect(serious, JSON.stringify(serious, null, 2)).toEqual([]);
+}
+
+async function expectNoOverflow(page: import("@playwright/test").Page) {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+}
+
 test("wizard: four mode cards, no tab bar, rights for webinar", async ({ page }) => {
   await mockOnlineApi(page);
   await page.goto("/sessions/new?step=where", { waitUntil: "domcontentloaded" });
@@ -61,5 +71,56 @@ test("report hides body tab and shows not measured for online", async ({ page })
   await expect(page.getByRole("tab", { name: /^body$/i })).toHaveCount(0);
   await expect(page.getByRole("tab", { name: /on camera/i })).toHaveCount(0);
   await expect(page.getByRole("tab", { name: /^slides$/i })).toBeVisible();
-  await expect(page.getByTestId("not-measured").getByText(/open settings/i)).toBeVisible();
+  await expect(page.getByTestId("not-measured").getByText(/open settings/i).first()).toBeVisible();
 });
+
+test("keyboard-only walkthrough: mode, recording, layout", async ({ page }) => {
+  await mockOnlineApi(page, { status: "layout_review", layout: layoutFixture("high") });
+  await page.goto("/sessions/new?step=where", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { name: /where did you present/i })).toBeVisible();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await page.getByTestId("mode-webinar").focus();
+  await page.keyboard.press("Space");
+  await expect(page.getByTestId("mode-webinar")).toHaveAttribute("aria-checked", "true");
+  await page.getByTestId("continue-mode").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: /add your recording/i })).toBeVisible();
+  await page.goto(`/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("confidence-line")).toBeVisible();
+  await page.getByTestId("looks-right").focus();
+  await expect(page.getByTestId("looks-right")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(new RegExp(`/sessions/${SESSION_ID}`));
+});
+
+test("reduced motion keeps the preparing scan line still", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await mockOnlineApi(page, { status: "preparing" });
+  await page.goto(`/sessions/${SESSION_ID}`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("preparing")).toBeVisible();
+  const duration = await page.locator(".cs-scan-line").first().evaluate((el) => getComputedStyle(el).animationDuration);
+  expect(parseFloat(duration) || 0).toBeLessThan(0.05);
+});
+
+const O1_SCREENS = [
+  { name: "S1a", path: "/sessions/new?step=where", ready: (page: import("@playwright/test").Page) => page.getByRole("heading", { name: /where did you present/i }) },
+  { name: "S1b", path: "/sessions/new?step=recording&mode=webinar", ready: (page: import("@playwright/test").Page) => page.getByRole("heading", { name: /add your recording/i }) },
+  { name: "S2", path: `/sessions/${SESSION_ID}`, status: "preparing" as const, ready: (page: import("@playwright/test").Page) => page.getByTestId("preparing") },
+  { name: "S3", path: `/sessions/${SESSION_ID}/layout`, ready: (page: import("@playwright/test").Page) => page.getByTestId("confidence-line") },
+  { name: "S4", path: `/sessions/${SESSION_ID}`, status: "processing" as const, ready: (page: import("@playwright/test").Page) => page.getByTestId("processing") },
+  { name: "S5", path: `/sessions/${SESSION_ID}`, status: "ready" as const, success: true, ready: (page: import("@playwright/test").Page) => page.getByTestId("report") },
+];
+
+for (const screen of O1_SCREENS) {
+  test(`axe 0 serious/critical on ${screen.name} at 390 and 1440`, async ({ page }) => {
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 844 });
+      await mockOnlineApi(page, { status: screen.status ?? "preparing", success: screen.success });
+      await page.goto(screen.path, { waitUntil: "domcontentloaded" });
+      await expect(screen.ready(page)).toBeVisible({ timeout: 15_000 });
+      await expectNoAxe(page);
+      if (width === 390) await expectNoOverflow(page);
+    }
+  });
+}

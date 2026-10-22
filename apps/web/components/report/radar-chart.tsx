@@ -16,9 +16,12 @@ type RadarChartProps = {
 
 export function RadarChart({ points, goalPoints }: RadarChartProps) {
   const t = useTranslations("report");
-  const polygon = radarPolygon(points, RADIUS, CX, CY);
-  const goalPolygon = goalPoints ? radarPolygon(goalPoints, RADIUS, CX, CY) : "";
+  const available = points.filter((point) => point.available);
+  const availableGoals = goalPoints?.filter((point) => point.available);
+  const polygon = radarPolygon(available, RADIUS, CX, CY);
+  const goalPolygon = availableGoals ? radarPolygon(availableGoals, RADIUS, CX, CY) : "";
   const rings = [0.25, 0.5, 0.75, 1];
+  const axes = available.length ? available : points;
 
   return (
     <figure className="space-y-4">
@@ -36,8 +39,8 @@ export function RadarChart({ points, goalPoints }: RadarChartProps) {
           </pattern>
         </defs>
         {rings.map((ring) => {
-          const ringPoints = points
-            .map((_, index) => radarAxisPoint(index, points.length, RADIUS * ring, CX, CY))
+          const ringPoints = axes
+            .map((_, index) => radarAxisPoint(index, axes.length, RADIUS * ring, CX, CY))
             .map((point) => `${point.x},${point.y}`)
             .join(" ");
           return (
@@ -50,19 +53,12 @@ export function RadarChart({ points, goalPoints }: RadarChartProps) {
             />
           );
         })}
-        {points.map((point, index) => {
-          const end = radarAxisPoint(index, points.length, RADIUS, CX, CY);
-          const label = radarAxisPoint(index, points.length, RADIUS + 22, CX, CY);
+        {axes.map((point, index) => {
+          const end = radarAxisPoint(index, axes.length, RADIUS, CX, CY);
+          const label = radarAxisPoint(index, axes.length, RADIUS + 22, CX, CY);
           return (
             <g key={point.id}>
-              <line
-                x1={CX}
-                y1={CY}
-                x2={end.x}
-                y2={end.y}
-                className={point.available ? "stroke-border" : "stroke-muted-foreground/40"}
-                strokeDasharray={point.available ? undefined : "4 4"}
-              />
+              <line x1={CX} y1={CY} x2={end.x} y2={end.y} className="stroke-border" />
               <text
                 x={label.x}
                 y={label.y}
@@ -72,16 +68,6 @@ export function RadarChart({ points, goalPoints }: RadarChartProps) {
               >
                 {t(`pillars.${point.id as PillarId}`)}
               </text>
-              {!point.available && (
-                <text
-                  x={end.x}
-                  y={end.y + 12}
-                  textAnchor="middle"
-                  className="fill-muted-foreground text-[9px]"
-                >
-                  {t("unavailable")}
-                </text>
-              )}
             </g>
           );
         })}
@@ -95,9 +81,9 @@ export function RadarChart({ points, goalPoints }: RadarChartProps) {
             data-testid="goal-polygon"
           />
         ) : null}
-        {(goalPoints ?? []).map((point, index) => {
-          if (!point.available || point.score === null) return null;
-          const pos = radarAxisPoint(index, points.length, (point.score / 100) * RADIUS, CX, CY);
+        {(availableGoals ?? []).map((point, index) => {
+          if (point.score === null) return null;
+          const pos = radarAxisPoint(index, axes.length, (point.score / 100) * RADIUS, CX, CY);
           return (
             <circle
               key={`${point.id}-goal`}
@@ -114,15 +100,15 @@ export function RadarChart({ points, goalPoints }: RadarChartProps) {
         {polygon ? (
           <polygon
             points={polygon}
-            fill="url(#radar-hatch)"
-            className="stroke-primary"
-            strokeWidth="2"
+            fill="color-mix(in srgb, var(--data-1) 8%, transparent)"
+            stroke="var(--data-1)"
+            strokeWidth="1.5"
           />
         ) : null}
-        {points.map((point, index) => {
-          if (!point.available || point.score === null) return null;
-          const pos = radarAxisPoint(index, points.length, (point.score / 100) * RADIUS, CX, CY);
-          return <circle key={`${point.id}-dot`} cx={pos.x} cy={pos.y} r="3.5" className="fill-primary" />;
+        {axes.map((point, index) => {
+          if (point.score === null) return null;
+          const pos = radarAxisPoint(index, axes.length, (point.score / 100) * RADIUS, CX, CY);
+          return <circle key={`${point.id}-dot`} cx={pos.x} cy={pos.y} r="3.5" fill="var(--data-1)" />;
         })}
       </svg>
       <table className="w-full text-sm">

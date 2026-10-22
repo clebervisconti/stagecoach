@@ -25,7 +25,7 @@ export default function LayoutReviewPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    document.getElementById("layout-title")?.focus();
+    document.getElementById("layout-title")?.focus({ preventScroll: true });
     document.title = `${t("checkLayout")} · Stage Coach`;
   }, [t]);
 
@@ -89,13 +89,13 @@ export default function LayoutReviewPage() {
 
   return (
     <div className="px-5 py-8 md:px-16 md:pt-12">
-      <WizardStepper mode={mode} current="layout" />
+      <WizardStepper mode={mode} current="layout" layoutDone={Boolean(layout?.auto_confirmed)} />
       <p className="cs-eyebrow">{t("checkLayout")}</p>
       <h1 id="layout-title" tabIndex={-1} className="cs-wizard-title mt-3 max-w-4xl outline-none">
-        {t("layoutTitle")}
+        {empty && !loading ? t("emptyTitle") : t("layoutTitle")}
       </h1>
       <p className="mt-3 max-w-3xl text-base leading-7 text-[color:var(--text-secondary)] md:text-lg md:leading-[30px]">
-        {t("layoutLead")}
+        {empty && !loading ? t("emptyLead") : t("layoutLead")}
       </p>
 
       {loading && (

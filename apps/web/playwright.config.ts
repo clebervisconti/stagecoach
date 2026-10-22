@@ -15,7 +15,15 @@ export default defineConfig({
     baseURL,
     trace: "on-first-retry",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: { args: ["--disable-lcd-text"] },
+      },
+    },
+  ],
   webServer: {
     command: process.env.CI
       ? `npx next start -H localhost -p ${port}`

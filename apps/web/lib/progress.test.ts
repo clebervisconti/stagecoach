@@ -137,6 +137,21 @@ test("online timeline folds alignment into transcribing and keeps waiting", () =
   assert.equal(waiting.find((stage) => stage.stage === "layout_review")?.status, "waiting");
 });
 
+test("online timeline marks layout_review done and starts the next row", () => {
+  const view = pipelineTimeline(
+    [
+      { stage: "ingest", status: "succeeded" },
+      { stage: "layout", status: "succeeded" },
+      { stage: "asr", status: "succeeded", message: "Transcript ready" },
+    ],
+    null,
+    { deliveryMode: "webinar", sessionStatus: "processing" },
+  );
+  assert.equal(view.find((stage) => stage.stage === "layout_review")?.status, "succeeded");
+  assert.equal(view.find((stage) => stage.stage === "layout_review")?.detail, "by_you");
+  assert.equal(view.find((stage) => stage.stage === "audio_features")?.status, "running");
+});
+
 test("legacy stage payloads without type still parse", () => {
   const event = parseProgressData(JSON.stringify({ stage: "asr", status: "succeeded" }));
   assert.equal(event?.type, "stage");

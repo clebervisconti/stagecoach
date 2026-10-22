@@ -42,6 +42,15 @@ function formatElapsed(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+function stageLabel(stage: string, deliveryMode: string, t: (key: StageKey | "visionOnline" | "slidesOnline" | "audioFeaturesOnline") => string): string {
+  if (deliveryMode !== "stage") {
+    if (stage === "vision") return t("visionOnline");
+    if (stage === "slides") return t("slidesOnline");
+    if (stage === "audio_features") return t("audioFeaturesOnline");
+  }
+  return isStageKey(stage) ? t(stage) : stage.replaceAll("_", " ");
+}
+
 export function ProcessingTimeline({
   steps,
   live,
@@ -50,6 +59,7 @@ export function ProcessingTimeline({
   deliveryMode = "stage",
   sourceKind = "upload",
   autoConfirmed = false,
+  sessionStatus,
 }: {
   steps: StepSnapshot[];
   live: StageProgressEvent | null;
@@ -58,28 +68,27 @@ export function ProcessingTimeline({
   deliveryMode?: string;
   sourceKind?: string;
   autoConfirmed?: boolean;
+  sessionStatus?: string;
 }) {
   const t = useTranslations("report");
   const [now, setNow] = useState(() => Date.now());
-  const [preparedOpen, setPreparedOpen] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const stages = pipelineTimeline(steps, live, { deliveryMode, sourceKind });
+  const stages = pipelineTimeline(steps, live, {
+    deliveryMode,
+    sourceKind,
+    sessionStatus: sessionStatus ?? (mode === "notes" ? "ready" : undefined),
+    layoutConfirmed: autoConfirmed ? "auto" : "user",
+  });
   const current = stages.find((stage) => stage.status === "running" || stage.status === "waiting");
   const elapsed = startedAt ? formatElapsed(now - new Date(startedAt).getTime()) : null;
   const slow = Boolean(current && startedAt && now - new Date(startedAt).getTime() > 90_000);
   const problems = stages.filter((stage) => stage.status === "failed" || stage.status === "skipped");
-  const prepared = new Set(["ingest", "layout", "layout_review"]);
-  const preparedDone =
-    deliveryMode !== "stage" &&
-    stages.filter((stage) => prepared.has(stage.stage)).every((stage) => stage.status === "succeeded" || stage.status === "skipped");
-  const visible = preparedDone && !preparedOpen
-    ? stages.filter((stage) => !prepared.has(stage.stage))
-    : stages;
+  const visible = stages;
 
   if (mode === "notes") {
     if (!problems.length) return null;
@@ -112,7 +121,7 @@ export function ProcessingTimeline({
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
             {current
               ? t("stageRunning", {
-                  stage: isStageKey(current.stage) ? t(current.stage) : current.stage,
+                  stage: stageLabel(current.stage, deliveryMode, t),
                 })
               : t("processingHint")}
           </p>
@@ -129,26 +138,21 @@ export function ProcessingTimeline({
 
       {slow && <p className="mt-4 font-mono text-sm text-muted-foreground">{t("stillWorking")}</p>}
 
-      {preparedDone && (
-        <button
-          type="button"
-          className="mt-6 flex items-center gap-2 text-sm"
-          onClick={() => setPreparedOpen((value) => !value)}
-        >
-          <Check className="h-4 w-4 text-[color:var(--text-secondary)]" aria-hidden="true" />
-          {t("preparedCollapsed")}
-        </button>
-      )}
-
       <ol className="mt-6 space-y-2">
         {visible.map((stage) => {
-          const label = isStageKey(stage.stage) ? t(stage.stage) : stage.stage.replaceAll("_", " ");
+          const label = stageLabel(stage.stage, deliveryMode, t);
+          const resolvedDetail =
+            stage.stage === "layout_review" && stage.status === "succeeded"
+              ? stage.detail === "confirmed_automatically" || autoConfirmed
+                ? t("layoutAuto")
+                : t("layoutByYou")
+              : stage.detail;
           const detail =
             stage.status === "skipped"
-              ? t("skippedReason", { reason: stage.problem ? t(stage.problem) : stage.detail || t("stageSkipped") })
+              ? t("skippedReason", { reason: stage.problem ? t(stage.problem) : resolvedDetail || t("stageSkipped") })
               : stage.problem
                 ? t(stage.problem)
-                : stage.detail;
+                : resolvedDetail;
           return (
             <li
               key={stage.stage}
@@ -158,7 +162,9 @@ export function ProcessingTimeline({
               data-stage={stage.stage}
               data-status={stage.status}
             >
-              <StageMark status={stage.status} />
+              <span className="inline-flex w-4 shrink-0 justify-center">
+                <StageMark status={stage.status} />
+              </span>
               <div>
                 <div className={stage.status === "pending" ? "text-muted-foreground" : "font-medium"}>
                   {label}

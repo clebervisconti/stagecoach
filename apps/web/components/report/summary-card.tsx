@@ -14,7 +14,6 @@ export function SummaryCard({ report }: SummaryCardProps) {
   const headline = overallHeadline(report);
   const levelName = headline.levelKey ? t(headline.levelKey) : null;
   const line = formatOverallLine(headline.score, headline.band, levelName);
-  const version = report.provenance?.scoring_config_version ?? "1.0.0";
   const warnings = report.quality?.warnings ?? [];
   const core = report.core_delivery?.score ?? null;
   const coreReady = typeof core === "number";
@@ -28,8 +27,9 @@ export function SummaryCard({ report }: SummaryCardProps) {
             {line}
           </p>
           <div className="mt-4 flex flex-wrap gap-4 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">
-            <span title={!coreReady ? t("coreDeliveryNeed") : undefined}>
+            <span>
               {t("coreDelivery")} {coreReady ? core : "—"}
+              {!coreReady ? ` · ${t("coreDeliveryNeed")}` : ""}
             </span>
             <span>
               {t("coverage")} {Math.round(headline.coverage * 100)}%
@@ -51,16 +51,21 @@ export function SummaryCard({ report }: SummaryCardProps) {
       </div>
       <p className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        <span>{t("weightsHint", { version })}</span>
+        <span>{t("weightsHint")}</span>
       </p>
       {report.session?.delivery_mode && report.session.delivery_mode !== "stage" && (
         <p className="mt-2 text-sm text-muted-foreground">{t("coreDeliveryHint")}</p>
       )}
       <p className="mt-4 leading-7">{report.insights.summary}</p>
       {warnings.map((warning) => (
-        <p key={warning} className="mt-3 flex items-start gap-2 text-sm text-[color:var(--status-warning)]">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-          {warning}
+        <p key={warning} className="mt-3 flex items-start gap-2 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-warning)]" aria-hidden="true" />
+          <span>
+            <span className="font-display text-xs font-bold uppercase tracking-[0.08em] text-[color:var(--status-warning)]">
+              {t("lowConfidenceWord")}
+            </span>
+            <span className="text-[color:var(--text)]"> · {warning}</span>
+          </span>
         </p>
       ))}
     </section>

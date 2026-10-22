@@ -30,69 +30,46 @@ export function LayoutPreview({
         ) : (
           <div className="h-full w-full bg-[color:var(--bg-muted)]" />
         )}
-        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <defs>
-            <pattern id="ignored-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-              <path d="M0 0V4" stroke="#F0F0FA" strokeOpacity="0.55" strokeWidth="0.6" />
-            </pattern>
-          </defs>
+        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
           {regions.map((region) => (
             <RegionBox key={region.id} region={region} uncertain={uncertainRole === region.role} />
           ))}
-        </svg>
+        </div>
       </div>
       <p id="layout-preview-desc" className="sr-only">
         {description || "No camera or screen regions."}
       </p>
       <figcaption className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
-        Frame at {previewT != null ? formatClock(previewT) : "—"} · only you can see this preview
+        {previewT != null ? `Frame at ${formatClock(previewT)} · only you can see this preview` : "Only you can see this preview"}
       </figcaption>
     </figure>
   );
 }
 
+function inset(value: number, size: number): number {
+  const min = 0.001;
+  const max = 0.999 - size;
+  return Math.min(Math.max(value, min), Math.max(min, max));
+}
+
 function RegionBox({ region, uncertain }: { region: LayoutRegion; uncertain: boolean }) {
-  const x = region.x * 100;
-  const y = region.y * 100;
-  const w = region.w * 100;
-  const h = region.h * 100;
+  const w = Math.max(region.w, 0.02);
+  const h = Math.max(region.h, 0.02);
+  const x = inset(region.x, w);
+  const y = inset(region.y, h);
   const role = region.role === "other_participant" ? "ignore" : region.role;
-  const dash = role === "screen" ? "3.5 2" : role === "ignore" ? "0.3 1.8" : undefined;
+  const kind = role === "camera" ? "camera" : role === "screen" ? "screen" : "ignored";
   const label =
-    role === "camera" ? (uncertain ? "CAMERA · CHECK" : "CAMERA") : role === "screen" ? "SCREEN" : "IGNORED";
+    role === "camera" ? (uncertain ? "Camera · Check" : "Camera") : role === "screen" ? "Screen" : "Ignored";
   return (
-    <g>
-      {role === "ignore" && <rect x={x} y={y} width={w} height={h} fill="#000" fillOpacity="0.55" />}
-      {role === "ignore" && <rect x={x} y={y} width={w} height={h} fill="url(#ignored-hatch)" />}
-      <rect
-        x={x}
-        y={y}
-        width={w}
-        height={h}
-        fill="none"
-        stroke="#000"
-        strokeOpacity="0.6"
-        strokeWidth="1.2"
-        strokeDasharray={dash}
-        vectorEffect="non-scaling-stroke"
-      />
-      <rect
-        x={x}
-        y={y}
-        width={w}
-        height={h}
-        fill="none"
-        stroke="#F0F0FA"
-        strokeWidth="0.6"
-        strokeDasharray={dash}
-        vectorEffect="non-scaling-stroke"
-      />
-      <foreignObject x={x + 1} y={y + 1} width={Math.max(w - 2, 8)} height="8">
-        <div className="inline-flex items-center gap-1 bg-black px-1 py-0.5 font-display text-[10px] uppercase tracking-[0.1em] text-[#F0F0FA] md:text-[11px]">
-          {uncertain && <TriangleAlert className="h-3 w-3 text-[color:var(--status-warning)]" aria-hidden="true" />}
-          {label}
-        </div>
-      </foreignObject>
-    </g>
+    <div
+      className={`cs-region cs-region--${kind}`}
+      style={{ left: `${x * 100}%`, top: `${y * 100}%`, width: `${w * 100}%`, height: `${h * 100}%` }}
+    >
+      <span className="cs-region__label">
+        {uncertain && <TriangleAlert className="h-3 w-3 text-[color:var(--status-warning)]" aria-hidden="true" />}
+        {label}
+      </span>
+    </div>
   );
 }

@@ -24,7 +24,7 @@ export function ModeStep({
 
   useEffect(() => {
     const heading = document.getElementById("mode-step-title");
-    heading?.focus();
+    heading?.focus({ preventScroll: true });
   }, []);
 
   function move(delta: number) {

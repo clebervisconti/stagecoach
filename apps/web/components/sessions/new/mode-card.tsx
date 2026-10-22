@@ -50,17 +50,17 @@ export function ModeCard({
           onActivate();
         }
       }}
-      className={`flex min-h-[72px] cursor-pointer flex-row items-start gap-3 rounded-[var(--radius-sm)] border bg-[color:var(--bg-subtle)] p-4 transition-colors duration-100 md:min-h-[300px] md:flex-col md:p-6 ${
+      className={`grid min-h-[72px] cursor-pointer grid-cols-[64px_minmax(0,1fr)_20px] items-center gap-4 rounded-[var(--radius-sm)] border p-4 transition-colors duration-100 md:flex md:min-h-[300px] md:flex-col md:items-stretch md:gap-5 md:p-6 ${
         selected
           ? "border-[color:var(--text-strong)] bg-[color:var(--bg-muted)]"
-          : "border-[color:var(--line)] hover:bg-[color:var(--bg-muted)]"
+          : "border-[color:var(--line)] bg-[color:var(--bg-subtle)] hover:bg-[color:var(--bg-muted)]"
       } active:bg-[color:var(--bg-emphasis)]`}
     >
-      <div className="flex w-full items-start justify-between gap-3">
+      <div className="contents md:flex md:w-full md:items-start md:justify-between">
         <ModePictogram mode={mode} className="h-10 w-16 text-[color:var(--text-secondary)] md:h-[70px] md:w-[112px]" />
         <span
           aria-hidden="true"
-          className={`mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+          className={`col-start-3 row-start-1 mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border md:col-auto ${
             selected
               ? "border-[color:var(--text-strong)] bg-[color:var(--text-strong)]"
               : "border-[color:var(--line-strong)]"
@@ -69,7 +69,7 @@ export function ModeCard({
           {selected ? <span className="h-2 w-2 rounded-full bg-[color:var(--bg)]" /> : null}
         </span>
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0">
         <div className="flex items-center gap-2">
           <Icon className="h-4 w-4 shrink-0 md:h-5 md:w-5" aria-hidden="true" />
           <p className="font-display text-base font-bold uppercase tracking-[0.06em] text-[color:var(--text-strong)] md:text-lg md:leading-6">

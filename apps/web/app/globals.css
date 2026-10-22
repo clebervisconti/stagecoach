@@ -209,6 +209,17 @@
     outline: none;
     box-shadow: var(--focus-ring);
   }
+  [tabindex="-1"]:focus,
+  [tabindex="-1"]:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
+  input[type="checkbox"] {
+    accent-color: var(--text-strong);
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
   ::selection {
     background: var(--selection);
   }
@@ -345,6 +356,82 @@
 
 .cs-scan-line {
   animation: cs-scan 2s linear 1;
+}
+
+.cs-switch {
+  width: 44px;
+  height: 24px;
+  border-radius: 9999px;
+  position: relative;
+  flex: none;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-emphasis);
+}
+.cs-switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  transition: transform 120ms ease;
+}
+.cs-switch[aria-checked="true"] {
+  background: var(--bg-inverse);
+  border-color: var(--bg-inverse);
+}
+.cs-switch[aria-checked="true"]::after {
+  transform: translateX(20px);
+  background: var(--bg);
+}
+
+.cs-region {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--text-on-media);
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000;
+  pointer-events: none;
+}
+.cs-region--screen {
+  border-style: dashed;
+}
+.cs-region--ignored {
+  border-style: dotted;
+  background:
+    repeating-linear-gradient(45deg, rgb(240 240 250 / 0.55) 0 1px, transparent 1px 7px),
+    rgb(0 0 0 / 0.55);
+}
+.file-row {
+  min-width: 0;
+}
+.file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs-region__label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  background: #000;
+  color: var(--text-on-media);
+  font: 700 11px/12px var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 6px 3px;
+  border-radius: 0 0 2px 0;
+}
+@media (max-width: 599px) {
+  .cs-region__label {
+    font-size: 10px;
+    padding: 3px 5px 2px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

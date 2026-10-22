@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Check, X } from "lucide-react";
 import { formatClock } from "@/lib/online";
 import type { StepSnapshot } from "@/lib/progress";
@@ -26,6 +26,8 @@ export function PreparingPanel({
   skipReview?: boolean;
 }) {
   const t = useTranslations("online");
+  const locale = useLocale();
+  const newHref = locale === "en" ? "/sessions/new" : `/${locale}/sessions/new`;
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -84,7 +86,7 @@ export function PreparingPanel({
           )}
         </div>
         <figcaption className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
-          {t("frameAt", { time: previewT != null ? formatClock(previewT) : "—" })}
+          {previewT != null ? t("frameAt", { time: formatClock(previewT) }) : t("previewOnly")}
         </figcaption>
       </figure>
 
@@ -98,12 +100,27 @@ export function PreparingPanel({
         </div>
 
         {failed ? (
-          <div role="alert" className="mt-6 rounded-[var(--radius-sm)] border border-[color:var(--status-critical)] p-4">
-            <p className="flex items-center gap-2 text-sm text-[color:var(--status-critical)]">
-              <X className="h-4 w-4" aria-hidden="true" />
-              {t("couldntRead")}
+          <div
+            role="alert"
+            data-testid="prepare-error"
+            className="mt-6 rounded-[var(--radius-sm)] border border-[color:var(--status-critical)] p-4"
+          >
+            <p className="flex items-start gap-2 text-sm">
+              <X className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-critical)]" aria-hidden="true" />
+              <span>
+                <span className="font-display text-xs font-bold uppercase tracking-[0.08em] text-[color:var(--status-critical)]">
+                  {t("couldntRead")}
+                </span>
+                <span className="text-[color:var(--text)]"> · {t("couldntReadHelp")}</span>
+              </span>
             </p>
-            <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{t("couldntReadHelp")}</p>
+            <a
+              href={newHref}
+              data-testid="upload-another"
+              className="mt-4 inline-flex h-11 items-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-5 text-xs uppercase tracking-[0.08em] text-[color:var(--text-inverse)]"
+            >
+              {t("uploadAnother")}
+            </a>
           </div>
         ) : (
           <ol className="mt-6 space-y-2" aria-live="polite">
