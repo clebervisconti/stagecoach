@@ -12,7 +12,7 @@ Production: LION loopback `:3107`, LaunchAgent `com.cyberlabs.stagecoach`. See `
 
 - [Full Specification](docs/SPEC.md) - Complete product and technical specification
 - [Architecture Decisions](docs/DECISIONS.md) - ADRs for key technical choices
-- [Research Sources](docs/research/sources.md) - Verified research citations (in-app: `/research`, `/research/myths`, `/config/scoring/1.0.0`)
+- [Research Sources](docs/research/sources.md) - Verified research citations (in-app: `/research`, `/research/myths`, `/config/scoring/1.0.0`, `/config/scoring/1.1.0`)
 - [Validation Plan](docs/VALIDATION.md) - Methodology and validation results
 
 ## Architecture Overview
@@ -93,6 +93,7 @@ The application will be available at:
 - ✅ **Phase 1**: Audio + text report - ASR, fusion scoring, evidence-linked report, delete
 - ✅ **Phase 2**: Video + slides - consents, CPU MediaPipe, categories 8 and 12–15, timeline, Body and Slides tabs, PDF, retention, local LLM default
 - ✅ **Phase 3 (in tree)**: Talk-prep generators on the live job, objectives panel, trends, goals, personal-baseline badge after 3 sessions, account export/deletion
+- 📅 **Phase O0 (in tree)**: Online-session foundations — scoring 1.1.0, YuNet, migration 011, synthetic fixtures. Flag off. See `docs/online-sessions/SPEC.md`.
 - 📅 **Phase 4** (v2): Practice loop - in-browser recording, live feedback, drills
 - 📅 **Phase 5** (v3): Teams - organizations, coaches, cohort analytics, benchmarks
 
