@@ -30,7 +30,12 @@ function NewSessionWizard() {
   const params = useSearchParams();
   const prefix = locale === "en" ? "" : `/${locale}`;
   const step = params.get("step") === "recording" ? "recording" : "where";
-  const [mode, setMode] = useState<DeliveryMode | null>(null);
+  const urlMode = params.get("mode");
+  const [picked, setPicked] = useState<DeliveryMode | null>(() => {
+    if (typeof window === "undefined") return null;
+    return readLastMode();
+  });
+  const mode = isDeliveryMode(urlMode) ? urlMode : picked;
   const [modeError, setModeError] = useState<string | null>(null);
   const [onlineEnabled, setOnlineEnabled] = useState<boolean | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -44,13 +49,6 @@ function NewSessionWizard() {
   } | null>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
   const createdId = useRef<string | null>(null);
-
-  useEffect(() => {
-    const last = readLastMode();
-    const fromUrl = params.get("mode");
-    if (isDeliveryMode(fromUrl)) setMode(fromUrl);
-    else if (last) setMode(last);
-  }, [params]);
 
   useEffect(() => {
     let active = true;
@@ -194,7 +192,7 @@ function NewSessionWizard() {
           value={mode}
           error={modeError}
           onChange={(next) => {
-            setMode(next);
+            setPicked(next);
             setModeError(null);
           }}
           onContinue={continueFromMode}
@@ -217,7 +215,7 @@ function NewSessionWizard() {
         <ModeStep
           value={mode}
           error={modeError}
-          onChange={setMode}
+          onChange={setPicked}
           onContinue={continueFromMode}
           onCancel={() => router.push(`${prefix}/sessions`)}
         />

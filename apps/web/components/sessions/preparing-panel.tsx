@@ -27,7 +27,6 @@ export function PreparingPanel({
 }) {
   const t = useTranslations("online");
   const [now, setNow] = useState(() => Date.now());
-  const [scan, setScan] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -37,9 +36,7 @@ export function PreparingPanel({
   const ingest = steps.find((step) => step.stage === "ingest");
   const layout = steps.find((step) => step.stage === "layout");
   const layoutRunning = layout?.status === "running" || (ingest?.status === "succeeded" && !layout);
-  useEffect(() => {
-    if (layoutRunning) setScan(true);
-  }, [layoutRunning]);
+  const scan = layoutRunning;
 
   const elapsed = startedAt ? formatClock((now - new Date(startedAt).getTime()) / 1000) : "0:00";
   const slow = Boolean(startedAt && now - new Date(startedAt).getTime() > 60_000);

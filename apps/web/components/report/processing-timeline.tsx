@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, Check, CircleX } from "lucide-react";
+import { Check, CircleX } from "lucide-react";
 import {
   pipelineTimeline,
   type StageProgressEvent,

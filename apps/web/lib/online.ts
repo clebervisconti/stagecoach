@@ -223,7 +223,7 @@ export const ONLINE_PIPELINE = [
 
 export function pipelineStages(deliveryMode: string = "stage", sourceKind: string = "upload"): readonly string[] {
   if (deliveryMode === "stage") return STAGE_PIPELINE;
-  const stages = [...ONLINE_PIPELINE];
+  const stages: string[] = [...ONLINE_PIPELINE];
   if (sourceKind === "two_track") {
     stages.splice(1, 0, "sync");
   }
