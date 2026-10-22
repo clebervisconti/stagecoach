@@ -77,6 +77,8 @@ export function eventsUrl(sessionId: string): string {
   return `/api/stagecoach/sessions/${sessionId}/events`;
 }
 
+import { pipelineStages as stagesForMode } from "./online.ts";
+
 export const PIPELINE_STAGES = [
   "ingest",
   "asr",
@@ -90,20 +92,26 @@ export const PIPELINE_STAGES = [
   "report",
 ] as const;
 
-export type StageState = "pending" | "running" | "succeeded" | "failed" | "skipped";
+export function pipelineStages(deliveryMode = "stage", sourceKind = "upload"): readonly string[] {
+  return stagesForMode(deliveryMode, sourceKind);
+}
+
+export type StageState = "pending" | "running" | "succeeded" | "failed" | "skipped" | "waiting";
 
 export type StepSnapshot = {
   stage: string;
   status: string;
   message?: string | null;
   error?: string | null;
+  detail?: string | null;
+  problem?: string | null;
 };
 
 export type StageView = {
   stage: string;
   status: StageState;
   detail: string | null;
-  problem: "visionUnavailable" | null;
+  problem: "visionUnavailable" | "consent_video_off" | null;
 };
 
 function asStageState(status: string): StageState {
@@ -112,7 +120,8 @@ function asStageState(status: string): StageState {
     status === "running" ||
     status === "succeeded" ||
     status === "failed" ||
-    status === "skipped"
+    status === "skipped" ||
+    status === "waiting"
   ) {
     return status;
   }
@@ -120,16 +129,37 @@ function asStageState(status: string): StageState {
   return "running";
 }
 
-export function stageProblem(error: string | null | undefined): "visionUnavailable" | null {
+export function stageProblem(error: string | null | undefined): "visionUnavailable" | "consent_video_off" | null {
   if (!error) return null;
-  if (/mediapipe|modulenotfounderror/i.test(error)) return "visionUnavailable";
+  if (/consent_video_off|consent_denied/i.test(error)) return "consent_video_off";
+  if (/mediapipe|modulenotfounderror|vision[_]?unavailable/i.test(error)) return "visionUnavailable";
   return null;
 }
+
+export function sessionConsentOff(session: {
+  consent?: { video_analysis?: boolean } | null;
+  job?: { steps?: StepSnapshot[] } | null;
+}): boolean {
+  if (session.consent?.video_analysis === false) return true;
+  return Boolean(session.job?.steps?.some((step) => step.problem === "consent_video_off"));
+}
+
+const PREPARE_STAGES = new Set(["ingest", "layout", "layout_review", "sync", "region_crops"]);
+const PAST_REVIEW = new Set(["processing", "ready", "partial", "failed"]);
+const TERMINAL = new Set(["ready", "partial", "failed"]);
 
 export function pipelineTimeline(
   steps: StepSnapshot[],
   live?: StageProgressEvent | null,
+  options?: {
+    deliveryMode?: string;
+    sourceKind?: string;
+    sessionStatus?: string;
+    layoutConfirmed?: "user" | "auto" | null;
+  },
 ): StageView[] {
+  const deliveryMode = options?.deliveryMode ?? "stage";
+  const foldAlignment = deliveryMode !== "stage";
   const byStage = new Map<string, StepSnapshot>();
   for (const step of steps) byStage.set(step.stage, step);
   if (live?.type === "stage") {
@@ -141,20 +171,39 @@ export function pipelineTimeline(
       error: previous?.error ?? null,
     });
   }
+  if (foldAlignment) {
+    const alignment = byStage.get("alignment");
+    if (alignment && (alignment.status === "running" || alignment.status === "pending" || alignment.status === "waiting")) {
+      const asr = byStage.get("asr");
+      byStage.set("asr", {
+        stage: "asr",
+        status: "running",
+        message: asr?.message ?? alignment.message ?? null,
+        error: asr?.error ?? null,
+      });
+    }
+    byStage.delete("alignment");
+  }
 
-  const names = [...PIPELINE_STAGES] as string[];
-  for (const step of steps) {
+  const names = [...pipelineStages(deliveryMode, options?.sourceKind ?? "upload")] as string[];
+  for (const step of byStage.values()) {
+    if (foldAlignment && step.stage === "alignment") continue;
     if (!names.includes(step.stage)) names.push(step.stage);
   }
-  if (live?.type === "stage" && !names.includes(live.stage)) names.push(live.stage);
+  if (live?.type === "stage" && !(foldAlignment && live.stage === "alignment") && !names.includes(live.stage)) {
+    names.push(live.stage);
+  }
 
-  return names.map((stage) => {
+  const rows = names.map((stage) => {
     const step = byStage.get(stage);
-    if (!step) return { stage, status: "pending", detail: null, problem: null };
+    if (!step) return { stage, status: "pending" as StageState, detail: null, problem: null };
     const status = asStageState(step.status);
     const problem =
       status === "failed" || status === "skipped"
-        ? stageProblem(step.error) || stageProblem(step.message)
+        ? (step.problem === "consent_video_off" ? "consent_video_off" : null) ||
+          stageProblem(step.problem) ||
+          stageProblem(step.error) ||
+          stageProblem(step.message)
         : null;
     const raw = status === "failed" ? step.error || step.message : step.message;
     return {
@@ -164,4 +213,29 @@ export function pipelineTimeline(
       problem,
     };
   });
+
+  if (foldAlignment) {
+    const review = rows.find((row) => row.stage === "layout_review");
+    const laterDone = rows.some(
+      (row) => !PREPARE_STAGES.has(row.stage) && (row.status === "succeeded" || row.status === "running"),
+    );
+    const pastReview = PAST_REVIEW.has(options?.sessionStatus ?? "");
+    if (
+      review &&
+      review.status !== "skipped" &&
+      (pastReview || laterDone) &&
+      (review.status === "pending" || review.status === "waiting")
+    ) {
+      review.status = "succeeded";
+      review.detail =
+        options?.layoutConfirmed === "auto" ? "confirmed_automatically" : "by_you";
+    }
+    const busy = rows.some((row) => row.status === "running" || row.status === "waiting");
+    if (!busy && !TERMINAL.has(options?.sessionStatus ?? "")) {
+      const firstPending = rows.find((row) => row.status === "pending");
+      if (firstPending) firstPending.status = "running";
+    }
+  }
+
+  return rows;
 }

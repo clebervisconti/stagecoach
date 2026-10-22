@@ -94,6 +94,7 @@ The application will be available at:
 - ✅ **Phase 2**: Video + slides - consents, CPU MediaPipe, categories 8 and 12–15, timeline, Body and Slides tabs, PDF, retention, local LLM default
 - ✅ **Phase 3 (in tree)**: Talk-prep generators on the live job, objectives panel, trends, goals, personal-baseline badge after 3 sessions, account export/deletion
 - 📅 **Phase O0 (in tree)**: Online-session foundations — scoring 1.1.0, YuNet, migration 011, synthetic fixtures. Flag off. See `docs/online-sessions/SPEC.md`.
+- 📅 **Phase O1 (in tree)**: Walking skeleton — wizard at `/sessions/new`, `tasks.prepare_session`, read-only layout review, production quality, `na_code`, online report. Enabled only for allowlisted accounts when `ONLINE_MODES_ENABLED=true`.
 - 📅 **Phase 4** (v2): Practice loop - in-browser recording, live feedback, drills
 - 📅 **Phase 5** (v3): Teams - organizations, coaches, cohort analytics, benchmarks
 

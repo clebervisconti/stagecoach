@@ -359,9 +359,42 @@ def test_consent_denied_sets_video_na_reasons(tmp_path: Path):
     by_id = {c["id"]: c for c in result["categories"]}
     assert by_id["gestures_body"]["applicable"] is False
     assert "consent is off" in (by_id["gestures_body"]["na_reason"] or "")
+    assert by_id["gestures_body"]["na_code"] == "consent_video_off"
     assert by_id["facial_affect"]["applicable"] is False
     assert "Expression analysis is off" in (by_id["facial_affect"]["na_reason"] or "")
     assert "gb_gesture_activity_ratio" not in {m["id"] for m in result["metrics"]}
+
+
+def test_webinar_marks_o1_categories_na_with_codes(tmp_path: Path):
+    _write_inputs(tmp_path, with_content=False, short=True)
+    (tmp_path / "consents.json").write_text(
+        json.dumps(
+            {
+                "policy_id": "1.0.0",
+                "purposes": {
+                    "video_analysis": {"granted": False},
+                    "expression_analysis": {"granted": False},
+                    "keep_detailed_tracking": {"granted": False},
+                },
+            }
+        )
+    )
+    result = run_fusion_scoring(
+        session_id="00000000-0000-4000-8000-000000000111",
+        output_dir=tmp_path,
+        packages_dir=PACKAGES,
+        transcript_path=tmp_path / "transcript.json",
+        metrics_path=tmp_path / "metrics.json",
+        audio_metrics_path=tmp_path / "audio_metrics.json",
+        delivery_mode="webinar",
+    )
+    by_id = {c["id"]: c for c in result["categories"]}
+    assert result["schema_version"] == "1.1.0"
+    assert by_id["screen_flow"]["applicable"] is False
+    assert by_id["screen_flow"]["na_code"] == "not_in_phase"
+    assert by_id["online_engagement"]["na_code"] == "not_in_phase"
+    assert by_id["on_camera_presence"]["na_code"] == "consent_video_off"
+    assert "core_delivery" in result
 
 
 def test_failed_claim_quotes_do_not_zero_agreed_levels():

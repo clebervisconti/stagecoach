@@ -26,3 +26,16 @@ Composite recordings need a face box to find the camera tile. MediaPipe landmark
 
 - Tests never require a personal face. `FakeFaceDetector` covers unit tests. A `@pytest.mark.real_faces` path may use a cached CC0 frame and is skipped when that cache is absent.
 - Benchmarks on LION are recorded when O1 measures layout against the §13 90 s budget.
+
+## O1 measurements (22 Oct 2026)
+
+`python scripts/bench_online_cpu.py --run` on the synthetic `composite_pip_tr` fixture (2 s, 1920×1080). Host: Linux x86_64, Intel Xeon, 4 CPUs. This is fixture-scale, not the 60-min LION budget run.
+
+| Stage | §13 budget (s) | Measured (s) |
+|---|---|---|
+| ingest | 240 | 0.622 |
+| layout | 90 | 0.201 |
+| region_crops | 240 | 0.192 |
+| production_quality | 60 | 0.116 |
+
+PiP vs full-frame camera uses `FACE_FULL_RATIO = 0.28` so a ~0.20-height face tile stays `composite`.

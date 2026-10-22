@@ -34,6 +34,7 @@ export function ReportPlayer({
   const mediaRef = useRef<HTMLVideoElement>(null);
   const [src, setSrc] = useState(`/api/stagecoach/sessions/${sessionId}/media`);
   const [error, setError] = useState("");
+  const [mediaReady, setMediaReady] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [focusedLaneId, setFocusedLaneId] = useState<string | null>(null);
 
@@ -70,7 +71,7 @@ export function ReportPlayer({
         const body = (await response.json()) as { url?: string };
         if (active) setSrc(playbackProxyUrl(sessionId, body));
       } catch {
-        if (active) setError(t("playbackError"));
+        // The /media fallback still loads. Video onError clears the overlay and shows one message.
       }
     }
     void loadPlayback();
@@ -91,6 +92,7 @@ export function ReportPlayer({
   }, [captionUrl]);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (!mediaReady) return;
     const command = playerCommand(event);
     if (!command) return;
     event.preventDefault();
@@ -127,20 +129,37 @@ export function ReportPlayer({
         className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label={t("playerRegion")}
       >
-        <video
-          ref={mediaRef}
-          controls
-          preload="metadata"
-          className="w-full rounded-md bg-black"
-          src={src}
-          onTimeUpdate={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
-          onSeeked={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
-          onError={() => setError(t("playbackError"))}
-        >
-          {captionUrl && (
-            <track kind="captions" srcLang="en" src={captionUrl} label={t("transcript")} default />
+        <div className="relative aspect-video overflow-hidden rounded-md bg-black">
+          <video
+            ref={mediaRef}
+            controls
+            preload="metadata"
+            className="absolute inset-0 h-full w-full rounded-md bg-black"
+            src={src}
+            onLoadedMetadata={() => {
+              setMediaReady(true);
+              setError("");
+            }}
+            onTimeUpdate={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
+            onSeeked={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
+            onError={() => {
+              setMediaReady(true);
+              setError(t("playbackError"));
+            }}
+          >
+            {captionUrl && (
+              <track kind="captions" srcLang="en" src={captionUrl} label={t("transcript")} default />
+            )}
+          </video>
+          {!mediaReady && !error && (
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center bg-[color:var(--bg-muted)] px-6 text-center"
+              data-testid="player-empty"
+            >
+              <p className="text-sm text-[color:var(--text-secondary)]">{t("playerEmpty")}</p>
+            </div>
           )}
-        </video>
+        </div>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">{t("playerHelp")}</p>
       <ReportTimeline

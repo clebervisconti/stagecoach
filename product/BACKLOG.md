@@ -87,14 +87,14 @@ Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026, each exactly as
 
 **Blocked by:** O0, plus OD-3, OD-4, OD-6.
 
-- [ ] E1-1 Mode wizard. Stage uploads keep today's form.
-- [ ] E1-2 `tasks.prepare_session` and states `preparing` / `layout_review`.
-- [ ] E1-3 Single-layout detection.
-- [ ] E1-4 Layout API.
-- [ ] E1-5 Read-only layout review.
-- [ ] E1-6 Region crops. Vision on the camera crop. Slides on the screen crop.
-- [ ] E1-7 Production quality.
-- [ ] E1-8 Mode fusion, mode badge, core delivery score, N/A reasons.
+- [x] E1-1 Mode wizard. Stage uploads keep today's form.
+- [x] E1-2 `tasks.prepare_session` and states `preparing` / `layout_review`.
+- [x] E1-3 Single-layout detection.
+- [x] E1-4 Layout API.
+- [x] E1-5 Read-only layout review.
+- [x] E1-6 Region crops. Vision on the camera crop. Slides on the screen crop.
+- [x] E1-7 Production quality.
+- [x] E1-8 Mode fusion, mode badge, core delivery score, N/A reasons.
 
 ### SC-ONL-O2 — Correct, trim, gallery
 

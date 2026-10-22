@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseProgressData, pipelineTimeline, shouldReloadReport, stageProblem } from "./progress.ts";
+import { parseProgressData, pipelineStages, pipelineTimeline, sessionConsentOff, shouldReloadReport, stageProblem } from "./progress.ts";
 
 test("partial_ready carries scored category ids", () => {
   const event = parseProgressData(
@@ -95,6 +95,85 @@ test("a skipped vision step names the missing install", () => {
   const vision = view.find((stage) => stage.stage === "vision");
   assert.equal(vision?.status, "skipped");
   assert.equal(vision?.problem, "visionUnavailable");
+});
+
+test("consent-off comes from the explicit signal, not a skipped vision step", () => {
+  assert.equal(stageProblem("consent_denied:video_analysis"), "consent_video_off");
+  assert.equal(
+    sessionConsentOff({
+      consent: { video_analysis: true },
+      job: { steps: [{ stage: "vision", status: "skipped", problem: "visionUnavailable", message: "mediapipe_unavailable" }] },
+    }),
+    false,
+  );
+  assert.equal(
+    sessionConsentOff({
+      consent: { video_analysis: false },
+      job: { steps: [{ stage: "vision", status: "skipped", problem: "consent_video_off" }] },
+    }),
+    true,
+  );
+  assert.equal(
+    sessionConsentOff({
+      job: { steps: [{ stage: "layout", status: "skipped" }, { stage: "vision", status: "skipped" }] },
+    }),
+    false,
+  );
+});
+
+test("online pipeline lists layout and production quality and hides alignment", () => {
+  const stages = pipelineStages("webinar", "upload");
+  assert.equal(stages.includes("layout"), true);
+  assert.equal(stages.includes("production_quality"), true);
+  assert.equal(stages.includes("alignment"), false);
+  assert.deepEqual(pipelineStages("stage"), [
+    "ingest",
+    "asr",
+    "alignment",
+    "audio_features",
+    "partial_scoring",
+    "vision",
+    "slides",
+    "content_llm",
+    "fusion_scoring",
+    "report",
+  ]);
+});
+
+test("online timeline folds alignment into transcribing and keeps waiting", () => {
+  const view = pipelineTimeline(
+    [
+      { stage: "ingest", status: "succeeded" },
+      { stage: "asr", status: "succeeded", message: "Transcript ready" },
+      { stage: "alignment", status: "running", message: "Aligning words" },
+    ],
+    null,
+    { deliveryMode: "webinar" },
+  );
+  assert.equal(view.some((stage) => stage.stage === "alignment"), false);
+  assert.equal(view.find((stage) => stage.stage === "asr")?.status, "running");
+
+  const waiting = pipelineTimeline(
+    [{ stage: "layout_review", status: "waiting", message: "Check the layout" }],
+    null,
+    { deliveryMode: "webinar" },
+  );
+  assert.equal(waiting.find((stage) => stage.stage === "layout_review")?.status, "waiting");
+});
+
+test("online timeline marks layout_review done and starts the next row", () => {
+  const view = pipelineTimeline(
+    [
+      { stage: "ingest", status: "succeeded" },
+      { stage: "layout", status: "succeeded" },
+      { stage: "asr", status: "succeeded", message: "Transcript ready" },
+    ],
+    null,
+    { deliveryMode: "webinar", sessionStatus: "processing" },
+  );
+  assert.equal(view.find((stage) => stage.stage === "layout_review")?.status, "succeeded");
+  assert.equal(view.find((stage) => stage.stage === "layout_review")?.detail, "by_you");
+  assert.equal(view.find((stage) => stage.stage === "audio_features")?.status, "running");
 });
 
 test("legacy stage payloads without type still parse", () => {

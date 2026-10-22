@@ -11,6 +11,7 @@ type Session = {
   title: string;
   status: string;
   context_type: string;
+  delivery_mode?: string;
   language: string;
   created_at: string;
   overall: number | null;
@@ -28,12 +29,14 @@ export default function SessionsPage() {
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [uploadName, setUploadName] = useState("");
   const [error, setError] = useState("");
+  const [onlineModes, setOnlineModes] = useState<"unknown" | "on" | "off">("unknown");
 
   const loadSessions = useCallback(async () => {
     const response = await fetch("/api/stagecoach/sessions", { cache: "no-store" });
     if (!response.ok) throw new Error(t("loadError"));
     const body = await response.json();
     setSessions(body.sessions);
+    setError("");
   }, [t]);
 
   useEffect(() => {
@@ -42,6 +45,10 @@ export default function SessionsPage() {
         .catch((reason: Error) => setError(reason.message))
         .finally(() => setLoading(false));
     };
+    fetch("/api/stagecoach/me", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : { online_modes_enabled: false }))
+      .then((body: { online_modes_enabled?: boolean }) => setOnlineModes(body.online_modes_enabled ? "on" : "off"))
+      .catch(() => setOnlineModes("off"));
     const initial = window.setTimeout(refresh, 0);
     const timer = window.setInterval(() => {
       void loadSessions().catch(() => undefined);
@@ -97,7 +104,13 @@ export default function SessionsPage() {
         <button
           type="button"
           data-testid="new-session"
-          onClick={() => setShowForm((value) => !value)}
+          onClick={() => {
+            if (onlineModes === "on") {
+              router.push(`${prefix}/sessions/new?step=where`);
+              return;
+            }
+            setShowForm((value) => !value);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
@@ -206,7 +219,13 @@ export default function SessionsPage() {
           {sessions.map((session) => (
             <button
               key={session.id}
-              onClick={() => router.push(`${prefix}/sessions/${session.id}`)}
+              onClick={() =>
+                router.push(
+                  session.status === "layout_review"
+                    ? `${prefix}/sessions/${session.id}/layout`
+                    : `${prefix}/sessions/${session.id}`,
+                )
+              }
               className="flex items-center justify-between rounded-lg border bg-card p-5 text-left hover:bg-muted"
             >
               <div>
@@ -262,29 +281,41 @@ function uploadRecording(
 
 function nextAction(
   status: string,
-  t: (key: "openReport" | "watchProgress" | "seeFailure" | "startAnalysis") => string,
+  t: (key: "openReport" | "watchProgress" | "seeFailure" | "startAnalysis" | "checkLayout") => string,
 ): string {
   if (status === "ready" || status === "partial") return t("openReport");
   if (status === "failed") return t("seeFailure");
-  if (status === "processing" || status === "uploaded") return t("watchProgress");
+  if (status === "layout_review") return t("checkLayout");
+  if (status === "processing" || status === "uploaded" || status === "preparing") return t("watchProgress");
   return t("startAnalysis");
 }
 
 function statusClass(status: string): string {
   if (status === "ready") return "cs-status-success px-3 py-1";
   if (status === "failed") return "cs-status-critical px-3 py-1";
-  if (status === "partial") return "cs-status-warning px-3 py-1";
-  if (status === "processing" || status === "uploaded") return "cs-status-info px-3 py-1";
+  if (status === "partial" || status === "layout_review") return "cs-status-warning px-3 py-1";
+  if (status === "processing" || status === "uploaded" || status === "preparing") return "cs-status-info px-3 py-1";
   return "bg-muted px-3 py-1 text-xs uppercase tracking-[0.08em] text-muted-foreground";
 }
 
 function statusLabel(
   status: string,
-  t: (key: "statusReady" | "statusFailed" | "statusPartial" | "statusProcessing" | "statusCreated") => string,
+  t: (
+    key:
+      | "statusReady"
+      | "statusFailed"
+      | "statusPartial"
+      | "statusProcessing"
+      | "statusCreated"
+      | "statusPreparing"
+      | "statusLayoutReview",
+  ) => string,
 ): string {
   if (status === "ready") return t("statusReady");
   if (status === "failed") return t("statusFailed");
   if (status === "partial") return t("statusPartial");
+  if (status === "preparing") return t("statusPreparing");
+  if (status === "layout_review") return t("statusLayoutReview");
   if (status === "processing" || status === "uploaded") return t("statusProcessing");
   return t("statusCreated");
 }

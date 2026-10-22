@@ -22,11 +22,11 @@ function themeSnapshot() {
 }
 
 const LINKS = [
-  { key: "sessions", href: "/sessions", testId: undefined },
+  { key: "sessions", href: "/sessions", testId: "nav-sessions" },
   { key: "prep", href: "/prep", testId: "nav-prep" },
   { key: "trends", href: "/trends", testId: "nav-trends" },
-  { key: "research", href: "/research", testId: undefined },
-  { key: "settings", href: "/settings", testId: undefined },
+  { key: "research", href: "/research", testId: "nav-research" },
+  { key: "settings", href: "/settings", testId: "nav-settings" },
 ] as const;
 
 export function AppShell({ locale, email, children }: AppShellProps) {
@@ -44,7 +44,7 @@ export function AppShell({ locale, email, children }: AppShellProps) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex h-14 items-center justify-between gap-4 border-b px-4 md:px-6">
-        <Link href={`${prefix}/sessions`} className="flex flex-col leading-none">
+        <Link href={`${prefix}/sessions`} data-testid="brand" className="flex flex-col leading-none">
           <span className="cs-eyebrow">Cybersphere</span>
           <span className="cs-product">Stage Coach</span>
         </Link>
@@ -56,13 +56,18 @@ export function AppShell({ locale, email, children }: AppShellProps) {
           ) : null}
           <button
             type="button"
+            data-testid="theme-toggle"
             onClick={toggleTheme}
             aria-label={theme === "dark" ? t("themeToLightAria") : t("themeToDarkAria")}
             className="px-3 py-2 text-xs"
           >
             {theme === "dark" ? t("themeToLight") : t("themeToDark")}
           </button>
-          <Link href={locale === "en" ? "/pt-BR/sessions" : "/sessions"} className="cs-nav-link border-0 px-2">
+          <Link
+            href={locale === "en" ? "/pt-BR/sessions" : "/sessions"}
+            data-testid="locale-toggle"
+            className="cs-nav-link border-0 px-2"
+          >
             {locale === "en" ? "PT-BR" : "EN"}
           </Link>
         </div>

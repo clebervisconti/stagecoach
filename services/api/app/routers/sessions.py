@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
@@ -31,6 +31,7 @@ from app.deletion import (
 )
 from app.coaching import coaching_document, remember_baseline
 from app.consents.store import snapshot_for_user
+from app.na_codes import infer_na_code
 from app.session_plans import resolve_talk_plan
 from app.deck_safety import (
     ALLOWED_DECK_CONTENT_TYPES,
@@ -49,6 +50,7 @@ from app.models.job_step import JobStep
 from app.models.user import User
 from app.models.session import Session as SessionModel
 from app.models.session_layout import SessionLayout
+from app.online_flags import online_modes_flag, url_ingest_enabled, user_online_modes_enabled
 from app.models.media_asset import MediaAsset
 from app.models.metric_value import MetricValue
 from app.models.talk_plan import ObjectiveScore, TalkPlan
@@ -64,7 +66,8 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 # Configuration
 MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", "/data/stagecoach")).resolve()
-MAX_FILE_SIZE = int(os.getenv("MAX_UPLOAD_BYTES", str(500 * 1024 * 1024)))
+MAX_FILE_SIZE = int(os.getenv("MAX_UPLOAD_BYTES", str(2 * 1024 * 1024 * 1024)))
+MAX_DURATION_SECONDS = int(os.getenv("MAX_DURATION_SECONDS", str(120 * 60)))
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 ALLOWED_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv", ".m4a", ".mp3", ".wav", ".ogg", ".flac"}
 ALLOWED_CONTENT_TYPES = {
@@ -105,11 +108,7 @@ MEDIA_TYPES = {
 
 
 def online_modes_enabled() -> bool:
-    return os.getenv("ONLINE_MODES_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
-
-
-def url_ingest_enabled() -> bool:
-    return os.getenv("URL_INGEST_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+    return online_modes_flag()
 
 
 class AnalysisWindow(BaseModel):
@@ -152,6 +151,7 @@ class SessionCreate(BaseModel):
     rights_attested: bool = False
     analysis_window: Optional[AnalysisWindow] = None
     target_length_min: Optional[int] = Field(None, ge=1, le=180)
+    other_people_appear: bool = False
 
     @model_validator(mode="after")
     def _mode_defaults(self) -> "SessionCreate":
@@ -164,8 +164,8 @@ class SessionCreate(BaseModel):
         return self
 
 
-def gate_online_session_fields(session_data: SessionCreate) -> None:
-    """Reject online-only fields while ONLINE_MODES_ENABLED is off (O0/O4)."""
+def gate_online_session_fields(session_data: SessionCreate, email: Optional[str] = None) -> None:
+    """Reject online-only fields unless the flag is on for this account (OD-10)."""
     onlineish = (
         session_data.delivery_mode != "stage"
         or session_data.source_kind != "upload"
@@ -173,7 +173,7 @@ def gate_online_session_fields(session_data: SessionCreate) -> None:
         or session_data.analysis_window is not None
         or session_data.target_length_min is not None
     )
-    if onlineish and not online_modes_enabled():
+    if onlineish and not user_online_modes_enabled(email):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Online modes are not enabled",
@@ -186,6 +186,7 @@ def gate_online_session_fields(session_data: SessionCreate) -> None:
     needs_rights = (
         session_data.delivery_mode in {"webinar", "online_talk"}
         or session_data.source_kind == "url"
+        or (session_data.delivery_mode == "recorded_video" and session_data.other_people_appear)
     )
     if needs_rights and not session_data.rights_attested:
         raise HTTPException(
@@ -325,7 +326,7 @@ async def create_session(
     db: Session = Depends(get_db)
 ):
     """Create a private-beta session and return the authenticated upload route."""
-    gate_online_session_fields(session_data)
+    gate_online_session_fields(session_data, current_user.email)
     plan = resolve_talk_plan(db, current_user.id, session_data.talk_plan_id)
     attested_at = datetime.now(timezone.utc).replace(tzinfo=None) if session_data.rights_attested else None
     session = SessionModel(
@@ -419,6 +420,29 @@ async def list_sessions(
     ]}
 
 
+def _step_problem(step: JobStep) -> Optional[str]:
+    """Serialize an explicit skip/fail code. Consent-off is never inferred from a bare skip."""
+    metrics = step.metrics if isinstance(step.metrics, dict) else {}
+    error = step.error if isinstance(step.error, dict) else {}
+    raw = metrics.get("na_code") or metrics.get("reason") or metrics.get("message") or error.get("message")
+    if not raw:
+        return None
+    text = str(raw)
+    if "consent_denied" in text.lower() or text == "consent_video_off":
+        return "consent_video_off"
+    code = infer_na_code(text)
+    if code in {"consent_video_off", "vision_unavailable"}:
+        return code
+    return None
+
+
+def _video_analysis_granted(snapshot: dict, steps: list[dict]) -> bool:
+    if any(row.get("problem") == "consent_video_off" for row in steps):
+        return False
+    purposes = (snapshot or {}).get("purposes") or {}
+    return bool((purposes.get("video_analysis") or {}).get("granted"))
+
+
 @router.get("/{session_id}")
 async def get_session(
     session_id: str,
@@ -440,6 +464,24 @@ async def get_session(
             .order_by(JobStep.created_at.asc())
             .all()
         )
+    step_rows = [
+        {
+            "stage": step.stage,
+            "status": step.status,
+            "metrics": step.metrics,
+            "message": (
+                step.metrics.get("message") or step.metrics.get("reason")
+                if isinstance(step.metrics, dict)
+                else None
+            ),
+            "error": step.error.get("message") if isinstance(step.error, dict) else None,
+            "problem": _step_problem(step),
+            "started_at": step.started_at.isoformat() if step.started_at else None,
+            "finished_at": step.finished_at.isoformat() if step.finished_at else None,
+        }
+        for step in steps
+    ]
+    snapshot = snapshot_for_user(db, current_user.id)
     return {
         "id": str(session.id),
         "title": session.title,
@@ -451,31 +493,20 @@ async def get_session(
         "slot_min": session.slot_min,
         "qa_in_slot": session.qa_in_slot,
         "camera_setup": session.camera_setup,
+        "qa_included": session.qa_in_slot,
+        "target_length_min": getattr(session, "target_length_min", None),
+        "rights_attested_at": session.rights_attested_at.isoformat()
+        if getattr(session, "rights_attested_at", None)
+        else None,
         "created_at": session.created_at.isoformat(),
+        "consent": {"video_analysis": _video_analysis_granted(snapshot, step_rows)},
         "job": (
             {
                 "id": str(job.id),
                 "status": job.status,
                 "error": job.error,
                 "created_at": job.created_at.isoformat(),
-                "steps": [
-                    {
-                        "stage": step.stage,
-                        "status": step.status,
-                        "metrics": step.metrics,
-                        "message": (
-                            step.metrics.get("message") or step.metrics.get("reason")
-                            if isinstance(step.metrics, dict)
-                            else None
-                        ),
-                        "error": step.error.get("message")
-                        if isinstance(step.error, dict)
-                        else None,
-                        "started_at": step.started_at.isoformat() if step.started_at else None,
-                        "finished_at": step.finished_at.isoformat() if step.finished_at else None,
-                    }
-                    for step in steps
-                ],
+                "steps": step_rows,
             }
             if job
             else None
@@ -483,10 +514,38 @@ async def get_session(
     }
 
 
+def _probe_duration_seconds(path: Path) -> Optional[float]:
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "csv=p=0",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+        raw = (result.stdout or "").strip()
+        return float(raw) if raw else None
+    except (subprocess.CalledProcessError, ValueError, FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+
+
 @router.post("/{session_id}/upload", status_code=status.HTTP_202_ACCEPTED)
 async def upload_and_analyze(
     session_id: str,
     file: UploadFile = File(...),
+    rights_attested: bool = Form(False),
+    role: str = Form("primary"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -494,6 +553,25 @@ async def upload_and_analyze(
     session = _owned_session(session_id, current_user, db)
     if session.status not in {"created", "failed"}:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Session already uploaded")
+    _ = role
+    delivery_mode = getattr(session, "delivery_mode", "stage") or "stage"
+    if delivery_mode != "stage" and not user_online_modes_enabled(current_user.email):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Online modes are not enabled")
+    needs_rights = delivery_mode in {"webinar", "online_talk"}
+    if needs_rights and not (rights_attested or session.rights_attested_at):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="rights_attested is required")
+    if rights_attested and session.rights_attested_at is None:
+        session.rights_attested_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        db.add(
+            AuditLog(
+                actor_id=current_user.id,
+                action="rights_attested",
+                target_type="session",
+                target_id=str(session.id),
+                at=session.rights_attested_at,
+                details={"attested": True},
+            )
+        )
 
     original_name = file.filename or ""
     extension = Path(original_name).suffix.casefold()
@@ -516,9 +594,10 @@ async def upload_and_analyze(
             while chunk := await file.read(1024 * 1024):
                 total += len(chunk)
                 if total > MAX_FILE_SIZE:
+                    limit_gb = MAX_FILE_SIZE / (1024 ** 3)
                     raise HTTPException(
                         status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail="Upload exceeds the private-beta size limit",
+                        detail=f"This file is larger than {limit_gb:g} GB. Trim it or export at 720p.",
                     )
                 digest.update(chunk)
                 destination.write(chunk)
@@ -533,6 +612,15 @@ async def upload_and_analyze(
         stored_path.unlink(missing_ok=True)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty")
 
+    duration = _probe_duration_seconds(stored_path)
+    if duration is not None and duration > MAX_DURATION_SECONDS:
+        stored_path.unlink(missing_ok=True)
+        limit_min = int(MAX_DURATION_SECONDS / 60)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"This recording is longer than {limit_min} minutes.",
+        )
+
     policy = normalize_retention_policy(getattr(current_user, "retention_policy", None))
     retention_until = retention_until_for(policy, datetime.utcnow(), event="upload")
     asset = MediaAsset(
@@ -546,7 +634,7 @@ async def upload_and_analyze(
     )
     job = AnalysisJob(
         session_id=session.id,
-        scoring_config_version="1.0.0",
+        scoring_config_version="1.1.0",
         pipeline_version="0.2.0",
         status="pending",
     )
@@ -558,29 +646,31 @@ async def upload_and_analyze(
 
     output_dir = session_dir / str(job.id)
     celery = Celery("stagecoach-api", broker=REDIS_URL, backend=REDIS_URL)
-    celery.send_task(
-        "tasks.run_mvp_analysis",
-        kwargs={
-            "job_id": str(job.id),
-            "session_id": str(session.id),
-            "input_path": str(stored_path),
-            "output_dir": str(output_dir),
-            "context_type": session.context_type,
-            "language": session.language,
-            "slot_min": session.slot_min,
-            "consents": snapshot_for_user(db, current_user.id),
-            "camera_setup": session.camera_setup,
-            "accessibility_profile": current_user.accessibility_profile or {},
-            "retention_policy": policy,
-            "llm_settings": getattr(current_user, "llm_settings", None) or {},
-            "qa_in_slot": bool(session.qa_in_slot),
-            "audience_desc": session.audience_desc,
-        },
-        queue="cpu",
-    )
-    session.status = "processing"
+    online = delivery_mode != "stage"
+    task_name = "tasks.prepare_session" if online else "tasks.run_mvp_analysis"
+    kwargs = {
+        "job_id": str(job.id),
+        "session_id": str(session.id),
+        "input_path": str(stored_path),
+        "output_dir": str(output_dir),
+        "context_type": session.context_type,
+        "language": session.language,
+        "slot_min": session.slot_min,
+        "consents": snapshot_for_user(db, current_user.id),
+        "camera_setup": session.camera_setup,
+        "accessibility_profile": current_user.accessibility_profile or {},
+        "retention_policy": policy,
+        "llm_settings": getattr(current_user, "llm_settings", None) or {},
+        "qa_in_slot": bool(session.qa_in_slot),
+        "audience_desc": session.audience_desc,
+    }
+    if online:
+        kwargs["delivery_mode"] = delivery_mode
+        kwargs["source_kind"] = getattr(session, "source_kind", "upload") or "upload"
+    celery.send_task(task_name, kwargs=kwargs, queue="cpu")
+    session.status = "preparing" if online else "processing"
     db.commit()
-    return {"session_id": str(session.id), "job_id": str(job.id), "status": "processing"}
+    return {"session_id": str(session.id), "job_id": str(job.id), "status": session.status}
 
 
 @router.post("/{session_id}/deck", status_code=status.HTTP_201_CREATED)

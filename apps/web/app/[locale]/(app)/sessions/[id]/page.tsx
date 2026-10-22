@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { AlertTriangle, FileDown, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, FileDown, Trash2 } from "lucide-react";
 import type { AnalysisReport } from "@/lib/report-types";
 import { CategoryCards } from "@/components/report/category-cards";
 import { InsightsPanel } from "@/components/report/insights-panel";
@@ -19,8 +19,13 @@ import { VoiceTab } from "@/components/report/voice-tab";
 import type { BodyPayload, SlidesPayload } from "@/lib/body-slides";
 import { exportFileUrl, exportStatusUrl, exportUrl } from "@/lib/pdf-export";
 import { formatTimestamp } from "@/lib/player";
-import { eventsUrl, parseProgressData, shouldReloadReport, type StageProgressEvent, type StepSnapshot } from "@/lib/progress";
+import { eventsUrl, parseProgressData, sessionConsentOff, shouldReloadReport, type StageProgressEvent, type StepSnapshot } from "@/lib/progress";
 import { ProcessingTimeline } from "@/components/report/processing-timeline";
+import { NotMeasured } from "@/components/report/not-measured";
+import { PreparingPanel } from "@/components/sessions/preparing-panel";
+import { WizardStepper } from "@/components/sessions/new/wizard-stepper";
+import { formatClock, type DeliveryMode } from "@/lib/online";
+import { Globe, Mic, Play, Users } from "lucide-react";
 import { goalRadarPoints, radarPoints, type GoalLike } from "@/lib/report-view";
 import { exportVtt, type TranscriptPayload } from "@/lib/transcript";
 import type { TimelinePayload } from "@/lib/timeline";
@@ -31,9 +36,13 @@ type SessionDetail = {
   title: string;
   status: string;
   context_type: string;
+  delivery_mode?: string;
+  source_kind?: string;
   language: string;
   slot_min: number | null;
   created_at: string;
+  media?: { duration_s?: number | null } | null;
+  consent?: { video_analysis?: boolean } | null;
   job: null | {
     status: string;
     error: { message?: string } | null;
@@ -41,6 +50,17 @@ type SessionDetail = {
     steps: StepSnapshot[];
   };
 };
+
+function isAutoConfirmed(steps: StepSnapshot[] | undefined): boolean {
+  return Boolean(
+    steps?.some(
+      (step) =>
+        step.stage === "layout_review" &&
+        step.status === "succeeded" &&
+        (step.detail === "confirmed_automatically" || step.message === "Confirmed automatically"),
+    ),
+  );
+}
 
 function isReport(value: unknown): value is AnalysisReport {
   if (!value || typeof value !== "object") return false;
@@ -203,23 +223,41 @@ export default function SessionPage() {
   }
 
   if (!session && !error) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <SessionSkeleton />;
   }
 
-  const durationMin = report?.media?.duration_s ? report.media.duration_s / 60 : null;
+  const showPrepare =
+    session?.status === "preparing" ||
+    session?.status === "layout_review" ||
+    (session?.status === "failed" && !report);
+  const durationS = session?.media?.duration_s ?? report?.media?.duration_s ?? null;
+  const durationMin = durationS ? durationS / 60 : null;
   const slotLabel =
     session?.slot_min && durationMin
       ? `${session.slot_min} ${t("minutes")} → ${durationMin.toFixed(1)} ${t("minutes")}`
-      : session?.slot_min
-        ? `${session.slot_min} ${t("minutes")}`
-        : null;
+      : null;
+  const autoConfirmed = isAutoConfirmed(session?.job?.steps);
+  const consentOff = session ? sessionConsentOff(session) : false;
+  const layoutDone =
+    Boolean(session?.job?.steps?.some((step) => step.stage === "layout_review" && (step.status === "succeeded" || step.status === "skipped"))) ||
+    session?.status === "processing" ||
+    session?.status === "ready" ||
+    session?.status === "partial";
 
   return (
     <div className="container mx-auto space-y-8 px-4 py-8">
+      {session?.delivery_mode && session.delivery_mode !== "stage" && (showPrepare || session.status === "processing") && (
+        <WizardStepper
+          mode={session.delivery_mode as DeliveryMode}
+          current="layout"
+          layoutDone={layoutDone}
+          autoConfirmed={autoConfirmed}
+          consentOff={consentOff}
+          onSelect={(id) => {
+            if (id === "layout" && session) router.push(`${sessionsPath}/${session.id}/layout`);
+          }}
+        />
+      )}
       <div className="flex items-start justify-between gap-4">
         <div>
           <button
@@ -230,14 +268,25 @@ export default function SessionPage() {
             ← {t("back")}
           </button>
           <h1 className="text-3xl font-bold">{session?.title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {session?.created_at ? new Date(session.created_at).toLocaleString(locale) : ""}
-            {session?.context_type ? ` · ${session.context_type.replaceAll("_", " ")}` : ""}
-            {session?.language ? ` · ${session.language}` : ""}
-            {slotLabel ? ` · ${t("slotVsActual")}: ${slotLabel}` : ""}
-            {report?.overall.partial ? ` · ${t("partial")}` : ""}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+            {session?.delivery_mode && session.delivery_mode !== "stage" && (
+              <ModeBadge
+                mode={session.delivery_mode as DeliveryMode}
+                kinds={report?.layout_summary?.kinds}
+                camera={report?.layout_summary?.camera_visible_ratio}
+                screen={report?.layout_summary?.screen_visible_ratio}
+                compact={showPrepare || !report}
+                consentOff={consentOff}
+              />
+            )}
+            <p className="font-mono text-xs uppercase tracking-[0.08em]">
+              {sessionMeta(session?.created_at, locale, report?.media?.duration_s, session?.language)}
+              {slotLabel ? ` · ${t("slotVsActual")}: ${slotLabel}` : ""}
+              {report?.overall.partial ? ` · ${t("partial")}` : ""}
+            </p>
+          </div>
         </div>
+        {!showPrepare && (
         <div className="flex flex-col items-end gap-2">
           {report && (
             <div className="flex flex-wrap items-center gap-2">
@@ -271,6 +320,7 @@ export default function SessionPage() {
           <Trash2 className="h-4 w-4" aria-hidden="true" /> {t("delete")}
         </button>
         </div>
+        )}
       </div>
 
       {error && (
@@ -279,15 +329,43 @@ export default function SessionPage() {
         </div>
       )}
 
-      {!terminal && session && (
+      {showPrepare && session && (
+        <PreparingPanel
+          title={session.title}
+          posterUrl={`/api/stagecoach/sessions/${session.id}/poster`}
+          durationS={durationS}
+          steps={session.job?.steps ?? []}
+          startedAt={session.job?.created_at ?? session.created_at}
+          failed={session.status === "failed" ? session.job?.error?.message || "unreadable" : null}
+          skipReview={autoConfirmed}
+        />
+      )}
+
+      {session?.status === "layout_review" && (
+        <div role="status" className="rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] p-4">
+          <a href={`${sessionsPath}/${session.id}/layout`} className="text-xs uppercase tracking-[0.08em]">
+            Check the layout
+          </a>
+          <p className="mt-2 text-sm text-[color:var(--text-secondary)]">
+            Confirm the layout before we analyse this recording.
+          </p>
+        </div>
+      )}
+
+      {!terminal && session && !showPrepare && (
         <ProcessingTimeline
           steps={session.job?.steps ?? []}
           live={live}
           startedAt={session.job?.created_at ?? session.created_at}
+          deliveryMode={session.delivery_mode}
+          sourceKind={session.source_kind}
+          sessionStatus={session.status}
+          autoConfirmed={autoConfirmed}
+          consentOff={consentOff}
         />
       )}
 
-      {terminal && session && (
+      {terminal && session && !showPrepare && (
         <ProcessingTimeline
           mode="notes"
           steps={session.job?.steps ?? []}
@@ -296,7 +374,7 @@ export default function SessionPage() {
         />
       )}
 
-      {session?.status === "failed" && (
+      {session?.status === "failed" && !showPrepare && (
         <section className="rounded-lg border border-destructive/40 bg-destructive/10 p-6">
           <div className="flex items-center gap-2 font-semibold">
             <AlertTriangle className="h-5 w-5" /> {t("failed")}
@@ -305,7 +383,7 @@ export default function SessionPage() {
         </section>
       )}
 
-      {report && (
+      {report && !showPrepare && (
         <div data-testid="report" className="space-y-8">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
             <SummaryCard report={report} />
@@ -327,9 +405,20 @@ export default function SessionPage() {
             />
             <KeyMetrics report={report} />
           </div>
+          <NotMeasured report={report} />
           <div>
             <div role="tablist" aria-label={t("tabs")} className="mb-4 flex flex-wrap gap-2">
-              {(["categories", "transcript", "voice", "timeline", "body", "slides", "objectives"] as const).map((id) => (
+              {(
+                [
+                  "categories",
+                  "transcript",
+                  "voice",
+                  "timeline",
+                  ...(session?.delivery_mode && session.delivery_mode !== "stage" ? [] : (["body"] as const)),
+                  "slides",
+                  "objectives",
+                ] as const
+              ).map((id) => (
                 <button
                   key={id}
                   type="button"
@@ -420,5 +509,73 @@ export default function SessionPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function sessionMeta(
+  createdAt: string | undefined,
+  locale: string,
+  durationS?: number | null,
+  language?: string | null,
+): string {
+  const parts: string[] = [];
+  if (createdAt) {
+    parts.push(new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric" }).format(new Date(createdAt)));
+  }
+  if (durationS) parts.push(formatClock(durationS));
+  if (language) parts.push(language.replace("pt-BR", "PT-BR").toUpperCase());
+  return parts.join(" · ");
+}
+
+function SessionSkeleton() {
+  return (
+    <div className="container mx-auto space-y-8 px-4 py-8" data-testid="session-skeleton">
+      <div className="h-4 w-24 bg-[color:var(--bg-muted)]" />
+      <div className="h-10 w-72 bg-[color:var(--bg-muted)]" />
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="aspect-video bg-[color:var(--bg-muted)]" />
+        <div className="h-64 bg-[color:var(--bg-muted)]" />
+      </div>
+    </div>
+  );
+}
+
+function ModeBadge({
+  mode,
+  kinds,
+  camera,
+  screen,
+  compact = false,
+  consentOff = false,
+}: {
+  mode: DeliveryMode;
+  kinds?: string[];
+  camera?: number | null;
+  screen?: number | null;
+  compact?: boolean;
+  consentOff?: boolean;
+}) {
+  const Icon = mode === "stage" ? Mic : mode === "webinar" ? Users : mode === "online_talk" ? Globe : Play;
+  const hasCamera = (camera ?? 0) > 0 || kinds?.some((kind) => kind.includes("camera") || kind === "composite");
+  const hasScreen = (screen ?? 0) > 0 || kinds?.some((kind) => kind.includes("screen") || kind === "composite");
+  const t = useTranslations("online");
+  const half = consentOff
+    ? t("setupAudio")
+    : hasCamera && hasScreen
+      ? t("composition.cameraScreen")
+      : hasCamera
+        ? t("composition.camera")
+        : hasScreen
+          ? t("composition.screen")
+          : t("composition.none");
+  const label = t(`modes.${mode}.title`);
+  return (
+    <span
+      className="inline-flex items-center gap-2 rounded-full border border-[color:var(--line-strong)] px-3 py-1 text-xs uppercase tracking-[0.08em] text-[color:var(--text-strong)]"
+      aria-label={compact ? `Mode: ${label.toLowerCase()}` : `Mode: ${label.toLowerCase()}, ${half.toLowerCase()}`}
+    >
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+      {compact ? label : `${label} · ${half}`}
+    </span>
   );
 }

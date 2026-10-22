@@ -30,6 +30,8 @@ SWEEPABLE_KINDS = frozenset({"original", "playback", "audio16k", "analysis_proxy
 EPHEMERAL_NAMES = {
     "audio16k": "audio16k.wav",
     "analysis_proxy": "analysis.mp4",
+    "camera_crop": "camera.mp4",
+    "screen_crop": "screen.mp4",
 }
 
 

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # Limits per SPEC §6.2 (heuristic)
 MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB
-MAX_DURATION_SECONDS = 90 * 60  # 90 minutes
+MAX_DURATION_SECONDS = int(os.getenv("MAX_DURATION_SECONDS", str(120 * 60)))  # OD-6: 120 minutes
 SPRITE_INTERVAL_SECONDS = 5
 
 # Supported containers and codecs

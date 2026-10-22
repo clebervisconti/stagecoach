@@ -4,6 +4,7 @@
 
 ### Added
 
+- Phase O1 walking skeleton: wizard, prepare_session, read-only layout review, production quality, N/A codes, and the online report header. Online modes stay behind the flag and Cleber's allowlisted account.
 - Phase O0 foundations for online and recorded session analysis: scoring 1.1.0, YuNet layout detector, migration 011, synthetic fixtures. `ONLINE_MODES_ENABLED` stays off. Stage scoring is unchanged. OD-1–OD-10 are approved as the spec recommends (22 Oct 2026).
 
 ## [0.4.0] - 2026-10-17

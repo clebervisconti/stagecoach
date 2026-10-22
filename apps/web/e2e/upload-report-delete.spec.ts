@@ -7,6 +7,10 @@ async function uploadTalk(
   language: "en" | "pt-BR",
 ) {
   await page.getByTestId("new-session").click();
+  if (!(await page.getByTestId("session-form").isVisible().catch(() => false))) {
+    await page.getByTestId("new-session").click();
+  }
+  await expect(page.getByTestId("session-form")).toBeVisible();
   await expect(page.getByTestId("consent-panel")).toBeVisible();
   await expect(page.getByTestId("consent-video_analysis")).toBeVisible();
   await page.locator('input[name="title"]').fill(title);

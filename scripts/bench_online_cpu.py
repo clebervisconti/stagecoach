@@ -70,7 +70,7 @@ def _time_ingest(source: Path, dest: Path) -> float:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--run", action="store_true", help="Time fixture generate + ingest")
+    parser.add_argument("--run", action="store_true", help="Time fixture generate + ingest + layout + crops")
     parser.add_argument("--out", type=Path, help="Write JSON timings")
     args = parser.parse_args()
 
@@ -79,8 +79,8 @@ def main() -> None:
         "budgets_s": BUDGETS_S,
         "measured_s": {},
         "notes": (
-            "O0 skeleton. layout/region_crops/screen_flow/camera_presence/"
-            "production_quality/online_flow_v1 are not timed until those stages exist."
+            "O1 measures ingest, layout, region_crops, and production_quality on the "
+            "synthetic composite fixture. screen_flow and camera_presence stay O3/O4."
         ),
     }
     print("Stage                 budget_s  measured_s")
@@ -88,13 +88,44 @@ def main() -> None:
     if args.run:
         import tempfile
 
+        from pipeline.layout.crop import write_region_tracks
+        from pipeline.layout.detect import detect_layout
+        from pipeline.layout.faces import FaceDetection, FakeFaceDetector
+        from pipeline.stages.production_quality import run_production_quality
+
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             gen_s = _time_generate(tmp_path)
             source = tmp_path / "composite_pip_tr" / "source.mp4"
             ingest_s = _time_ingest(source, tmp_path / "ingest")
+            layout_dir = tmp_path / "layout"
+            started = time.perf_counter()
+            layout = detect_layout(
+                source,
+                layout_dir,
+                duration_s=2.0,
+                frame_width=1920,
+                frame_height=1080,
+                detector=FakeFaceDetector([FaceDetection(x=820, y=20, w=90, h=110, score=0.92)]),
+                preview_source=source,
+            )
+            layout_s = time.perf_counter() - started
+            started = time.perf_counter()
+            write_region_tracks(source, layout_dir, layout, frame_width=1920, frame_height=1080)
+            crop_s = time.perf_counter() - started
+            started = time.perf_counter()
+            run_production_quality(
+                output_dir=tmp_path / "pq",
+                media_path=source,
+                audio_metrics={"snr_db": 24.0},
+                source_height=1080,
+            )
+            pq_s = time.perf_counter() - started
             result["measured_s"]["fixture_generate"] = round(gen_s, 3)
             result["measured_s"]["ingest"] = round(ingest_s, 3)
+            result["measured_s"]["layout"] = round(layout_s, 3)
+            result["measured_s"]["region_crops"] = round(crop_s, 3)
+            result["measured_s"]["production_quality"] = round(pq_s, 3)
     for name, budget in BUDGETS_S.items():
         measured = result["measured_s"].get(name)
         budget_txt = f"{budget:>8}" if budget is not None else "   n/a  "

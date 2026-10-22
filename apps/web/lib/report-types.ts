@@ -57,6 +57,7 @@ export type ReportCategory = {
   pillar: string;
   applicable: boolean;
   na_reason: string | null;
+  na_code?: string | null;
   score: number | null;
   level: number | null;
   confidence: number | null;
@@ -108,6 +109,20 @@ export type AnalysisReport = {
     qa_in_slot: boolean;
     camera_setup: string;
     talk_plan_id: string | null;
+    delivery_mode?: string;
+    source_kind?: string;
+  };
+  core_delivery?: {
+    score: number | null;
+    confidence?: number | null;
+    categories?: string[];
+  };
+  layout_summary?: {
+    kinds?: string[];
+    camera_visible_ratio?: number | null;
+    screen_visible_ratio?: number | null;
+    version?: number;
+    status?: string;
   };
   provenance?: {
     scoring_config_version?: string;

@@ -27,6 +27,10 @@ const NAMED_CATEGORIES = new Set<string>([
   "energy_presence",
   "time_management",
   "qa",
+  "screen_flow",
+  "on_camera_presence",
+  "online_engagement",
+  "production_quality",
 ]);
 const ENABLE_HINTS = new Set(["visual_aids", "gestures_body", "eye_contact", "facial_affect", "qa"]);
 const KEY_METRIC_SET = new Set<string>(KEY_METRIC_IDS);
@@ -34,6 +38,7 @@ import { useLocale } from "next-intl";
 import Link from "next/link";
 import { formatTimestamp } from "@/lib/player";
 import { referencesHref } from "@/lib/research-sources";
+import { isNaCode } from "@/lib/online";
 import { categoriesByPillar, evidenceById, metricsById } from "@/lib/report-view";
 import { MetricInfo } from "./metric-info";
 
@@ -65,6 +70,7 @@ function CategoryCard({
   onSeek?: (tStart: number) => void;
 }) {
   const t = useTranslations("report");
+  const onlineT = useTranslations("online");
   const locale = useLocale();
   const prefix = locale === "en" ? "" : `/${locale}`;
   const metrics = metricsById(report);
@@ -106,7 +112,11 @@ function CategoryCard({
       )}
       {unavailable && (
         <div className="mt-3 space-y-2 text-sm">
-          <p>{category.na_reason || t("unavailable")}</p>
+          <p>
+            {isNaCode(category.na_code)
+              ? onlineT(`na.${category.na_code}`)
+              : t("unavailable")}
+          </p>
           {enable && <p>{enable}</p>}
         </div>
       )}
@@ -118,8 +128,8 @@ function CategoryCard({
               <ul className="mt-2 space-y-2">
                 {category.top_contributors.slice(0, 2).map((metricId) => {
                   const metric = metrics.get(metricId);
-                  const label = KEY_METRIC_SET.has(metricId)
-                    ? t(`keyMetrics.${metricId as (typeof KEY_METRIC_IDS)[number]}`)
+                  const label = KEY_METRIC_SET.has(metricId) || metricId === "fl_filler_words_per_min"
+                    ? t(`keyMetrics.${metricId as (typeof KEY_METRIC_IDS)[number] | "fl_filler_words_per_min"}`)
                     : metricId.replaceAll("_", " ");
                   const definition = KEY_METRIC_SET.has(metricId)
                     ? t(`keyMetricDefinitions.${metricId as (typeof KEY_METRIC_IDS)[number]}`)
