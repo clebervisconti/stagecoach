@@ -10,7 +10,7 @@ import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import redis
 from celery import Celery
@@ -70,6 +70,7 @@ app.conf.update(
         "tasks.fusion_scoring": {"queue": "cpu"},
         "tasks.report": {"queue": "cpu"},
         "tasks.run_mvp_analysis": {"queue": "cpu"},
+        "tasks.prepare_session": {"queue": "cpu"},
         "tasks.export_pdf": {"queue": "cpu"},
         "tasks.retention_sweeper": {"queue": "cpu"},
         "tasks.prep_llm": {"queue": "llm"},
@@ -177,11 +178,105 @@ def _set_job_state(job_id: str, session_id: str, status: str, error: Optional[di
                     "succeeded": "ready",
                     "partial": "partial",
                     "failed": "failed",
+                    "preparing": "preparing",
+                    "layout_review": "layout_review",
                 }.get(status, status),
                 "now": now,
                 "session_id": session_id,
             },
         )
+
+
+def _sql_scalar(query: str, params: dict) -> Any:
+    if not DATABASE_URL:
+        return None
+    engine = create_engine(DATABASE_URL)
+    with engine.begin() as conn:
+        return conn.execute(text(query), params).scalar()
+
+
+def _confirmed_online_layouts(session_id: str) -> int:
+    if not DATABASE_URL:
+        return 0
+    value = _sql_scalar(
+        """
+        SELECT COUNT(*)
+        FROM session_layouts sl
+        JOIN sessions s ON s.id = sl.session_id
+        WHERE s.user_id = (SELECT user_id FROM sessions WHERE id = CAST(:sid AS UUID))
+          AND s.delivery_mode <> 'stage'
+          AND sl.status IN ('confirmed', 'auto_confirmed')
+        """,
+        {"sid": session_id},
+    )
+    return int(value or 0)
+
+
+def _layout_review_pref(session_id: str) -> str:
+    if not DATABASE_URL:
+        return "when_unsure"
+    value = _sql_scalar(
+        """
+        SELECT u.layout_review_pref
+        FROM users u
+        JOIN sessions s ON s.user_id = u.id
+        WHERE s.id = CAST(:sid AS UUID)
+        """,
+        {"sid": session_id},
+    )
+    return str(value or "when_unsure")
+
+
+def _persist_session_layout(
+    *,
+    session_id: str,
+    job_id: str,
+    layout: dict,
+    status: str,
+) -> None:
+    if not DATABASE_URL:
+        return
+    engine = create_engine(DATABASE_URL)
+    now = datetime.utcnow()
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                INSERT INTO session_layouts (
+                    id, session_id, job_id, version, status, detector_version,
+                    confidence, detected, confirmed, edit_count, created_at, confirmed_at
+                ) VALUES (
+                    gen_random_uuid(), CAST(:sid AS UUID), CAST(:jid AS UUID),
+                    :version, :status, :detector, :confidence,
+                    CAST(:detected AS JSONB),
+                    CAST(:confirmed AS JSONB),
+                    0, :now,
+                    CASE WHEN :status IN ('confirmed', 'auto_confirmed') THEN :now ELSE NULL END
+                )
+                ON CONFLICT (job_id, version) DO UPDATE SET
+                    status = EXCLUDED.status,
+                    confidence = EXCLUDED.confidence,
+                    detected = EXCLUDED.detected,
+                    confirmed = EXCLUDED.confirmed,
+                    confirmed_at = EXCLUDED.confirmed_at
+                """
+            ),
+            {
+                "sid": session_id,
+                "jid": job_id,
+                "version": int(layout.get("version") or 1),
+                "status": status,
+                "detector": str(layout.get("detector_version") or "1.0.0"),
+                "confidence": float(layout.get("confidence") or 0),
+                "detected": json.dumps(layout),
+                "confirmed": json.dumps(layout) if status in {"confirmed", "auto_confirmed"} else None,
+                "now": now,
+            },
+        )
+
+
+def _enqueue_mvp_analysis(kwargs: dict) -> None:
+    run_mvp_analysis_task.apply_async(kwargs=kwargs, queue="cpu")
 
 
 def _note_running_stage(job_id: str, stage: str, message: Optional[str]) -> None:
@@ -914,6 +1009,134 @@ def report_task(
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
 
 
+@app.task(name="tasks.prepare_session", bind=True, max_retries=1)
+def prepare_session_task(
+    self,
+    *,
+    job_id: str,
+    session_id: str,
+    input_path: str,
+    output_dir: str,
+    context_type: str,
+    language: str,
+    slot_min: Optional[int] = None,
+    consents: Optional[dict] = None,
+    camera_setup: str = "unknown",
+    accessibility_profile: Optional[dict] = None,
+    retention_policy: Optional[str] = None,
+    llm_settings: Optional[dict] = None,
+    qa_in_slot: bool = False,
+    audience_desc: Optional[str] = None,
+    delivery_mode: str = "webinar",
+    source_kind: str = "upload",
+):
+    """Ingest + single-layout detection. Enqueue analysis or wait for review."""
+    from pipeline.consent import decide_vision
+    from pipeline.prepare import prepare_session
+
+    destination = Path(output_dir)
+    destination.mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger(__name__)
+    _set_job_state(job_id, session_id, "preparing")
+    started = datetime.utcnow()
+    emit_progress(job_id, "ingest", "running", pct=5, message="Validating media", session_id=session_id)
+    try:
+        snapshot = consents or {}
+        video_ok = bool(decide_vision(snapshot).run_pose)
+        result = prepare_session(
+            input_path=Path(input_path),
+            output_dir=destination,
+            session_id=session_id,
+            delivery_mode=delivery_mode,
+            video_analysis_consent=video_ok,
+            layout_review_pref=_layout_review_pref(session_id),
+            confirmed_layout_count=_confirmed_online_layouts(session_id),
+        )
+        ingest_dict = result["ingest"]
+        _record_job_step(
+            job_id=job_id,
+            stage="ingest",
+            status="succeeded",
+            started_at=started,
+            outputs=ingest_dict.get("artifacts"),
+            metrics=ingest_dict.get("media_info"),
+        )
+        emit_progress(job_id, "ingest", "succeeded", pct=40, message="Media prepared", session_id=session_id)
+
+        layout = result.get("layout")
+        if not result.get("skip_layout") and layout is not None:
+            emit_progress(
+                job_id,
+                "layout",
+                "running",
+                pct=55,
+                message="Looking for where your camera and your screen sit in the frame.",
+                session_id=session_id,
+            )
+            layout_started = datetime.utcnow()
+            _record_job_step(
+                job_id=job_id,
+                stage="layout",
+                status="succeeded",
+                started_at=layout_started,
+                outputs={"layout": str(destination / "layout.json")},
+                metrics={"confidence": layout.get("confidence"), "kind": (layout.get("segments") or [{}])[0].get("kind")},
+            )
+            emit_progress(job_id, "layout", "succeeded", pct=80, message="Layout ready", session_id=session_id)
+            status = "auto_confirmed" if result.get("auto_confirmed") else "detected"
+            layout["status"] = status
+            (destination / "layout.json").write_text(json.dumps(layout, indent=2) + "\n")
+            _persist_session_layout(session_id=session_id, job_id=job_id, layout=layout, status=status)
+
+        analysis_kwargs = {
+            "job_id": job_id,
+            "session_id": session_id,
+            "input_path": input_path,
+            "output_dir": output_dir,
+            "context_type": context_type,
+            "language": language,
+            "slot_min": slot_min,
+            "consents": consents,
+            "camera_setup": camera_setup,
+            "accessibility_profile": accessibility_profile,
+            "retention_policy": retention_policy,
+            "llm_settings": llm_settings,
+            "qa_in_slot": qa_in_slot,
+            "audience_desc": audience_desc,
+            "delivery_mode": delivery_mode,
+            "source_kind": source_kind,
+            "skip_ingest": True,
+            "audio_only_chosen": bool(result.get("audio_only")),
+        }
+        if result["status"] == "layout_review":
+            _set_job_state(job_id, session_id, "layout_review")
+            emit_progress(
+                job_id,
+                "layout_review",
+                "waiting",
+                pct=90,
+                message="Check the layout",
+                session_id=session_id,
+            )
+            return {"job_id": job_id, "session_id": session_id, "status": "layout_review"}
+        emit_progress(
+            job_id,
+            "layout_review",
+            "succeeded",
+            pct=95,
+            message="Layout confirmed automatically",
+            session_id=session_id,
+        )
+        _enqueue_mvp_analysis(analysis_kwargs)
+        return {"job_id": job_id, "session_id": session_id, "status": "processing"}
+    except Exception as exc:
+        safe_error = {"type": type(exc).__name__, "message": str(exc)[:500]}
+        logger.exception("prepare_session failed session=%s job=%s", session_id, job_id)
+        _set_job_state(job_id, session_id, "failed", safe_error)
+        emit_progress(job_id, "ingest", "failed", message=str(exc)[:200], session_id=session_id)
+        raise
+
+
 @app.task(name="tasks.run_mvp_analysis", bind=True, max_retries=1)
 def run_mvp_analysis_task(
     self,
@@ -932,6 +1155,12 @@ def run_mvp_analysis_task(
     llm_settings: Optional[dict] = None,
     qa_in_slot: bool = False,
     audience_desc: Optional[str] = None,
+    delivery_mode: str = "stage",
+    source_kind: str = "upload",
+    skip_ingest: bool = False,
+    layout_path: Optional[str] = None,
+    analysis_window: Optional[dict] = None,
+    audio_only_chosen: bool = False,
 ):
     """Run ingest → ASR → alignment → audio → partial scores → vision → slides → fusion → report."""
     from pipeline.accessibility import persist_accessibility
@@ -988,18 +1217,30 @@ def run_mvp_analysis_task(
             )
 
         started = datetime.utcnow()
-        emit_progress(job_id, "ingest", "running", pct=5, message="Validating media")
-        ingest_result = ingest(source, destination, session_id)
-        ingest_dict = ingest_result.to_dict()
-        _record_job_step(
-            job_id=job_id,
-            stage="ingest",
-            status="succeeded",
-            started_at=started,
-            outputs=ingest_dict["artifacts"],
-            metrics=ingest_dict["media_info"],
-        )
-        emit_progress(job_id, "ingest", "succeeded", pct=25, message="Media prepared")
+        if skip_ingest:
+            from pipeline.prepare import load_ingest_json
+
+            ingest_dict = load_ingest_json(destination)
+        else:
+            emit_progress(job_id, "ingest", "running", pct=5, message="Validating media")
+            ingest_result = ingest(source, destination, session_id)
+            ingest_dict = ingest_result.to_dict()
+            from pipeline.prepare import write_ingest_json
+
+            write_ingest_json(destination, ingest_dict)
+            _record_job_step(
+                job_id=job_id,
+                stage="ingest",
+                status="succeeded",
+                started_at=started,
+                outputs=ingest_dict["artifacts"],
+                metrics=ingest_dict["media_info"],
+            )
+            emit_progress(job_id, "ingest", "succeeded", pct=25, message="Media prepared")
+        if audio_only_chosen:
+            (destination / "analysis_flags.json").write_text(
+                json.dumps({"audio_only_chosen": True}) + "\n"
+            )
 
         started = datetime.utcnow()
         emit_progress(job_id, "asr", "running", pct=30, message="Transcribing speech")
@@ -1102,6 +1343,37 @@ def run_mvp_analysis_task(
             message="Audio measurements ready",
         )
 
+        if delivery_mode != "stage":
+            from pipeline.stages.production_quality import run_production_quality
+
+            pq_started = datetime.utcnow()
+            emit_progress(job_id, "production_quality", "running", pct=80, message="Checking sound and picture")
+            try:
+                run_production_quality(
+                    output_dir=destination,
+                    media_path=source,
+                    audio_metrics=audio.metrics,
+                    source_height=((ingest_dict or {}).get("media_info") or {}).get("height"),
+                )
+                _record_job_step(
+                    job_id=job_id,
+                    stage="production_quality",
+                    status="succeeded",
+                    started_at=pq_started,
+                    outputs={"production_quality": str(destination / "production_quality.json")},
+                )
+                emit_progress(job_id, "production_quality", "succeeded", pct=81, message="Sound and picture checked")
+            except Exception as pq_exc:
+                logger.exception("production_quality failed session=%s", session_id)
+                _record_job_step(
+                    job_id=job_id,
+                    stage="production_quality",
+                    status="failed",
+                    started_at=pq_started,
+                    error={"type": type(pq_exc).__name__, "message": str(pq_exc)[:200]},
+                )
+                emit_progress(job_id, "production_quality", "failed", message="Production quality skipped")
+
         started = datetime.utcnow()
         emit_progress(
             job_id,
@@ -1125,6 +1397,7 @@ def run_mvp_analysis_task(
             metrics_path=Path(audio.artifacts.get("metrics") or destination / "metrics.json"),
             content_path=destination / "content.json",
             packages_dir=Path("/packages"),
+            delivery_mode=delivery_mode,
         )
         report = run_report_stage(
             output_dir=destination, analysis=analysis, packages_dir=Path("/packages")
@@ -1165,7 +1438,46 @@ def run_mvp_analysis_task(
         )
         emit_partial_ready(job_id, live_categories, session_id=session_id)
 
-        if not skip_vision_now:
+        if delivery_mode != "stage" and not audio_only_chosen:
+            layout_file = Path(layout_path) if layout_path else destination / "layout.json"
+            if layout_file.is_file():
+                from pipeline.layout.crop import write_region_tracks
+
+                crop_started = datetime.utcnow()
+                emit_progress(job_id, "region_crops", "running", pct=83, message="Separating camera and screen")
+                try:
+                    layout_doc = json.loads(layout_file.read_text())
+                    media = (ingest_dict or {}).get("media_info") or {}
+                    write_region_tracks(
+                        source,
+                        destination,
+                        layout_doc,
+                        frame_width=int(media.get("width") or 1920),
+                        frame_height=int(media.get("height") or 1080),
+                    )
+                    _record_job_step(
+                        job_id=job_id,
+                        stage="region_crops",
+                        status="succeeded",
+                        started_at=crop_started,
+                        outputs={
+                            "camera": str(destination / "camera.mp4") if (destination / "camera.mp4").is_file() else None,
+                            "screen": str(destination / "screen.mp4") if (destination / "screen.mp4").is_file() else None,
+                        },
+                    )
+                    emit_progress(job_id, "region_crops", "succeeded", pct=84, message="Camera and screen separated")
+                except Exception as crop_exc:
+                    logger.exception("region_crops failed session=%s", session_id)
+                    _record_job_step(
+                        job_id=job_id,
+                        stage="region_crops",
+                        status="failed",
+                        started_at=crop_started,
+                        error={"type": type(crop_exc).__name__, "message": str(crop_exc)[:200]},
+                    )
+                    emit_progress(job_id, "region_crops", "failed", message="Crops failed; using the full frame")
+
+        if not skip_vision_now and not audio_only_chosen:
             from pipeline.consent import decide_vision
             from pipeline.stages.vision import run_vision_stage
 
@@ -1180,13 +1492,16 @@ def run_mvp_analysis_task(
             try:
 
                 def _vision_runner(decision):
+                    camera = destination / "camera.mp4"
                     proxy = destination / "analysis.mp4"
+                    vision_path = camera if camera.is_file() else (proxy if proxy.exists() else None)
+                    setup = "to_camera" if camera.is_file() else camera_setup
                     return run_vision_stage(
                         output_dir=destination,
                         session_id=session_id,
                         decision=decision,
-                        video_path=proxy if proxy.exists() else None,
-                        camera_setup=camera_setup,
+                        video_path=vision_path,
+                        camera_setup=setup,
                     ).to_dict()
 
                 vision_gate = run_vision_if_allowed(snapshot, _vision_runner)
@@ -1251,17 +1566,22 @@ def run_mvp_analysis_task(
         try:
             proxy = ingest_dict.get("artifacts", {}).get("analysis")
             modality = ingest_dict.get("modality") or {}
+            screen = destination / "screen.mp4"
+            slides_video = screen if screen.is_file() else (Path(proxy) if proxy else destination / "analysis.mp4")
             slides_out = run_slides_stage(
                 output_dir=destination,
                 session_id=session_id,
-                video_path=Path(proxy) if proxy else destination / "analysis.mp4",
+                video_path=slides_video,
                 deck_path=find_deck_path(destination),
                 camera_setup=camera_setup if camera_setup else "unknown",
                 language=language,
                 transcript=json.loads(transcript_path.read_text()) if transcript_path.exists() else None,
                 is_screen_recording=bool(modality.get("is_screen_recording"))
-                or camera_setup == "screen_recording",
-                is_audio_only=bool(modality.get("is_audio_only")) or camera_setup == "audio_only",
+                or camera_setup == "screen_recording"
+                or screen.is_file(),
+                is_audio_only=bool(modality.get("is_audio_only"))
+                or camera_setup == "audio_only"
+                or audio_only_chosen,
             )
             slides_status = "skipped" if slides_out.skipped else "succeeded"
             _record_job_step(
@@ -1343,6 +1663,7 @@ def run_mvp_analysis_task(
             metrics_path=Path(audio.artifacts.get("metrics") or destination / "metrics.json"),
             content_path=destination / "content.json",
             packages_dir=Path("/packages"),
+            delivery_mode=delivery_mode,
         )
         _record_job_step(
             job_id=job_id,

@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent
 
 
 def test_committed_manifests_cover_required_fixtures():
-    for name in ("composite_pip_tr", "screen_only", "camera_only"):
+    for name in ("composite_pip_tr", "screen_only", "camera_only", "no_regions"):
         assert name in GENERATORS
         payload = json.loads((MANIFESTS / name / "manifest.json").read_text())
         assert payload["id"] == name
@@ -25,7 +25,7 @@ def test_committed_manifests_cover_required_fixtures():
 
 def test_generator_writes_three_videos_to_temp(tmp_path: Path):
     paths = generate_all(tmp_path)
-    assert len(paths) == 3
+    assert len(paths) == 4
     for path in paths:
         assert path.is_file()
         assert path.stat().st_size > 0

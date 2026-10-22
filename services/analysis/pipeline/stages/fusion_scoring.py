@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from pipeline.consent import decide_vision, video_category_na_reason
+from pipeline.na_codes import infer_na_code
 from pipeline.partial import vision_failed_na_reason, vision_failed_warning
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 STAGE_VERSION = "1.0.0"
 SCORING_CONFIG_VERSION = "1.1.0"
 PIPELINE_VERSION = "1.0.0"
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
 
 VIDEO_CATEGORIES = {
     "visual_aids": "No slides were detected and no deck was uploaded.",
@@ -48,6 +49,20 @@ ONLINE_STAGE_NA = {
     "online_engagement": "This category is not scored for on-stage sessions.",
     "production_quality": "Production quality is not scored for on-stage sessions.",
 }
+ONLINE_NOT_IN_PHASE = {
+    "screen_flow": "Coming soon. We found your screen and kept it ready for this.",
+    "on_camera_presence": "Coming soon.",
+    "online_engagement": "Coming soon.",
+}
+CORE_DELIVERY_IDS = (
+    "pace_pausing",
+    "vocal_variety",
+    "fluency",
+    "energy_presence",
+    "structure",
+    "clarity",
+    "opening_close",
+)
 
 PILLAR_OF = {
     "core_message": "message",
@@ -257,6 +272,75 @@ def _min_evidence_ok(category_id: str, config: dict[str, Any], stats: dict[str, 
         if key == "has_audio" and threshold and not extras.get("has_audio", True):
             return False, "No audio track, so production quality is unavailable."
     return True, None
+
+
+def _production_metrics_from_payload(
+    payload: Optional[dict[str, Any]],
+    config: dict[str, Any],
+) -> list[dict[str, Any]]:
+    if not payload:
+        return []
+    defs = (config.get("categories") or {}).get("production_quality", {}).get("metrics") or {}
+    items: list[dict[str, Any]] = []
+    for row in payload.get("metrics") or []:
+        metric_id = row.get("id")
+        if metric_id not in defs or row.get("value") is None or row.get("applicable") is False:
+            continue
+        metric_def = defs[metric_id]
+        items.append(
+            {
+                "id": metric_id,
+                "category_id": "production_quality",
+                "raw_value": row["value"],
+                "unit": row.get("unit") or metric_def.get("unit") or "",
+                "confidence": float(row.get("confidence") or 0.85),
+                "weight": float(metric_def.get("weight") or 0),
+                "basis": {"kind": "heuristic", "source": str(row.get("source") or "H")},
+            }
+        )
+    return items
+
+
+def _core_delivery(categories_out: list[dict[str, Any]]) -> dict[str, Any]:
+    members = [
+        row
+        for row in categories_out
+        if row["id"] in CORE_DELIVERY_IDS and row.get("applicable") and row.get("score") is not None
+    ]
+    if len(members) < 4:
+        return {"score": None, "confidence": None, "categories": list(CORE_DELIVERY_IDS)}
+    score = int(round(sum(float(row["score"]) for row in members) / len(members)))
+    conf = sum(float(row.get("confidence") or 0) for row in members) / len(members)
+    return {"score": score, "confidence": conf, "categories": [row["id"] for row in members]}
+
+
+def _layout_summary(output_dir: Path) -> Optional[dict[str, Any]]:
+    payload = _read_json(output_dir / "layout.json")
+    if not payload:
+        return None
+    segments = payload.get("segments") or []
+    kinds = [str(seg.get("kind")) for seg in segments if seg.get("kind")]
+    duration = float((payload.get("frame") or {}).get("duration_s") or 0) or 1.0
+    camera_s = 0.0
+    screen_s = 0.0
+    for seg in segments:
+        span = max(0.0, float(seg.get("t_end") or 0) - float(seg.get("t_start") or 0))
+        roles = {reg.get("role") for reg in seg.get("regions") or []}
+        if "camera" in roles:
+            camera_s += span
+        if "screen" in roles:
+            screen_s += span
+    return {
+        "kinds": kinds,
+        "camera_visible_ratio": camera_s / duration,
+        "screen_visible_ratio": screen_s / duration,
+        "version": int(payload.get("version") or 1),
+        "status": str(payload.get("status") or "detected"),
+    }
+
+
+def _category_na_code(reason: Optional[str], category_id: str) -> Optional[str]:
+    return infer_na_code(reason, category_id=category_id)
 
 
 def _seg_time(transcript: dict[str, Any], seg_id: Optional[str]) -> Optional[float]:
@@ -1069,6 +1153,16 @@ def run_fusion_scoring(
         "screen_segments": int((ingest or {}).get("screen_segments") or 0),
         "camera_visible_s": float((ingest or {}).get("camera_visible_s") or 0),
     }
+    flags = _read_json(output_dir / "analysis_flags.json") or {}
+    audio_only_chosen = bool(flags.get("audio_only_chosen"))
+    production_payload = _read_json(output_dir / "production_quality.json")
+    if production_payload:
+        grouped["production_quality"].extend(_production_metrics_from_payload(production_payload, config))
+    layout_payload = _read_json(output_dir / "layout.json") or {}
+    if layout_payload:
+        extras["screen_visible_s"] = extras["screen_visible_s"] or float(
+            (_layout_summary(output_dir) or {}).get("screen_visible_ratio") or 0
+        ) * float(((ingest or {}).get("media_info") or {}).get("duration") or 0)
 
     scored_metrics: list[dict[str, Any]] = []
     categories_out: list[dict[str, Any]] = []
@@ -1079,6 +1173,18 @@ def run_fusion_scoring(
         if delivery_mode == "stage" and category_id in ONLINE_STAGE_NA:
             applicable = False
             na_reason = ONLINE_STAGE_NA[category_id]
+        elif delivery_mode != "stage" and category_id in ONLINE_NOT_IN_PHASE:
+            applicable = False
+            if audio_only_chosen and category_id in {"on_camera_presence", "screen_flow"}:
+                na_reason = "You chose to analyse audio only."
+            elif category_id == "on_camera_presence":
+                consents = _read_json(output_dir / "consents.json")
+                if consents and not decide_vision(consents).run_pose:
+                    na_reason = "Video analysis is off. Turn it on in Settings to measure this."
+                else:
+                    na_reason = ONLINE_NOT_IN_PHASE[category_id]
+            else:
+                na_reason = ONLINE_NOT_IN_PHASE[category_id]
         elif category_id in VIDEO_CATEGORIES:
             consents = _read_json(output_dir / "consents.json")
             expr = _read_json(output_dir / "expression_metrics.json")
@@ -1299,6 +1405,7 @@ def run_fusion_scoring(
                     "pillar": PILLAR_OF[category_id],
                     "applicable": True,
                     "na_reason": None,
+                    "na_code": None,
                     "score": score,
                     "level": cat["level"],
                     "confidence": cat["confidence"],
@@ -1334,6 +1441,7 @@ def run_fusion_scoring(
                     "pillar": PILLAR_OF[category_id],
                     "applicable": False,
                     "na_reason": na_reason,
+                    "na_code": _category_na_code(na_reason, category_id),
                     "score": None,
                     "level": None,
                     "confidence": None,
@@ -1441,8 +1549,10 @@ def run_fusion_scoring(
             "language": language,
             "slot_min": slot_min,
             "qa_in_slot": qa_in_slot,
-            "camera_setup": camera_setup if camera_setup in {"stage", "to_camera", "screen_recording", "audio_only", "unknown"} else "unknown",
+            "camera_setup": camera_setup if camera_setup in {"stage", "to_camera", "screen_recording", "audio_only", "unknown", "composite"} else "unknown",
             "talk_plan_id": None,
+            "delivery_mode": delivery_mode,
+            "source_kind": "upload",
         },
         "provenance": {
             "pipeline_version": PIPELINE_VERSION,
@@ -1495,7 +1605,11 @@ def run_fusion_scoring(
         },
         "series": series,
         "transcript_ref": str(transcript_path or output_dir / "transcript.json"),
+        "core_delivery": _core_delivery(categories_out),
     }
+    summary = _layout_summary(output_dir)
+    if summary:
+        result["layout_summary"] = summary
 
     schema = _load_schema(packages)
     import jsonschema

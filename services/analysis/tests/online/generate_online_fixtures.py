@@ -97,10 +97,30 @@ def write_composite_pip_tr(dest: Path, duration: float, width: int, height: int,
     )
 
 
+def write_no_regions(dest: Path, duration: float, width: int, height: int, fps: int) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    _run(
+        [
+            "ffmpeg",
+            "-f",
+            "lavfi",
+            "-i",
+            f"color=c=black:s={width}x{height}:d={duration}:r={fps}",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:v",
+            "libx264",
+            "-y",
+            str(dest),
+        ]
+    )
+
+
 GENERATORS = {
     "screen_only": write_screen_only,
     "camera_only": write_camera_only,
     "composite_pip_tr": write_composite_pip_tr,
+    "no_regions": write_no_regions,
 }
 
 

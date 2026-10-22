@@ -1,0 +1,16 @@
+{
+  "id": "no_regions",
+  "seed": 1,
+  "width": 640,
+  "height": 360,
+  "duration_s": 1.0,
+  "fps": 15,
+  "layout": "no_video",
+  "origin": "synthetic ffmpeg lavfi; no personal data",
+  "segments": [
+    {"t0": 0.0, "t1": 1.0, "kind": "no_video"}
+  ],
+  "regions": {},
+  "transitions": [],
+  "dead_air": []
+}
