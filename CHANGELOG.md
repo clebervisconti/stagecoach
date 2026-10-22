@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### O1 real-stack round 2 (LION)
+
+- WhisperX runtime deps (`nltk`, `pandas`) are pinned in `requirements-alignment.txt`. NLTK `punkt_tab` / `punkt` are baked into `/models/nltk_data`. A worker test imports whisperx and aligns a short speech clip.
+- Online fixtures mux license-clean espeak-ng speech (committed WAV, not a person's voice). Tests assert ASR words > 0 and alignment succeeded.
+- MediaPipe pose / hand / face `.task` files and `Systran/faster-whisper-small` are SHA-256 baked into `/models` (about +0.5 GiB). Runtime download remains the fallback. CI runs `offline_runtime_smoke.py` with `--network=none`.
+- `face_visible_ratio` is measured with YuNet on the camera crop and mapped as the first real number (0.0 is kept). Fusion no longer turns 0.0 into `null`.
+- YuNet sets the OpenCV DNN backend/target to CPU so start-up does not warn `setPreferableTarget Targets are not supported`.
+- `make lion-*` accepts `COMPOSE_PROJECT_NAME`, `ENV_FILE`, and `LION_OVERRIDE`. `lion-up` does not start `worker-beat`.
+
 ### LION arm64 worker and O1 real-stack
 
 - Worker image builds on linux/arm64 from this tree: torch/torchaudio **2.4.1+cpu** (amd64, PyTorch CPU index) and **2.4.1** (arm64, PyPI). Alignment cannot float torch. `g++` / `make` / Ninja stay in the build stage with `CMAKE_POLICY_VERSION_MINIMUM=3.5` so parselmouth compiles; the runtime image does not keep compilers.
