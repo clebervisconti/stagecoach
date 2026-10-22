@@ -29,6 +29,10 @@ export const CATEGORY_IDS = [
   "energy_presence",
   "time_management",
   "qa",
+  "screen_flow",
+  "on_camera_presence",
+  "online_engagement",
+  "production_quality",
 ] as const;
 
 export type CategoryId = (typeof CATEGORY_IDS)[number];

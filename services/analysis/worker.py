@@ -1384,9 +1384,12 @@ def run_mvp_analysis_task(
                 "partial": (report.get("overall") or {}).get("partial"),
             },
         )
-        _set_job_state(job_id, session_id, "partial")
+        from pipeline.job_outcome import job_status_after_success
+
+        terminal = job_status_after_success()
+        _set_job_state(job_id, session_id, terminal)
         emit_progress(job_id, "report", "succeeded", pct=100, message="Report ready")
-        emit_done(job_id, "partial", session_id=session_id)
+        emit_done(job_id, terminal, session_id=session_id)
         _finalize_media(
             destination,
             source,

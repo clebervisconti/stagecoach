@@ -4,3 +4,6 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+markers = [
+  "real_faces: optional YuNet path on a cached CC0 frame (skipped when absent)",
+]

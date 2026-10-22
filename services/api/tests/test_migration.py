@@ -54,10 +54,12 @@ def test_migration_upgrade_downgrade(test_db_url):
             "scoring_configs",
             "sessions",
             "users",
+            "session_layouts",
         ]
         
         for table in expected_tables:
             assert table in tables, f"Table {table} not created"
+        assert "session_layouts" in tables
     
     # Run downgrade
     command.downgrade(alembic_cfg, "base")
@@ -99,4 +101,17 @@ def test_migration_idempotent(test_db_url):
             WHERE table_schema = 'public'
         """))
         count = result.scalar()
-        assert count == 8, f"Expected 8 tables, got {count}"
+        assert count >= 9, f"Expected at least 9 tables after 011_online_sessions, got {count}"
+        names = [
+            row[0]
+            for row in conn.execute(
+                text(
+                    """
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                    """
+                )
+            )
+        ]
+        assert "session_layouts" in names

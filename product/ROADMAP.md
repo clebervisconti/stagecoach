@@ -14,11 +14,11 @@ Licensed-speech validation, ASR moved off the `tiny` model, alignment on the liv
 
 ## 0.6 — Online and recorded sessions
 
-Spec: `docs/online-sessions/SPEC.md` (draft, 21 Oct 2026). Delivery mode is orthogonal to context type: stage, webinar, online talk, recorded video. Stage mode stays identical. The flag `ONLINE_MODES_ENABLED` stays off until O4.
+Spec: `docs/online-sessions/SPEC.md`. Delivery mode is orthogonal to context type: stage, webinar, online talk, recorded video. Stage mode stays identical. The flag `ONLINE_MODES_ENABLED` stays off until O4.
 
-Phases O0–O6 are in `product/BACKLOG.md`. Owner decisions OD-1 through OD-10 are not approved. O0 is blocked by OD-1, OD-8, and OD-9 until Cleber decides them. The spec's recommendations are recorded next to each decision and are not treated as decisions.
+Phases O0–O6 are in `product/BACKLOG.md`. Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026 as the spec recommends. Phase O0 (foundations) is implemented on `feat/online-o0`. Do not start O1 from this cut.
 
-MediaPipe 1.1.1 already runs pose on the live LION worker (libegl1 and libgles2). ADR-067 and the vision golden re-baseline are still open, so OD-8 is not closed.
+MediaPipe 1.1.1 already runs pose on the live LION worker (libegl1 and libgles2). ADR-067 records the arm64 import spike.
 
 ## v2 — Practice loop
 

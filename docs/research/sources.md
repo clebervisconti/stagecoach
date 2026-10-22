@@ -74,6 +74,33 @@ Keys S1–S15 come from the project's verified source list (verified 2026-10-04)
 - **[S55]** Koo, T. K. & Li, M. Y. (2016), "A Guideline of Selecting and Reporting Intraclass Correlation Coefficients for Reliability Research", *Journal of Chiropractic Medicine*, doi:10.1016/j.jcm.2016.02.012: http://europepmc.org/article/med/27330520
 - **[S56]** Hayes, A. F. & Krippendorff, K. (2007), "Answering the Call for a Standard Reliability Measure for Coding Data", *Communication Methods and Measures* (α ≥ .800 customary; ≥ .667 for tentative conclusions): https://www.asc.upenn.edu/sites/default/files/2021-03/Answering%20the%20Call%20for%20a%20Standard%20Reliability%20Measure%20for%20Coding%20Data.pdf
 
+### Online presentation and recorded video (S57–S78)
+
+Added 22 Oct 2026 from `docs/online-sessions/SPEC.md` §18. Used by scoring-config v1.1.0.
+
+- **[S57]** Kizilcec, R. F., Bailenson, J. N. & Gomez, C. J. (2015). "The Instructor's Face in Video Instruction." *Journal of Educational Psychology*. https://vhil.stanford.edu/sites/g/files/sbiybj29011/files/media/file/kizilcec-jep-instructors-face.pdf
+- **[S58]** "The instructor presence effect and its moderators in instructional video" (2023). *Educational Research Review*. https://doi.org/10.1016/j.edurev.2023.100564
+- **[S59]** Fiorella, L., Stull, A. T., Kuhlmann, S. & Mayer, R. E. (2019). "Instructor presence in video lectures." *Journal of Educational Psychology*. https://doi.org/10.1037/edu0000325
+- **[S60]** Guo, P. J., Kim, J. & Rubin, R. (2014). "How video production affects student engagement." *ACM Learning @ Scale*. https://doi.org/10.1145/2556325.2566239
+- **[S61]** Mayer, R. E. "Temporal Contiguity Principle." *The Cambridge Handbook of Multimedia Learning*. https://doi.org/10.1017/cbo9780511811678.011
+- **[S62]** Chen, M. (2002). "Leveraging the asymmetric sensitivity of eye contact for videoconference." *CHI 2002*. https://doi.org/10.1145/503376.503386
+- **[S63]** Bailenson, J. N. (2021). "Nonverbal Overload." *Technology, Mind, and Behavior* 2(1). https://doi.org/10.1037/tmb0000030
+- **[S64]** Cook, Thompson & Ross (2023). "Virtual first impressions." *PLOS ONE*. https://doi.org/10.1371/journal.pone.0291444
+- **[S65]** Koenecke, A. et al. (2024). "Careless Whisper." *ACM FAccT 2024*. https://doi.org/10.1145/3630106.3658996
+- **[S66]** YuNet face detection, OpenCV Zoo (MIT; ONNX; `cv2.FaceDetectorYN`). https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet · Licence: https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/LICENSE
+- **[S67]** Slide-transition detection, *Algorithms* 19(2):110 (2026). https://doi.org/10.3390/a19020110
+- **[S68]** FFmpeg filters: `freezedetect`, `silencedetect`, `ebur128`. https://ffmpeg.org/ffmpeg-filters.html
+- **[S69]** Loudness: EBU R128 / ITU-R BS.1770. https://tech.ebu.ch/publications/r128
+- **[S70]** Zoom Support: recording video layouts. https://support.zoom.com/hc/en/article?id=zm_kb&sysparm_article=KB0062314
+- **[S71]** Microsoft Support: Teams meeting recordings. https://support.microsoft.com/en-us/teams/meetings/start-stop-and-find-meeting-recordings-in-microsoft-teams
+- **[S72]** Google Meet Help: record a video meeting. https://support.google.com/meet/answer/9308681
+- **[S73]** YouTube Terms of Service and Studio download help. https://www.youtube.com/t/terms · https://support.google.com/youtube/answer/56100
+- **[S74]** YouTube Help: key moments for audience retention. https://support.google.com/youtube/answer/9314415
+- **[S75]** BBC R&D, audio-offset-finder (Apache-2.0). https://github.com/bbc/audio-offset-finder
+- **[S76]** ON24 Webinar Benchmarks 2025. https://www.on24.com/blog/key-takeaways-from-the-2025-webinar-benchmarks-report/
+- **[S77]** MediaPipe on PyPI: 1.x manylinux aarch64 wheels. https://pypi.org/project/mediapipe/
+- **[S78]** Practitioner webcam framing and light. SEMI 2020; Wharton Communication Program.
+
 ### Unverified or deliberately not used
 - **Not used:** "7-38-55" as a general rule (see [S20]).
 - **Heuristics (labeled in the app):** 130–160 WPM; ~90% of slot; ≤ 20–25 words per non-data slide; ≤ 1 slide/min for keynotes; 30–90 s answers; ≥ 24 pt keynote font; every curve breakpoint marked H in §4.4; every confidence threshold in §4.6; every processing-time and cost figure in §6.10 except the quoted faster-whisper benchmark.

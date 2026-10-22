@@ -14,9 +14,11 @@ from pipeline.stages.ingest import (
     ModalityFlags,
     compute_file_hash,
     detect_modality,
+    detect_person_presence,
     generate_sprites,
     ingest,
     run_ffprobe,
+    score_person_presence,
     transcode_audio,
     validate_media,
 )
@@ -171,6 +173,27 @@ def test_transcode_audio(test_video_file, temp_dir):
     assert int(audio_stream["sample_rate"]) == 16000
     assert int(audio_stream["channels"]) == 1
     assert audio_stream["codec_name"] == "pcm_s16le"
+
+
+def test_person_presence_is_low_on_test_pattern(test_video_file):
+    """C2: testsrc has no skin blob, so it is not assumed to be a person."""
+    score = detect_person_presence(test_video_file, num_samples=8)
+    assert 0.0 <= score < 0.5
+
+
+def test_person_presence_is_high_on_skin_blob(temp_dir):
+    import cv2
+    import numpy as np
+
+    frames = []
+    for i in range(6):
+        frame = np.zeros((120, 160, 3), dtype=np.uint8)
+        x = 30 + i * 4
+        # BGR peach in the YCrCb skin band used by score_person_presence.
+        cv2.ellipse(frame, (x + 40, 60), (35, 45), 0, 0, 360, (80, 140, 210), -1)
+        frames.append(frame)
+    score = score_person_presence(frames)
+    assert score >= 0.5
 
 
 def test_detect_modality_audio_only(test_audio_file):

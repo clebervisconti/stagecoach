@@ -182,7 +182,7 @@ export function radarPolygon(points: RadarPoint[], radius: number, cx: number, c
   return vertices.join(" ");
 }
 
-export const CATEGORY_PILLAR: Record<string, (typeof PILLAR_IDS)[number]> = {
+export const CATEGORY_PILLAR: Record<string, string> = {
   core_message: "message",
   structure: "message",
   opening_close: "message",
@@ -200,6 +200,10 @@ export const CATEGORY_PILLAR: Record<string, (typeof PILLAR_IDS)[number]> = {
   energy_presence: "presence_time",
   time_management: "presence_time",
   qa: "presence_time",
+  screen_flow: "visuals",
+  on_camera_presence: "body",
+  online_engagement: "presence_time",
+  production_quality: "production",
 };
 
 export type GoalLike = {

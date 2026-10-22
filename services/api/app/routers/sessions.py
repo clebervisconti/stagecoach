@@ -11,7 +11,7 @@ from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 from celery import Celery
 
@@ -48,6 +48,7 @@ from app.models.insight import Insight
 from app.models.job_step import JobStep
 from app.models.user import User
 from app.models.session import Session as SessionModel
+from app.models.session_layout import SessionLayout
 from app.models.media_asset import MediaAsset
 from app.models.metric_value import MetricValue
 from app.models.talk_plan import ObjectiveScore, TalkPlan
@@ -103,6 +104,29 @@ MEDIA_TYPES = {
 }
 
 
+def online_modes_enabled() -> bool:
+    return os.getenv("ONLINE_MODES_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def url_ingest_enabled() -> bool:
+    return os.getenv("URL_INGEST_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
+class AnalysisWindow(BaseModel):
+    start_s: float
+    end_s: float
+
+    @model_validator(mode="after")
+    def _ordered(self) -> "AnalysisWindow":
+        if self.end_s <= self.start_s:
+            raise ValueError("analysis_window end_s must be greater than start_s")
+        if self.start_s < 0:
+            raise ValueError("analysis_window start_s must be >= 0")
+        if self.end_s - self.start_s < 60:
+            raise ValueError("analysis_window must be at least 60 seconds")
+        return self
+
+
 class SessionCreate(BaseModel):
     """Session creation request."""
     title: str = Field(..., max_length=255)
@@ -114,11 +138,60 @@ class SessionCreate(BaseModel):
     slot_min: Optional[int] = Field(None, ge=1, le=180)
     qa_in_slot: bool = False
     audience_desc: Optional[str] = None
-    camera_setup: str = Field(
-        ...,
-        pattern="^(stage|to_camera|screen_recording|audio_only)$"
+    camera_setup: Optional[str] = Field(
+        None,
+        pattern="^(stage|to_camera|screen_recording|audio_only|unknown)$",
     )
     talk_plan_id: Optional[UUID] = None
+    delivery_mode: str = Field(
+        "stage",
+        pattern="^(stage|webinar|online_talk|recorded_video)$",
+    )
+    source_kind: str = Field("upload", pattern="^(upload|two_track|url)$")
+    source_url: Optional[str] = None
+    rights_attested: bool = False
+    analysis_window: Optional[AnalysisWindow] = None
+    target_length_min: Optional[int] = Field(None, ge=1, le=180)
+
+    @model_validator(mode="after")
+    def _mode_defaults(self) -> "SessionCreate":
+        if not self.camera_setup:
+            if self.delivery_mode == "stage":
+                raise ValueError("camera_setup is required when delivery_mode is stage")
+            self.camera_setup = "unknown"
+        if self.target_length_min is not None and self.delivery_mode != "recorded_video":
+            raise ValueError("target_length_min is only accepted for recorded_video")
+        return self
+
+
+def gate_online_session_fields(session_data: SessionCreate) -> None:
+    """Reject online-only fields while ONLINE_MODES_ENABLED is off (O0/O4)."""
+    onlineish = (
+        session_data.delivery_mode != "stage"
+        or session_data.source_kind != "upload"
+        or session_data.source_url is not None
+        or session_data.analysis_window is not None
+        or session_data.target_length_min is not None
+    )
+    if onlineish and not online_modes_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Online modes are not enabled",
+        )
+    if session_data.source_kind == "url" and not url_ingest_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="URL ingest is not enabled",
+        )
+    needs_rights = (
+        session_data.delivery_mode in {"webinar", "online_talk"}
+        or session_data.source_kind == "url"
+    )
+    if needs_rights and not session_data.rights_attested:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="rights_attested is required",
+        )
 
 
 class SessionResponse(BaseModel):
@@ -252,7 +325,9 @@ async def create_session(
     db: Session = Depends(get_db)
 ):
     """Create a private-beta session and return the authenticated upload route."""
+    gate_online_session_fields(session_data)
     plan = resolve_talk_plan(db, current_user.id, session_data.talk_plan_id)
+    attested_at = datetime.now(timezone.utc).replace(tzinfo=None) if session_data.rights_attested else None
     session = SessionModel(
         user_id=current_user.id,
         title=session_data.title,
@@ -261,12 +336,30 @@ async def create_session(
         slot_min=session_data.slot_min,
         qa_in_slot=session_data.qa_in_slot,
         audience_desc=session_data.audience_desc,
-        camera_setup=session_data.camera_setup,
+        camera_setup=session_data.camera_setup or "unknown",
+        delivery_mode=session_data.delivery_mode,
+        source_kind=session_data.source_kind,
+        source_url=session_data.source_url,
+        rights_attested_at=attested_at,
+        analysis_window=session_data.analysis_window.model_dump() if session_data.analysis_window else None,
+        target_length_min=session_data.target_length_min,
         talk_plan_id=plan.id if plan is not None else None,
         status="created",
     )
     
     db.add(session)
+    db.flush()
+    if attested_at is not None:
+        db.add(
+            AuditLog(
+                actor_id=current_user.id,
+                action="rights_attested",
+                target_type="session",
+                target_id=str(session.id),
+                at=attested_at,
+                details={"attested": True},
+            )
+        )
     db.commit()
     db.refresh(session)
     
@@ -313,6 +406,7 @@ async def list_sessions(
             "title": s.title,
             "status": s.status,
             "context_type": s.context_type,
+            "delivery_mode": getattr(s, "delivery_mode", "stage"),
             "language": s.language,
             "slot_min": s.slot_min,
             "created_at": s.created_at.isoformat(),
@@ -351,6 +445,8 @@ async def get_session(
         "title": session.title,
         "status": session.status,
         "context_type": session.context_type,
+        "delivery_mode": getattr(session, "delivery_mode", "stage"),
+        "source_kind": getattr(session, "source_kind", "upload"),
         "language": session.language,
         "slot_min": session.slot_min,
         "qa_in_slot": session.qa_in_slot,
@@ -978,6 +1074,7 @@ def _session_row_counts(db: Session, session: SessionModel) -> tuple[dict[str, i
         "overall_scores": 0,
         "evidence_items": 0,
         "insights": 0,
+        "session_layouts": db.query(SessionLayout).filter(SessionLayout.session_id == session.id).count(),
     }
     if job_ids:
         counts["job_steps"] = db.query(JobStep).filter(JobStep.job_id.in_(job_ids)).count()
@@ -1002,6 +1099,7 @@ def _remaining_session_rows(db: Session, session_id, job_ids: list) -> dict[str,
         "overall_scores": 0,
         "evidence_items": 0,
         "insights": 0,
+        "session_layouts": db.query(SessionLayout).filter(SessionLayout.session_id == session_id).count(),
     }
     if job_ids:
         remaining["job_steps"] = db.query(JobStep).filter(JobStep.job_id.in_(job_ids)).count()

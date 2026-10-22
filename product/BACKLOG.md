@@ -53,37 +53,35 @@ In-browser recording and the live coach overlay. Start only after a real upload 
 
 Spec: `docs/online-sessions/SPEC.md`. Flag `ONLINE_MODES_ENABLED` defaults to false. Stage mode stays identical. The spec does not judge whether the subject matter is correct. Other participants' faces are never landmarked.
 
-Phases are not started until the owner decisions that block them are closed. Recommendations below are the spec's, not approvals.
+Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026, each exactly as the spec recommends. ADRs 061–069 record those choices. Phase O0 is unblocked. Later phases stay behind `ONLINE_MODES_ENABLED=false` until their own work lands.
 
 ### Owner decisions (OD-1–OD-10)
 
-**Owner:** Cleber. Do not implement a blocked phase as if the recommendation were approved.
+**Owner:** Cleber. **Approved 22 Oct 2026** as the spec recommends.
 
-| ID | Decision | Spec recommendation | Blocks |
+| ID | Decision | Approved option | Blocks |
 |---|---|---|---|
-| OD-1 | Mode taxonomy | (a) stage, webinar, online talk, recorded video | O0 |
-| OD-2 | Analyse YouTube/Vimeo links | (b) later, off by default, own content only | O6 |
-| OD-3 | When to show layout review | (b) first 3 online sessions, then only when confidence is below 0.80 | O1 |
-| OD-4 | Layout boxes without `video_analysis` consent | (a) yes, with consent text v1.1 | O1 |
-| OD-5 | "Never judge factual correctness" on existing prompts | (a) yes, prompt versions 1.0.1 | O3 |
-| OD-6 | Webinar upload limits | (b) 2 GB / 120 min, resumable in O2 | O1 |
-| OD-7 | Other speakers in the transcript | (a) keep, labelled, plus (b) a setting to remove after analysis | O2 |
-| OD-8 | MediaPipe 0.10.31 → 1.x on LION | (a) upgrade and re-baseline vision goldens | O0 |
-| OD-9 | Four new categories and mode weights | (a) approve as heuristic and calibrate after 30 sessions | O0 |
-| OD-10 | Who gets online modes first | (a) owner account only, until the security gate | O4 |
-
-OD-8 status, 21 Oct 2026: MediaPipe 1.1.1 plus `libegl1` and `libgles2` already score pose on the running LION worker. The worker image is not rebuilt, ADR-067 is not written, and the vision golden re-baseline is not done. The decision is still open.
+| OD-1 | Mode taxonomy | **(a)** stage, webinar, online talk, recorded video | O0 (closed) |
+| OD-2 | Analyse YouTube/Vimeo links | **(b)** later, off by default, own content only | O6 |
+| OD-3 | When to show layout review | **(b)** first 3 online sessions, then only when confidence is below 0.80 | O1 |
+| OD-4 | Layout boxes without `video_analysis` consent | **(a)** yes, with consent text v1.1 | O1 |
+| OD-5 | "Never judge factual correctness" on existing prompts | **(a)** yes, prompt versions 1.0.1 | O3 |
+| OD-6 | Webinar upload limits | **(b)** 2 GB / 120 min, resumable in O2 | O1 |
+| OD-7 | Other speakers in the transcript | **(a)** keep, labelled, plus **(b)** a setting to remove after analysis | O2 |
+| OD-8 | MediaPipe 0.10.31 → 1.x on LION | **(a)** upgrade and re-baseline vision goldens | O0 (closed) |
+| OD-9 | Four new categories and mode weights | **(a)** approve as heuristic and calibrate after 30 sessions | O0 (closed) |
+| OD-10 | Who gets online modes first | **(a)** owner account only, until the security gate | O4 |
 
 ### SC-ONL-O0 — Foundations
 
 **Blocked by:** OD-1, OD-8, OD-9.
 
-- [ ] E0-1 MediaPipe 1.x on linux/arm64, ADR-067, vision golden re-baseline. The live container already imports 1.1.1.
-- [ ] E0-2 YuNet in the model registry, plus a fake face detector for tests.
-- [ ] E0-3 Migration `011_online_sessions`, including deletion and export of layouts.
-- [ ] E0-4 Scoring config 1.1.0, effective weights, engine `mode`, stage parity test, context-curve fallback.
-- [ ] E0-5 Synthetic fixtures: composite picture-in-picture, screen only, camera only.
-- [ ] E0-6 `scripts/bench_online_cpu.py`.
+- [x] E0-1 MediaPipe 1.x on linux/arm64, ADR-067, vision golden re-baseline. The live container already imports 1.1.1.
+- [x] E0-2 YuNet in the model registry, plus a fake face detector for tests.
+- [x] E0-3 Migration `011_online_sessions`, including deletion and export of layouts.
+- [x] E0-4 Scoring config 1.1.0, effective weights, engine `mode`, stage parity test, context-curve fallback.
+- [x] E0-5 Synthetic fixtures: composite picture-in-picture, screen only, camera only.
+- [x] E0-6 `scripts/bench_online_cpu.py`.
 
 ### SC-ONL-O1 — Upload, layout review, report
 

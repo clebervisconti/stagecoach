@@ -4,7 +4,7 @@ Computes category and overall scores from metric values using
 versioned configuration files.
 """
 
-from .aggregation import aggregate_category, aggregate_overall
+from .aggregation import aggregate_category, aggregate_overall, effective_weights
 from .confidence import compute_category_confidence, compute_inclusion_factor
 from .curves import interpolate_curve, validate_curve
 from .engine import ScoringEngine
@@ -23,6 +23,7 @@ __all__ = [
     "compute_category_confidence",
     "aggregate_category",
     "aggregate_overall",
+    "effective_weights",
     "rank_opportunities",
     "build_time_budget",
     "build_cut_list",

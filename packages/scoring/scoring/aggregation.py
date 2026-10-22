@@ -5,6 +5,40 @@ from typing import Any
 from .confidence import compute_category_confidence, get_confidence_label
 
 
+def effective_weights(
+    config: dict[str, Any],
+    context: str,
+    mode: str = "stage",
+) -> dict[str, float]:
+    """Category weights for a context × delivery mode (spec §10.2).
+
+    Stage mode with empty multipliers and no new categories returns the
+    published context weights unchanged, which is the stage-parity gate.
+    """
+    base_weights = dict((config.get("weights") or {}).get(context) or {})
+    mode_cfg = (config.get("modes") or {}).get(mode) or {}
+    multipliers = mode_cfg.get("multipliers") or {}
+    new_categories = {
+        str(key): float(value) for key, value in (mode_cfg.get("new_categories") or {}).items()
+    }
+    share_m = float(sum(new_categories.values()))
+
+    base: dict[str, float] = {}
+    for key, raw in base_weights.items():
+        if key in new_categories:
+            continue
+        base[str(key)] = float(raw) * float(multipliers.get(key, 1.0))
+    total_base = float(sum(base.values()))
+    out: dict[str, float] = {}
+    if total_base > 0:
+        scale = (100.0 - share_m) / total_base
+        for key, value in base.items():
+            out[key] = value * scale
+    for key, value in new_categories.items():
+        out[key] = value
+    return out
+
+
 def aggregate_category(
     category_id: str,
     category_def: dict[str, Any],
@@ -107,6 +141,7 @@ def aggregate_overall(
     categories: list[dict[str, Any]],
     context: str,
     config: dict[str, Any],
+    mode: str = "stage",
 ) -> dict[str, Any]:
     """Aggregate category scores into an overall score.
 
@@ -118,11 +153,14 @@ def aggregate_overall(
                    id, score, confidence, applicable
         context: Presentation context
         config: Full scoring config
+        mode: Delivery mode (stage, webinar, online_talk, recorded_video)
 
     Returns:
         Dict with: score, level, coverage, confidence, display_band, partial
     """
-    context_weights = config["weights"].get(context, {})
+    context_weights = effective_weights(config, context, mode)
+    if not context_weights:
+        context_weights = config["weights"].get(context, {})
     confidence_config = config["confidence"]
     category_min = confidence_config.get("category_min_for_overall", 0.5)
 

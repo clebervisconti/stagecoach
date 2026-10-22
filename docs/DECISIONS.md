@@ -2,7 +2,7 @@
 
 This document tracks significant technical decisions made during Stage Coach development. Each ADR follows a lightweight format: Context, Decision, Alternatives Considered, Consequences.
 
-Decisions from ADR-032 onward live as one file per decision in [docs/adr/](adr/). Those files are the source for Phase 2 and Phase 3 choices (vision, slides, talk-prep, trends, goals, password and Apple sign-in, Resend, account export, and the local Qwen default). ADR-038's xAI default is superseded by [ADR-060](adr/060-local-llm-default.md). ADR-001's magic-link auth is superseded by [ADR-057](adr/057-d9-password-apple.md) for the app, while production still uses the Cloudflare Access beta identity in [product/decisions/ADR-0001](../product/decisions/ADR-0001-private-beta-runtime.md).
+Decisions from ADR-032 onward live as one file per decision in [docs/adr/](adr/). Those files are the source for Phase 2 and Phase 3 choices (vision, slides, talk-prep, trends, goals, password and Apple sign-in, Resend, account export, and the local Qwen default) and for online-session foundations (ADR-061 through ADR-069). ADR-038's xAI default is superseded by [ADR-060](adr/060-local-llm-default.md). ADR-001's magic-link auth is superseded by [ADR-057](adr/057-d9-password-apple.md) for the app, while production still uses the Cloudflare Access beta identity in [product/decisions/ADR-0001](../product/decisions/ADR-0001-private-beta-runtime.md).
 
 ---
 
@@ -1648,6 +1648,7 @@ Issue #44 / SPEC §4.4.8, §6.6 step 7, §6.7.3 `slides_v1`. Metric ids must mat
 
 ## Change Log (continued)
 
+- **2026-10-22**: ADR-061 through ADR-069 (online and recorded sessions). OD-1–OD-10 approved as the spec recommends. Scoring config 1.1.0, YuNet (MIT), MediaPipe 1.1.1 on linux/arm64.
 - **2026-10-17**: Index of ADR-032 through ADR-060 points at `docs/adr/`. Live upload runs content analysis; talk-prep writes a real plan; the report shows objectives and a baseline badge.
 - **2026-10-14**: ADR-031 (Phase 2: category 8 visual aids, issue #44)
 - **2026-10-14**: ADR-030 (Phase 2: slides stage, issue #43)

@@ -48,8 +48,9 @@ OFF = {
 }
 
 BANNED = re.compile(
-    r"\b(happy|sad|angry|anxious|fearful|joyful|stressed|stress|engagement|"
-    r"authenticity|nervous|feliz|triste|ansioso|estresse|engajamento|autenticidade)\b",
+    r"(?<![A-Za-z_])(happy|sad|angry|anxious|fearful|joyful|stressed|stress|"
+    r"engagement|authenticity|nervous|feliz|triste|ansioso|estresse|"
+    r"engajamento|autenticidade)(?![A-Za-z_])",
     re.IGNORECASE,
 )
 

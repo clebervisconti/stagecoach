@@ -20,6 +20,7 @@ from app.models.evidence_item import EvidenceItem
 from app.models.media_asset import MediaAsset
 from app.models.overall_score import OverallScore
 from app.models.session import Session as TalkSession
+from app.models.session_layout import SessionLayout
 from app.models.talk_plan import Goal, TalkPlan
 from app.models.transcript import Transcript
 from app.models.user import User
@@ -36,6 +37,7 @@ ZIP_FILES = (
     "plans.json",
     "consents.json",
     "media_links.json",
+    "layouts.json",
 )
 
 
@@ -169,8 +171,15 @@ def collect_export(
         .all()
     )
     assets = []
+    layouts = []
     if session_ids:
         assets = db.query(MediaAsset).filter(MediaAsset.session_id.in_(session_ids)).all()
+        layouts = (
+            db.query(SessionLayout)
+            .filter(SessionLayout.session_id.in_(session_ids))
+            .order_by(SessionLayout.created_at.asc())
+            .all()
+        )
 
     scores = {
         "category_scores": [
@@ -236,6 +245,7 @@ def collect_export(
                 "accessibility_profile": user.accessibility_profile,
                 "retention_policy": user.retention_policy,
                 "llm_settings": user.llm_settings,
+                "layout_review_pref": getattr(user, "layout_review_pref", "when_unsure"),
                 "created_at": user.created_at,
             }
         ),
@@ -250,6 +260,8 @@ def collect_export(
                     "qa_in_slot": row.qa_in_slot,
                     "audience_desc": row.audience_desc,
                     "camera_setup": row.camera_setup,
+                    "delivery_mode": getattr(row, "delivery_mode", "stage"),
+                    "source_kind": getattr(row, "source_kind", "upload"),
                     "status": row.status,
                     "talk_plan_id": row.talk_plan_id,
                     "created_at": row.created_at,
@@ -344,4 +356,23 @@ def collect_export(
             for row in consents
         ],
         "media_links.json": links,
+        "layouts.json": [
+            _row(
+                {
+                    "id": row.id,
+                    "session_id": row.session_id,
+                    "job_id": row.job_id,
+                    "version": row.version,
+                    "status": row.status,
+                    "detector_version": row.detector_version,
+                    "confidence": row.confidence,
+                    "detected": row.detected,
+                    "confirmed": row.confirmed,
+                    "edit_count": row.edit_count,
+                    "created_at": row.created_at,
+                    "confirmed_at": row.confirmed_at,
+                }
+            )
+            for row in layouts
+        ],
     }

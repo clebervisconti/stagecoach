@@ -263,7 +263,8 @@
       "visuals": "Visuals",
       "voice": "Voice",
       "body": "Body",
-      "presence_time": "Presence & Time"
+      "presence_time": "Presence & Time",
+      "production": "Production"
     },
     "categoriesNamed": {
       "core_message": "Core Message & Purpose",
@@ -282,7 +283,11 @@
       "facial_affect": "Facial Expressiveness & Affect Signals",
       "energy_presence": "Energy & Presence",
       "time_management": "Time Management",
-      "qa": "Q&A Handling"
+      "qa": "Q&A Handling",
+      "screen_flow": "Screen & Flow",
+      "on_camera_presence": "On-camera presence",
+      "online_engagement": "Online viewer hold",
+      "production_quality": "Production quality"
     },
     "enableHint": {
       "visual_aids": "Record slides in view or attach a deck to enable this category.",

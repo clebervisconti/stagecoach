@@ -24,6 +24,7 @@ from app.models.audit_log import AuditLog
 from app.models.consent import Consent
 from app.models.deletion_request import DeletionRequest
 from app.models.session import Session as TalkSession
+from app.models.session_layout import SessionLayout
 from app.models.talk_plan import Goal, TalkPlan
 from app.models.user import AuthToken, User
 from sqlalchemy.orm import Session
@@ -225,12 +226,20 @@ def cancel_account_deletion(
 
 
 def _account_row_counts(db: Session, user: User) -> dict[str, int]:
+    session_ids = [
+        row.id for row in db.query(TalkSession.id).filter(TalkSession.user_id == user.id).all()
+    ]
     return {
-        "sessions": db.query(TalkSession).filter(TalkSession.user_id == user.id).count(),
+        "sessions": len(session_ids),
         "talk_plans": db.query(TalkPlan).filter(TalkPlan.user_id == user.id).count(),
         "goals": db.query(Goal).filter(Goal.user_id == user.id).count(),
         "consents": db.query(Consent).filter(Consent.user_id == user.id).count(),
         "auth_tokens": db.query(AuthToken).filter(AuthToken.user_id == user.id).count(),
+        "session_layouts": (
+            db.query(SessionLayout).filter(SessionLayout.session_id.in_(session_ids)).count()
+            if session_ids
+            else 0
+        ),
     }
 
 

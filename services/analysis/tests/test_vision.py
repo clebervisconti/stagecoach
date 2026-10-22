@@ -240,8 +240,12 @@ def test_openface_not_a_dependency():
     assert registry["emotion_inference"] is False
     assert registry["cpu_only"] is True
     for model in MODEL_REGISTRY:
-        assert model["license"] == "Apache-2.0"
         assert model["delegate"] == "CPU"
+        if model["component"] == "layout_face":
+            assert model["license"] == "MIT"
+            assert "MIT" in model["license_evidence"]
+            continue
+        assert model["license"] == "Apache-2.0"
         assert "Apache" in model["license_evidence"]
 
 
@@ -261,4 +265,8 @@ def test_licenses_are_apache_for_models():
     for model in MODEL_REGISTRY:
         assert model["sha256"]
         assert len(model["sha256"]) == 64
+        if model["component"] == "layout_face":
+            assert "opencv_zoo" in model["url"]
+            assert model["license"] == "MIT"
+            continue
         assert model["url"].startswith("https://storage.googleapis.com/mediapipe-models/")

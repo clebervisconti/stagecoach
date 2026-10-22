@@ -1,5 +1,8 @@
 """Main scoring engine."""
 
+from __future__ import annotations
+
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +12,53 @@ from .aggregation import aggregate_category, aggregate_overall
 from .confidence import compute_inclusion_factor
 from .curves import interpolate_curve
 from .opportunities import rank_opportunities
+
+logger = logging.getLogger(__name__)
+
+
+def resolve_metric_curve(
+    metric_def: dict[str, Any],
+    *,
+    context: str,
+    mode: str,
+    metric_id: str,
+) -> list[list[float]] | None:
+    """Resolve a piecewise curve: mode_curves, then context_curves, then curve.
+
+    A missing context_curves key no longer raises. Fall back to `curve`, else
+    the keynote context curve, and log the fallback (Appendix C, C11).
+    """
+    mode_curves = metric_def.get("mode_curves") or {}
+    if isinstance(mode_curves, dict) and mode in mode_curves:
+        curve = mode_curves[mode]
+        return curve if isinstance(curve, list) else None
+
+    context_curves = metric_def.get("context_curves") or {}
+    if isinstance(context_curves, dict) and context in context_curves:
+        curve = context_curves[context]
+        return curve if isinstance(curve, list) else None
+
+    if "curve" in metric_def and isinstance(metric_def["curve"], list):
+        if context_curves and context not in context_curves:
+            logger.info(
+                "No context_curves[%s] for %s; falling back to curve",
+                context,
+                metric_id,
+            )
+        return metric_def["curve"]
+
+    if isinstance(context_curves, dict) and context_curves:
+        fallback = context_curves.get("keynote")
+        if fallback is None:
+            fallback = next(iter(context_curves.values()), None)
+        if isinstance(fallback, list):
+            logger.info(
+                "No context_curves[%s] for %s; falling back to keynote/first curve",
+                context,
+                metric_id,
+            )
+            return fallback
+    return None
 
 
 class ScoringEngine:
@@ -58,6 +108,7 @@ class ScoringEngine:
         confidence: float,
         category_id: str | None = None,
         context: str = "keynote",
+        mode: str = "stage",
     ) -> dict[str, Any]:
         """Score a single metric.
 
@@ -67,6 +118,7 @@ class ScoringEngine:
             confidence: Confidence in the measurement [0, 1]
             category_id: Optional category for context-dependent metrics
             context: Presentation context type
+            mode: Delivery mode (stage, webinar, online_talk, recorded_video)
 
         Returns:
             Dict with keys: score, included, inclusion_factor
@@ -86,6 +138,14 @@ class ScoringEngine:
         if not metric_def:
             raise ValueError(f"Metric {metric_id} not found in config")
 
+        allowed_modes = metric_def.get("modes")
+        if isinstance(allowed_modes, list) and mode not in allowed_modes:
+            return {
+                "score": None,
+                "included": False,
+                "inclusion_factor": 0.0,
+            }
+
         # Compute inclusion factor
         inclusion_factor = compute_inclusion_factor(confidence, self.config["confidence"])
 
@@ -100,20 +160,17 @@ class ScoringEngine:
                 score = 20 * level - 10
                 score = max(0, min(100, score))  # Clamp to [0, 100]
 
-        elif "curve" in metric_def:
-            # Piecewise-linear curve
-            curve = metric_def["curve"]
-            if raw_value is None or not isinstance(raw_value, (int, float)):
-                score = None
-            else:
-                score = interpolate_curve(curve, float(raw_value))
-
-        elif "context_curves" in metric_def:
-            # Context-dependent curve
-            curves = metric_def["context_curves"]
-            if context not in curves:
-                raise ValueError(f"No curve for context {context} in metric {metric_id}")
-            curve = curves[context]
+        elif "curve" in metric_def or "context_curves" in metric_def or "mode_curves" in metric_def:
+            curve = resolve_metric_curve(
+                metric_def, context=context, mode=mode, metric_id=metric_id
+            )
+            if curve is None:
+                # Missing context/mode curve is N/A, never a crash (Appendix C, C11).
+                return {
+                    "score": None,
+                    "included": False,
+                    "inclusion_factor": 0.0,
+                }
             if raw_value is None or not isinstance(raw_value, (int, float)):
                 score = None
             else:
@@ -143,6 +200,7 @@ class ScoringEngine:
         category_id: str,
         metrics: list[dict[str, Any]],
         context: str = "keynote",
+        mode: str = "stage",
     ) -> dict[str, Any]:
         """Score a category from its sub-metrics.
 
@@ -158,6 +216,8 @@ class ScoringEngine:
         category_def = self.config["categories"].get(category_id)
         if not category_def:
             raise ValueError(f"Category {category_id} not found")
+        if mode not in ((self.config.get("modes") or {}) or {"stage": True}):
+            mode = "stage"
 
         return aggregate_category(
             category_id,
@@ -171,6 +231,7 @@ class ScoringEngine:
         self,
         categories: list[dict[str, Any]],
         context: str = "keynote",
+        mode: str = "stage",
     ) -> dict[str, Any]:
         """Compute overall score from category scores.
 
@@ -182,7 +243,7 @@ class ScoringEngine:
         Returns:
             Dict with keys: score, level, coverage, confidence, display_band, partial
         """
-        return aggregate_overall(categories, context, self.config)
+        return aggregate_overall(categories, context, self.config, mode=mode)
 
     def rank_opportunities(
         self,

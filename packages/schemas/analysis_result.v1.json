@@ -165,7 +165,7 @@
         "required": ["id", "score", "confidence", "categories"],
         "properties": {
           "id": {
-            "enum": ["message", "story_impact", "visuals", "voice", "body", "presence_time"]
+            "enum": ["message", "story_impact", "visuals", "voice", "body", "presence_time", "production"]
           },
           "score": {"type": ["integer", "null"]},
           "confidence": {"type": ["number", "null"]},
@@ -215,7 +215,11 @@
               "facial_affect",
               "energy_presence",
               "time_management",
-              "qa"
+              "qa",
+              "screen_flow",
+              "on_camera_presence",
+              "online_engagement",
+              "production_quality"
             ]
           },
           "pillar": {"type": "string"},

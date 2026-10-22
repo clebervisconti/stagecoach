@@ -36,7 +36,7 @@ At `stagecoach.cybersphere.com.br`, an authenticated beta user can:
 
 ## Planned: online and recorded sessions
 
-A presenter can upload a webinar, an online talk, or a recorded video and get delivery feedback that separates the camera tile from the screen. The draft is `docs/online-sessions/SPEC.md`. It does not score whether the subject matter is correct. Stage uploads keep today's behavior. The flag `ONLINE_MODES_ENABLED` is off until the owner closes OD-1 through OD-10 and signs off at phase O4.
+A presenter can upload a webinar, an online talk, or a recorded video and get delivery feedback that separates the camera tile from the screen. The draft is `docs/online-sessions/SPEC.md`. It does not score whether the subject matter is correct. Stage uploads keep today's behavior. Owner decisions OD-1 through OD-10 are approved as the spec recommends (22 Oct 2026). The flag `ONLINE_MODES_ENABLED` stays off until O4 sign-off.
 
 ## Success criteria
 

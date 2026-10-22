@@ -13,9 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vocal variety and energy stay N/A, with a reason, when every measured signal is below the 0.40 confidence floor. They no longer appear as an empty score.
 - The `noisy_low_snr` golden now expects pace, vocal variety, and fluency to be N/A for the same reason (confidence 0.3 < 0.40), not applicable-with-a-blank-score.
 
+### Online and recorded sessions (Phase O0)
+
+- Scoring config 1.1.0 adds delivery modes and four new categories. Stage weights stay identical to 1.0.0. A missing context curve is N/A instead of a crash.
+- YuNet (MIT) is registered with a SHA pin for layout face boxes. The detector is injectable; tests use `FakeFaceDetector`.
+- Migration `011_online_sessions` adds mode columns and `session_layouts`. `SessionCreate` online fields stay behind `ONLINE_MODES_ENABLED=false`.
+- Successful analysis jobs end `succeeded` / session `ready`. `overall.partial` remains a coverage flag.
+- Person presence uses a skin-and-motion heuristic instead of a constant 0.8.
+- Synthetic fixture generator and `scripts/bench_online_cpu.py` are in tree. Generated videos are not committed.
+- Owner decisions OD-1–OD-10 are approved as the spec recommends (22 Oct 2026). The flag stays off.
+
 ### Online and recorded sessions (spec only)
 
-- `docs/online-sessions/SPEC.md` is the draft for delivery modes, layout review, and four new categories. `ONLINE_MODES_ENABLED` stays off. Owner decisions OD-1–OD-10 are listed in `product/BACKLOG.md` and are not approved.
+- `docs/online-sessions/SPEC.md` is the draft for delivery modes, layout review, and four new categories. Phase O0 implements the foundations. `ONLINE_MODES_ENABLED` stays off.
 
 ### Pose tracking on the LION worker
 
