@@ -116,6 +116,27 @@ test("online pipeline lists layout and production quality and hides alignment", 
   ]);
 });
 
+test("online timeline folds alignment into transcribing and keeps waiting", () => {
+  const view = pipelineTimeline(
+    [
+      { stage: "ingest", status: "succeeded" },
+      { stage: "asr", status: "succeeded", message: "Transcript ready" },
+      { stage: "alignment", status: "running", message: "Aligning words" },
+    ],
+    null,
+    { deliveryMode: "webinar" },
+  );
+  assert.equal(view.some((stage) => stage.stage === "alignment"), false);
+  assert.equal(view.find((stage) => stage.stage === "asr")?.status, "running");
+
+  const waiting = pipelineTimeline(
+    [{ stage: "layout_review", status: "waiting", message: "Check the layout" }],
+    null,
+    { deliveryMode: "webinar" },
+  );
+  assert.equal(waiting.find((stage) => stage.stage === "layout_review")?.status, "waiting");
+});
+
 test("legacy stage payloads without type still parse", () => {
   const event = parseProgressData(JSON.stringify({ stage: "asr", status: "succeeded" }));
   assert.equal(event?.type, "stage");

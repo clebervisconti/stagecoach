@@ -36,7 +36,7 @@ test("layout review: looks right and analyse audio only, no adjust", async ({ pa
   await expect(page.getByTestId("confidence-line")).toContainText(/high confidence/i);
   await expect(page.getByTestId("looks-right")).toBeVisible();
   await expect(page.getByTestId("analyse-audio")).toBeVisible();
-  await expect(page.getByText(/adjust/i)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^adjust$/i })).toHaveCount(0);
   await page.getByTestId("looks-right").click();
   await expect(page).toHaveURL(new RegExp(`/sessions/${SESSION_ID}`));
 });
@@ -59,5 +59,7 @@ test("report hides body tab and shows not measured for online", async ({ page })
   await expect(page.getByTestId("report")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId("not-measured")).toBeVisible();
   await expect(page.getByRole("tab", { name: /^body$/i })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: /on camera/i })).toHaveCount(0);
   await expect(page.getByRole("tab", { name: /^slides$/i })).toBeVisible();
+  await expect(page.getByTestId("not-measured").getByText(/open settings/i)).toBeVisible();
 });

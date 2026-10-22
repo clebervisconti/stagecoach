@@ -67,6 +67,23 @@ def test_review_shown_for_new_users():
     assert needs_layout_review(pref="never", confirmed_count=0, confidence=0.4) is True
 
 
+def test_prepare_session_skips_layout_without_video_consent(tmp_path: Path):
+    video = generate_one("composite_pip_tr", tmp_path)
+    result = prepare_session(
+        input_path=video,
+        output_dir=tmp_path / "out-consent",
+        session_id="11111111-1111-4111-8111-111111111112",
+        delivery_mode="webinar",
+        video_analysis_consent=False,
+        confirmed_layout_count=0,
+    )
+    assert result["skip_layout"] is True
+    assert result["audio_only"] is True
+    assert result["reason"] == "consent_video_off"
+    assert result["status"] == "processing"
+    assert result["layout"] is None
+
+
 def test_prepare_session_layout_review(tmp_path: Path):
     video = generate_one("composite_pip_tr", tmp_path)
     detector = FakeFaceDetector([FaceDetection(x=820, y=20, w=90, h=110, score=0.92)])
