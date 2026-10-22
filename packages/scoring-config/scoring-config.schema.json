@@ -153,7 +153,7 @@
                       "required": ["kind", "source"],
                       "properties": {
                         "kind": {
-                          "enum": ["research", "heuristic", "llm_judgment"]
+                          "enum": ["research", "heuristic", "llm_judgment", "industry"]
                         },
                         "source": {
                           "type": "string"
@@ -175,6 +175,16 @@
                     "context_curves": {
                       "type": "object"
                     },
+                    "mode_curves": {
+                      "type": "object"
+                    },
+                    "modes": {
+                      "type": "array",
+                      "items": {"type": "string"}
+                    },
+                    "note": {
+                      "type": "string"
+                    },
                     "mapping": {
                       "type": "object"
                     },
@@ -191,6 +201,27 @@
             }
           }
         }
+      }
+    },
+    "modes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "multipliers": {"type": "object"},
+          "new_categories": {"type": "object"}
+        }
+      }
+    },
+    "core_delivery": {
+      "type": "object",
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "weighting": {"type": "string"},
+        "min_categories": {"type": "integer"}
       }
     },
     "opportunities": {

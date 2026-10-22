@@ -237,26 +237,19 @@ jobs:
           from pathlib import Path
           import jsonschema
           
-          # Load config
-          config_path = Path("packages/scoring-config/v1.0.0/scoring.yaml")
-          with open(config_path) as f:
-              config = yaml.safe_load(f)
-          
-          # Load schema
           schema_path = Path("packages/scoring-config/scoring-config.schema.json")
           with open(schema_path) as f:
               schema = json.load(f)
-          
-          # Validate
-          try:
-              jsonschema.validate(instance=config, schema=schema)
-              print("✅ Scoring config is valid against schema")
-          except jsonschema.ValidationError as e:
-              print(f"❌ Validation error: {str(e.message)}")
-              raise
-          except Exception as e:
-              print(f"❌ Error during validation: {str(e)}")
-              raise
+          for version in ("1.0.0", "1.1.0"):
+              config_path = Path(f"packages/scoring-config/v{version}/scoring.yaml")
+              with open(config_path) as f:
+                  config = yaml.safe_load(f)
+              try:
+                  jsonschema.validate(instance=config, schema=schema)
+                  print(f"✅ Scoring config v{version} is valid against schema")
+              except jsonschema.ValidationError as e:
+                  print(f"❌ Validation error in v{version}: {str(e.message)}")
+                  raise
           EOF
 
   check-generated:
