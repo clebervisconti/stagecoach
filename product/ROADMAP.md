@@ -12,6 +12,14 @@ Consent-gated vision and slides, content coach on the upload job, talk-prep gene
 
 Licensed-speech validation, ASR moved off the `tiny` model, alignment on the live job, owner gates closed (Resend DNS, Apple secrets, counsel review), and a recorded live UAT of upload → report → delete.
 
+## 0.6 — Online and recorded sessions
+
+Spec: `docs/online-sessions/SPEC.md` (draft, 21 Oct 2026). Delivery mode is orthogonal to context type: stage, webinar, online talk, recorded video. Stage mode stays identical. The flag `ONLINE_MODES_ENABLED` stays off until O4.
+
+Phases O0–O6 are in `product/BACKLOG.md`. Owner decisions OD-1 through OD-10 are not approved. O0 is blocked by OD-1, OD-8, and OD-9 until Cleber decides them. The spec's recommendations are recorded next to each decision and are not treated as decisions.
+
+MediaPipe 1.1.1 already runs pose on the live LION worker (libegl1 and libgles2). ADR-067 and the vision golden re-baseline are still open, so OD-8 is not closed.
+
 ## v2 — Practice loop
 
 In-browser recording, live coach overlay, drill redo loops.

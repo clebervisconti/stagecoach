@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).parents[3] / "packages" / "scoring"))
 
 from pipeline.stages.fusion_scoring import (
     VIDEO_CATEGORIES,
+    _content_metrics,
     _ensure_scoring_path,
     _packages_dir,
     _walk_packages,
@@ -361,3 +362,72 @@ def test_consent_denied_sets_video_na_reasons(tmp_path: Path):
     assert by_id["facial_affect"]["applicable"] is False
     assert "Expression analysis is off" in (by_id["facial_affect"]["na_reason"] or "")
     assert "gb_gesture_activity_ratio" not in {m["id"] for m in result["metrics"]}
+
+
+def test_failed_claim_quotes_do_not_zero_agreed_levels():
+    """A claims list that fails quote checks must not hide audience fit or clarity."""
+    _ensure_scoring_path()
+    from scoring import ScoringEngine
+
+    engine = ScoringEngine("1.0.0", config_path=PACKAGES / "scoring-config")
+    audience = {
+        "insufficient_evidence": False,
+        "audience_fit_level": 4.5,
+        "clarity_level": 4,
+        "jargon": [],
+        "speaker_centric_phrases": [],
+        "claims": [],
+        "vagueness": [],
+        "redundancy_spans": [],
+        "consistency_metadata": {
+            "audience_fit_level": {"agreement": 1.0, "median": 4.5, "levels": [4.5, 4.5, 4.5]},
+            "clarity_level": {"agreement": 1.0, "median": 4.0, "levels": [4.0, 4.0, 4.0]},
+        },
+        "verification_metadata": {
+            "claims": {"original_count": 4, "valid_count": 0, "confidence_factor": 0.0}
+        },
+    }
+    grouped = _content_metrics(
+        {"audience_clarity": audience},
+        {"duration": 600, "segments": [{"id": "S0001", "start": 0, "end": 10, "text": "Hello there."}]},
+        {
+            "duration_s": 600.0,
+            "speech_words": 500.0,
+            "speech_seconds": 400.0,
+            "mean_word_prob": 0.92,
+        },
+        0.92,
+        engine.config,
+    )
+    aud = {m["id"]: m for m in grouped["audience_adaptation"]}
+    clar = {m["id"]: m for m in grouped["clarity"]}
+    assert aud["aud_depth_fit"]["confidence"] >= 0.4
+    assert clar["cl_precision_llm"]["confidence"] >= 0.4
+    assert "cl_claims_supported_ratio" not in clar
+
+
+def test_low_prosody_confidence_marks_vocal_variety_na(tmp_path: Path):
+    _write_inputs(tmp_path, with_content=False, short=False)
+    payload = json.loads((tmp_path / "metrics.json").read_text())
+    payload["prosody_confidence"] = 0.35
+    for metric_id, metric in payload["metrics"].items():
+        if metric_id.startswith("vv_"):
+            metric["confidence"] = 0.35
+    (tmp_path / "metrics.json").write_text(json.dumps(payload))
+    result = run_fusion_scoring(
+        session_id="00000000-0000-4000-8000-000000000038",
+        output_dir=tmp_path,
+        context_type="keynote",
+        language="en",
+        camera_setup="audio_only",
+        packages_dir=PACKAGES,
+        transcript_path=tmp_path / "transcript.json",
+        metrics_path=tmp_path / "metrics.json",
+        audio_metrics_path=tmp_path / "audio_metrics.json",
+    )
+    by_id = {c["id"]: c for c in result["categories"]}
+    vocal = by_id["vocal_variety"]
+    assert vocal["applicable"] is False
+    assert vocal["score"] is None
+    assert "0.40" in (vocal["na_reason"] or "")
+    jsonschema.validate(instance=result, schema=SCHEMA)

@@ -48,3 +48,89 @@ Golden tests use synthetic timestamps. Licensed human speech and inter-rater agr
 ### SC-P4-001 — Practice loop
 
 In-browser recording and the live coach overlay. Start only after a real upload produces content scores and a real plan, which the 0.4.0 job now does when the local model is up.
+
+## Online and recorded sessions
+
+Spec: `docs/online-sessions/SPEC.md`. Flag `ONLINE_MODES_ENABLED` defaults to false. Stage mode stays identical. The spec does not judge whether the subject matter is correct. Other participants' faces are never landmarked.
+
+Phases are not started until the owner decisions that block them are closed. Recommendations below are the spec's, not approvals.
+
+### Owner decisions (OD-1–OD-10)
+
+**Owner:** Cleber. Do not implement a blocked phase as if the recommendation were approved.
+
+| ID | Decision | Spec recommendation | Blocks |
+|---|---|---|---|
+| OD-1 | Mode taxonomy | (a) stage, webinar, online talk, recorded video | O0 |
+| OD-2 | Analyse YouTube/Vimeo links | (b) later, off by default, own content only | O6 |
+| OD-3 | When to show layout review | (b) first 3 online sessions, then only when confidence is below 0.80 | O1 |
+| OD-4 | Layout boxes without `video_analysis` consent | (a) yes, with consent text v1.1 | O1 |
+| OD-5 | "Never judge factual correctness" on existing prompts | (a) yes, prompt versions 1.0.1 | O3 |
+| OD-6 | Webinar upload limits | (b) 2 GB / 120 min, resumable in O2 | O1 |
+| OD-7 | Other speakers in the transcript | (a) keep, labelled, plus (b) a setting to remove after analysis | O2 |
+| OD-8 | MediaPipe 0.10.31 → 1.x on LION | (a) upgrade and re-baseline vision goldens | O0 |
+| OD-9 | Four new categories and mode weights | (a) approve as heuristic and calibrate after 30 sessions | O0 |
+| OD-10 | Who gets online modes first | (a) owner account only, until the security gate | O4 |
+
+OD-8 status, 21 Oct 2026: MediaPipe 1.1.1 plus `libegl1` and `libgles2` already score pose on the running LION worker. The worker image is not rebuilt, ADR-067 is not written, and the vision golden re-baseline is not done. The decision is still open.
+
+### SC-ONL-O0 — Foundations
+
+**Blocked by:** OD-1, OD-8, OD-9.
+
+- [ ] E0-1 MediaPipe 1.x on linux/arm64, ADR-067, vision golden re-baseline. The live container already imports 1.1.1.
+- [ ] E0-2 YuNet in the model registry, plus a fake face detector for tests.
+- [ ] E0-3 Migration `011_online_sessions`, including deletion and export of layouts.
+- [ ] E0-4 Scoring config 1.1.0, effective weights, engine `mode`, stage parity test, context-curve fallback.
+- [ ] E0-5 Synthetic fixtures: composite picture-in-picture, screen only, camera only.
+- [ ] E0-6 `scripts/bench_online_cpu.py`.
+
+### SC-ONL-O1 — Upload, layout review, report
+
+**Blocked by:** O0, plus OD-3, OD-4, OD-6.
+
+- [ ] E1-1 Mode wizard. Stage uploads keep today's form.
+- [ ] E1-2 `tasks.prepare_session` and states `preparing` / `layout_review`.
+- [ ] E1-3 Single-layout detection.
+- [ ] E1-4 Layout API.
+- [ ] E1-5 Read-only layout review.
+- [ ] E1-6 Region crops. Vision on the camera crop. Slides on the screen crop.
+- [ ] E1-7 Production quality.
+- [ ] E1-8 Mode fusion, mode badge, core delivery score, N/A reasons.
+
+### SC-ONL-O2 — Correct, trim, gallery
+
+**Blocked by:** O1 and OD-7.
+
+- [ ] E2-1 through E2-7: region editor, multi-segment layouts, gallery and active speaker, analysis-window trim, re-analyse without a second ASR pass, review preference.
+
+### SC-ONL-O3 — Screen and flow
+
+**Blocked by:** O2 and OD-5.
+
+- [ ] E3-1 through E3-8: screen activity, transitions, segment types, alignment and dead air, `screen_flow` and `online_engagement`, Screen & Flow tab, `online_flow_v1`, content-judgment verifier.
+
+### SC-ONL-O4 — On camera, trends, release candidate
+
+**Blocked by:** O3 and OD-10.
+
+- [ ] E4-1 through E4-7: camera presence, On Camera tab, mode pace bands, trends filter, optional diarization, calibration on five owner webinars, security gate. Flag stays off for everyone else.
+
+### SC-ONL-O5 — Two-track upload
+
+- [ ] E5-1 Two drop zones.
+- [ ] E5-2 Audio sync and review slider.
+
+### SC-ONL-O6 — Link ingest
+
+**Blocked by:** OD-2. Do not build unless OD-2 is approved.
+
+- [ ] E6-1 Sandboxed fetch worker.
+- [ ] E6-2 URL endpoint, attestation, SSRF tests.
+- [ ] E6-3 Link tab, hidden while the flag is off.
+
+### SC-ONL-E7 — Docs that land with the phases
+
+- [ ] ADR-061 through ADR-069, indexed from `docs/DECISIONS.md`.
+- [ ] Privacy note and consent text v1.1 (OD-4).
+- [ ] Research sources S57–S78 and the in-app research page.

@@ -267,13 +267,25 @@ def _seg_end(transcript: dict[str, Any], seg_id: Optional[str]) -> Optional[floa
     return None
 
 
-def _llm_confidence(block: dict[str, Any], asr_c: float) -> float:
+def _llm_confidence(
+    block: dict[str, Any],
+    asr_c: float,
+    *,
+    evidence_path: str | None = None,
+) -> float:
+    """Confidence for one content metric.
+
+    A failed quote check belongs to that evidence list. It must not zero a
+    level the model agreed on, such as audience fit or clarity.
+    """
     meta = block.get("consistency_metadata") or {}
     agreements = [float(v.get("agreement", 0)) for v in meta.values() if isinstance(v, dict)]
     agreement = sum(agreements) / len(agreements) if agreements else 0.7
-    verify = block.get("verification_metadata") or {}
-    factors = [float(v.get("confidence_factor", 1)) for v in verify.values() if isinstance(v, dict)]
-    validity = sum(factors) / len(factors) if factors else 1.0
+    validity = 1.0
+    if evidence_path:
+        entry = (block.get("verification_metadata") or {}).get(evidence_path) or {}
+        if isinstance(entry, dict) and "confidence_factor" in entry:
+            validity = float(entry["confidence_factor"])
     return max(0.0, min(1.0, agreement * validity * max(asr_c, 0.4)))
 
 
@@ -321,7 +333,14 @@ def _content_metrics(
     open_close = content.get("open_close") or {}
     qa = content.get("qa") or {}
 
-    def add(category: str, metric_id: str, raw: Any, block: dict[str, Any]) -> None:
+    def add(
+        category: str,
+        metric_id: str,
+        raw: Any,
+        block: dict[str, Any],
+        *,
+        evidence_path: str | None = None,
+    ) -> None:
         if raw is None:
             return
         out[category].append(
@@ -329,7 +348,7 @@ def _content_metrics(
                 metric_id=metric_id,
                 category_id=category,
                 raw_value=raw,
-                confidence=_llm_confidence(block, asr_c),
+                confidence=_llm_confidence(block, asr_c, evidence_path=evidence_path),
                 config=config,
             )
         )
@@ -415,7 +434,13 @@ def _content_metrics(
         claims = audience.get("claims") or []
         if claims:
             supported = sum(1 for c in claims if c.get("support_type") not in {None, "none"})
-            add("clarity", "cl_claims_supported_ratio", supported / len(claims), audience)
+            add(
+                "clarity",
+                "cl_claims_supported_ratio",
+                supported / len(claims),
+                audience,
+                evidence_path="claims",
+            )
         add("clarity", "cl_precision_llm", audience.get("clarity_level"), audience)
         vague = audience.get("vagueness") or []
         words = max(stats["speech_words"], 1)
@@ -1208,8 +1233,28 @@ def run_fusion_scoring(
             applicable = False
             na_reason = na_reason or "Required inputs for this category were not produced."
 
+        cat = None
         if applicable:
             cat = engine.score_category(category_id, prepared, context_type)
+            if cat["score"] is None:
+                # Metrics existed, but every one was below the inclusion floor
+                # (confidence under 0.40) or had no usable weight.
+                applicable = False
+                floor = float((config.get("confidence") or {}).get("include_partial_from", 0.4))
+                measured = [m for m in prepared if m.get("confidence") is not None]
+                below = [m for m in measured if float(m["confidence"]) < floor]
+                if measured and len(below) == len(measured):
+                    na_reason = (
+                        f"These signals were measured, but their confidence is below {floor:.2f}, "
+                        "so this category stays N/A."
+                    )
+                else:
+                    na_reason = na_reason or (
+                        "These signals were measured, but none of them could be included in the score."
+                    )
+                cat = None
+
+        if applicable and cat is not None:
             score = None if cat["score"] is None else int(round(cat["score"]))
             categories_out.append(
                 {

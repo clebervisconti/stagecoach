@@ -12,6 +12,7 @@ import {
 const STAGE_KEYS = [
   "ingest",
   "asr",
+  "alignment",
   "audio_features",
   "partial_scoring",
   "vision",

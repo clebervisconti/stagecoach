@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Draft spec for online and recorded session analysis at `docs/online-sessions/SPEC.md`. Phases O0–O6 and owner decisions OD-1–OD-10 are on the roadmap and backlog. The feature flag stays off. Stage scoring is unchanged.
+
 ## [0.4.0] - 2026-10-17
 
 ### Added

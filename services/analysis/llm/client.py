@@ -112,7 +112,7 @@ class LLMClient:
             "api_key": self.api_key,
             "base_url": provider_config["base_url"],
             "models": provider_config.get("models") or {},
-            "timeout": self.config["timeout"]["default"],
+            "timeout": 180 if provider_name == "local" else self.config["timeout"]["default"],
             "retry_config": self.config["retry"],
             "transport": transport,
         }

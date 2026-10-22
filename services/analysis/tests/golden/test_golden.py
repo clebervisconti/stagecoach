@@ -58,4 +58,9 @@ def test_noisy_fixture_is_low_confidence_and_excluded_from_overall():
     assert any("noise" in w.casefold() or "confidence" in w.casefold() for w in actual["quality"]["warnings"])
     for category in actual["categories"]:
         if category["id"] in {"pace_pausing", "vocal_variety", "fluency"}:
+            # Confidence 0.3 is below include_partial_from (0.40), so fusion
+            # keeps the category N/A with a reason instead of an empty score.
+            assert category["applicable"] is False
+            assert category["score"] is None
             assert (category.get("confidence") or 0) < 0.5
+            assert "0.40" in (category.get("na_reason") or "")

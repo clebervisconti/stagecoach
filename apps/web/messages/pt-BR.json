@@ -198,6 +198,7 @@
     "slides": "Slides",
     "ingest": "Preparando a mídia",
     "asr": "Transcrevendo",
+    "alignment": "Alinhando as palavras",
     "audio_features": "Medindo a voz",
     "partial_scoring": "Primeiras pontuações prontas",
     "fusion_scoring": "Pontuando",

@@ -933,7 +933,7 @@ def run_mvp_analysis_task(
     qa_in_slot: bool = False,
     audience_desc: Optional[str] = None,
 ):
-    """Run ingest → ASR → audio → partial scores → vision → slides → fusion → report."""
+    """Run ingest → ASR → alignment → audio → partial scores → vision → slides → fusion → report."""
     from pipeline.accessibility import persist_accessibility
     from pipeline.consent import persist_consent_snapshot, run_vision_if_allowed
     from pipeline.partial import scored_category_ids, write_vision_status
@@ -1024,6 +1024,37 @@ def run_mvp_analysis_task(
             },
         )
         emit_progress(job_id, "asr", "succeeded", pct=60, message="Transcript ready")
+
+        from pipeline.stages.alignment_gate import run_live_alignment
+
+        started = datetime.utcnow()
+        emit_progress(job_id, "alignment", "running", pct=62, message="Aligning words to the audio")
+        alignment = run_live_alignment(
+            audio_path=Path(ingest_dict["artifacts"]["audio16k"]),
+            transcript_path=transcript_path,
+            output_dir=destination,
+            session_id=session_id,
+            language=transcript.language or language,
+        )
+        alignment_status = alignment["status"]
+        _record_job_step(
+            job_id=job_id,
+            stage="alignment",
+            status=alignment_status,
+            started_at=started,
+            outputs=alignment.get("artifacts"),
+            metrics=alignment.get("metrics"),
+            error=alignment.get("error") if alignment_status == "failed" else None,
+        )
+        emit_progress(
+            job_id,
+            "alignment",
+            alignment_status,
+            pct=64,
+            message="Word timing aligned"
+            if alignment_status == "succeeded"
+            else "Word alignment is not available on this machine",
+        )
 
         started = datetime.utcnow()
         emit_progress(
