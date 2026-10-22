@@ -84,6 +84,8 @@ class YuNetFaceDetector:
         if self._detector is None:
             if not self.model_path.is_file():
                 self.model_path = ensure_yunet_model(self.model_path.parent)
+            # OpenCV warns "setPreferableTarget Targets are not supported" when
+            # FaceDetectorYN picks a default (often OpenCL) the build cannot use.
             self._detector = cv2.FaceDetectorYN.create(
                 str(self.model_path),
                 "",
@@ -91,6 +93,8 @@ class YuNetFaceDetector:
                 YUNET_SCORE_MIN,
                 0.3,
                 5000,
+                cv2.dnn.DNN_BACKEND_OPENCV,
+                cv2.dnn.DNN_TARGET_CPU,
             )
             self._input_size = (width, height)
             return
