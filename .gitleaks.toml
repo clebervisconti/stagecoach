@@ -1,0 +1,11 @@
+# Extend the default rules. prefetch_models.py only pins public model checksums.
+title = "stagecoach"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public SHA-256 pins for baked worker models (YuNet, Silero, faster-whisper, NLTK)"
+paths = [
+  '''(^|/)services/analysis/scripts/prefetch_models\.py$''',
+]

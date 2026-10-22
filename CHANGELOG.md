@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `face_visible_ratio` is measured with YuNet on the camera crop and mapped as the first real number (0.0 is kept). Fusion no longer turns 0.0 into `null`.
 - YuNet sets the OpenCV DNN backend/target to CPU so start-up does not warn `setPreferableTarget Targets are not supported`.
 - `make lion-*` accepts `COMPOSE_PROJECT_NAME`, `ENV_FILE`, and `LION_OVERRIDE`. `lion-up` does not start `worker-beat`.
+- Public faster-whisper checksums in `prefetch_models.py` are allowlisted in `.gitleaks.toml` (they are not credentials).
+- Web production pin is `next@16.4.1` (GHSA-2464-fhr4-w9xw and the other 16.4.0 advisories).
 
 ### LION arm64 worker and O1 real-stack
 
