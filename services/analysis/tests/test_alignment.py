@@ -1,122 +1,57 @@
-"""Tests for WhisperX alignment stage."""
+"""Tests for WhisperX alignment. Missing nltk/pandas must fail CI."""
+
+from __future__ import annotations
 
 import json
-import subprocess
-import tempfile
+import shutil
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
+from pipeline.stages.alignment_gate import run_live_alignment
+from pipeline.stages.asr import transcribe_audio
 
-
-def generate_test_fixture(output_path: Path):
-    """Generate a 3-second test audio file."""
-    cmd = [
-        "ffmpeg",
-        "-f", "lavfi",
-        "-i", "sine=frequency=440:duration=3",
-        "-ar", "16000",
-        "-ac", "1",
-        "-y",
-        str(output_path),
-        "-loglevel", "error",
-    ]
-    subprocess.run(cmd, check=True, capture_output=True)
+from .online.generate_online_fixtures import SPEECH_ASSET, synthesize_speech
 
 
-@pytest.mark.skipif(
-    True,  # Always skip - requires whisperx models
-    reason="Alignment tests require whisperx models - run in smoke test only"
-)
-def test_alignment_with_asr():
-    """Test alignment stage with ASR transcript (smoke test only)."""
-    # Import inside test so it doesn't fail when whisperx not installed
-    from pipeline.stages.asr import transcribe_audio
-    from pipeline.stages.alignment import align_transcript
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path(tmpdir)
-        
-        # Generate test audio
-        audio_path = tmpdir / "test.wav"
-        generate_test_fixture(audio_path)
-        
-        # Run ASR first
-        asr_result = transcribe_audio(
-            audio_path=audio_path,
-            output_dir=tmpdir,
-            session_id="test-alignment",
-            language="en",
-            model_name="tiny"  # Use tiny for speed
-        )
-        
-        # Save transcript for alignment
-        transcript_path = tmpdir / "test-alignment_transcript.json"
-        with open(transcript_path, "w") as f:
-            json.dump(asr_result.to_dict(), f)
-        
-        # Run alignment
-        alignment_result = align_transcript(
-            audio_path=audio_path,
-            transcript_path=transcript_path,
-            output_dir=tmpdir,
-            session_id="test-alignment",
-            language="en"
-        )
-        
-        # Verify output
-        assert len(alignment_result.aligned_words) >= 0  # May have no words in silent audio
-        assert len(alignment_result.vad_segments) >= 0
-        assert alignment_result.mean_alignment_score >= 0
-        assert alignment_result.gap_fills_count >= 0
-        assert alignment_result.acoustic_fallback_count >= 0
-        
-        # Verify output file exists
-        output_file = tmpdir / "test-alignment_alignment.json"
-        assert output_file.exists()
-        
-        # Verify output structure
-        with open(output_file) as f:
-            output_data = json.load(f)
-        
-        assert "aligned_words" in output_data
-        assert "vad_segments" in output_data
-        assert "gap_fills_count" in output_data
-        assert "mean_alignment_score" in output_data
-        
-        print(f"✅ Alignment test passed")
-        print(f"   Aligned words: {len(alignment_result.aligned_words)}")
-        print(f"   VAD segments: {len(alignment_result.vad_segments)}")
-        print(f"   Mean score: {alignment_result.mean_alignment_score:.3f}")
+def test_whisperx_imports_nltk_and_pandas():
+    """whisperX is installed --no-deps; these were missing on LION."""
+    import nltk
+    import pandas
+    import whisperx
+    from whisperx import alignment as whisperx_alignment
+
+    assert whisperx_alignment.nltk is nltk
+    assert callable(whisperx.load_align_model)
+    assert callable(whisperx.align)
+    _ = pandas.__version__
 
 
-@pytest.mark.skipif(
-    True,  # Always skip - requires whisperx models
-    reason="VAD test requires silero model - run in smoke test only"
-)
-def test_vad_detection():
-    """Test Silero VAD detection."""
-    # Import inside test so it doesn't fail when silero not installed
-    from pipeline.stages.alignment import load_silero_vad, run_vad
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path(tmpdir)
-        
-        # Generate test audio
-        audio_path = tmpdir / "test.wav"
-        generate_test_fixture(audio_path)
-        
-        # Load VAD
-        model, get_speech_timestamps, read_audio = load_silero_vad()
-        
-        # Run VAD
-        vad_segments = run_vad(audio_path, model, get_speech_timestamps, read_audio)
-        
-        # Verify output
-        assert isinstance(vad_segments, list)
-        # Sine wave may or may not be detected as speech
-        print(f"✅ VAD test passed: {len(vad_segments)} segments detected")
+def test_alignment_on_synthetic_speech(tmp_path: Path):
+    """Import whisperx and align a short espeak-ng clip. ASR words > 0."""
+    speech = synthesize_speech(SPEECH_ASSET)
+    assert speech.is_file()
+    audio = tmp_path / "speech.wav"
+    shutil.copy(speech, audio)
 
+    asr = transcribe_audio(
+        audio_path=audio,
+        output_dir=tmp_path,
+        session_id="align-speech",
+        language="en",
+        model_name="tiny",
+    )
+    assert asr.word_count > 0
+    assert asr.segments
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    transcript_path = tmp_path / "transcript.json"
+    result = run_live_alignment(
+        audio_path=audio,
+        transcript_path=transcript_path,
+        output_dir=tmp_path,
+        session_id="align-speech",
+        language="en",
+    )
+    assert result["status"] == "succeeded", result
+    assert int((result.get("metrics") or {}).get("aligned_words") or 0) > 0
+    payload = json.loads((tmp_path / "align-speech_alignment.json").read_text())
+    assert payload["aligned_words"]
+    assert payload["mean_alignment_score"] >= 0

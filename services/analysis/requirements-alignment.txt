@@ -3,6 +3,12 @@
 # Pin torch/torchaudio to the same 2.4.1 used by requirements-torch-*.txt.
 # The image installs this file with `pip install -c requirements-torch-$ARCH.txt`
 # so pyannote.audio cannot pull a newer torch (2.14.1 was observed on LION).
+#
+# whisperX is installed with --no-deps (v3.8.6). This file pins every module
+# that whisperx.alignment / whisperx.audio import at runtime, audited against
+# https://github.com/m-bain/whisperX/tree/v3.8.6/whisperx
+# (nltk, pandas, numpy, torch, torchaudio, transformers). Missing nltk
+# raised ModuleNotFoundError on LION. The repo does not use --require-hashes.
 
 # WhisperX and its dependencies
 transformers==4.43.4
@@ -11,6 +17,8 @@ librosa==0.10.2
 soundfile==0.12.1
 numba==0.60.0
 jiwer==3.0.4
+nltk==3.9.1
+pandas==2.2.3
 
 # Diarization (pyannote) - optional, gated on HF_TOKEN
 pyannote.audio==3.3.1
