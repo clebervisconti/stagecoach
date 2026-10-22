@@ -29,5 +29,5 @@ PR #149 already split torch by arch. That change is folded here and extended so 
 ## Consequences
 
 - `make lion-build` on LION needs no local Dockerfile override.
-- CI `Worker arm64 image` builds the image with buildx + QEMU and imports torch, torchaudio, parselmouth, mediapipe, and cv2.
+- CI `Worker arm64 image` builds the image on GitHub `ubuntu-24.04-arm` (ADR-077; QEMU dropped) and imports torch, torchaudio, parselmouth, mediapipe, and cv2.
 - PR #149's torch split is superseded by this pin plus the multi-stage and alignment constraint.
