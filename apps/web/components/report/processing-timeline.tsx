@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
-import { Check, CircleX } from "lucide-react";
+import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { Check, CircleX, Info } from "lucide-react";
 import {
   pipelineTimeline,
   type StageProgressEvent,
@@ -60,6 +61,7 @@ export function ProcessingTimeline({
   sourceKind = "upload",
   autoConfirmed = false,
   sessionStatus,
+  consentOff = false,
 }: {
   steps: StepSnapshot[];
   live: StageProgressEvent | null;
@@ -69,8 +71,11 @@ export function ProcessingTimeline({
   sourceKind?: string;
   autoConfirmed?: boolean;
   sessionStatus?: string;
+  consentOff?: boolean;
 }) {
   const t = useTranslations("report");
+  const locale = useLocale();
+  const settingsHref = `${locale === "en" ? "" : `/${locale}`}/settings#video-analysis`;
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -83,11 +88,24 @@ export function ProcessingTimeline({
     sourceKind,
     sessionStatus: sessionStatus ?? (mode === "notes" ? "ready" : undefined),
     layoutConfirmed: autoConfirmed ? "auto" : "user",
+  }).map((stage) => {
+    if (
+      consentOff &&
+      (stage.stage === "layout" ||
+        stage.stage === "layout_review" ||
+        stage.stage === "region_crops" ||
+        stage.stage === "vision")
+    ) {
+      return { ...stage, status: "skipped" as const, problem: "consent_video_off" as const, detail: null };
+    }
+    return stage;
   });
   const current = stages.find((stage) => stage.status === "running" || stage.status === "waiting");
   const elapsed = startedAt ? formatElapsed(now - new Date(startedAt).getTime()) : null;
   const slow = Boolean(current && startedAt && now - new Date(startedAt).getTime() > 90_000);
-  const problems = stages.filter((stage) => stage.status === "failed" || stage.status === "skipped");
+  const problems = stages.filter(
+    (stage) => stage.status === "failed" || (stage.status === "skipped" && stage.problem !== "consent_video_off"),
+  );
   const visible = stages;
 
   if (mode === "notes") {
@@ -125,7 +143,7 @@ export function ProcessingTimeline({
                 })
               : t("processingHint")}
           </p>
-          {autoConfirmed && (
+          {autoConfirmed && !consentOff && (
             <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{t("layoutAuto")}</p>
           )}
         </div>
@@ -138,6 +156,18 @@ export function ProcessingTimeline({
 
       {slow && <p className="mt-4 font-mono text-sm text-muted-foreground">{t("stillWorking")}</p>}
 
+      {consentOff && (
+        <p data-testid="consent-off" className="mt-4 flex items-start gap-2 text-sm text-[color:var(--text-secondary)]">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>
+            {t("consentOffLine")}{" "}
+            <Link href={settingsHref} className="uppercase tracking-[0.08em]">
+              {t("openSettings")}
+            </Link>
+          </span>
+        </p>
+      )}
+
       <ol className="mt-6 space-y-2">
         {visible.map((stage) => {
           const label = stageLabel(stage.stage, deliveryMode, t);
@@ -149,7 +179,14 @@ export function ProcessingTimeline({
               : stage.detail;
           const detail =
             stage.status === "skipped"
-              ? t("skippedReason", { reason: stage.problem ? t(stage.problem) : resolvedDetail || t("stageSkipped") })
+              ? t("skippedReason", {
+                  reason:
+                    stage.problem === "consent_video_off"
+                      ? t("consentVideoOff")
+                      : stage.problem
+                        ? t(stage.problem)
+                        : resolvedDetail || t("stageSkipped"),
+                })
               : stage.problem
                 ? t(stage.problem)
                 : resolvedDetail;
@@ -211,7 +248,11 @@ function StageMark({ status }: { status: string }) {
     );
   }
   if (status === "skipped") {
-    return <span className="mt-0.5 text-[color:var(--text-tertiary)]" aria-hidden="true">—</span>;
+    return (
+      <span className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
+        —
+      </span>
+    );
   }
   if (status === "waiting") {
     return (

@@ -246,7 +246,18 @@ export function onlineReport(): AnalysisReport {
   return onlinePartialReport();
 }
 
-function stepsFor(status: string | undefined, autoConfirmed: boolean) {
+function stepsFor(status: string | undefined, autoConfirmed: boolean, consentOff = false) {
+  if (consentOff) {
+    return [
+      { stage: "ingest", status: "succeeded", message: "Media ready" },
+      { stage: "layout", status: "skipped", problem: "consent_video_off" },
+      { stage: "layout_review", status: "skipped", problem: "consent_video_off" },
+      { stage: "region_crops", status: "skipped", problem: "consent_video_off" },
+      { stage: "vision", status: "skipped", problem: "consent_video_off" },
+      { stage: "asr", status: "succeeded", message: "Transcript ready" },
+      { stage: "audio_features", status: "running", message: "Measuring pace and pauses" },
+    ];
+  }
   if (status === "processing") {
     return [
       { stage: "ingest", status: "succeeded", message: "Media ready" },
@@ -356,12 +367,13 @@ export async function mockOnlineApi(
           source_kind: "upload",
           language: locale === "pt-BR" ? "pt-BR" : "en",
           slot_min: 60,
+          media: { duration_s: options.status === "failed" ? null : 540 },
           created_at: pastIso(startedAgo + 20),
           job: {
             status: options.status === "failed" ? "failed" : "running",
             error: options.status === "failed" ? { message: "unreadable" } : null,
             created_at: pastIso(startedAgo),
-            steps: stepsFor(options.status, Boolean(options.autoConfirmed || options.consentOff)),
+            steps: stepsFor(options.status, Boolean(options.autoConfirmed), Boolean(options.consentOff)),
           },
         }),
       });

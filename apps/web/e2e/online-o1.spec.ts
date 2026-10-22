@@ -74,24 +74,60 @@ test("report hides body tab and shows not measured for online", async ({ page })
   await expect(page.getByTestId("not-measured").getByText(/open settings/i).first()).toBeVisible();
 });
 
+async function tabUntil(page: import("@playwright/test").Page, testId: string, limit = 24) {
+  let current = "";
+  for (let i = 0; i < limit; i += 1) {
+    await page.keyboard.press("Tab");
+    current = await page.evaluate(() => document.activeElement?.getAttribute("data-testid") ?? "");
+    if (current === testId) return current;
+  }
+  return current;
+}
+
 test("keyboard-only walkthrough: mode, recording, layout", async ({ page }) => {
   await mockOnlineApi(page, { status: "layout_review", layout: layoutFixture("high") });
   await page.goto("/sessions/new?step=where", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: /where did you present/i })).toBeVisible();
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Tab");
-  await page.getByTestId("mode-webinar").focus();
+  const firstMode = await tabUntil(page, "mode-stage");
+  expect(firstMode).toBe("mode-stage");
   await page.keyboard.press("Space");
+  await expect(page.getByTestId("mode-stage")).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("ArrowRight");
   await expect(page.getByTestId("mode-webinar")).toHaveAttribute("aria-checked", "true");
-  await page.getByTestId("continue-mode").focus();
+  expect(await tabUntil(page, "continue-mode")).toBe("continue-mode");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: /add your recording/i })).toBeVisible();
   await page.goto(`/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("confidence-line")).toBeVisible();
-  await page.getByTestId("looks-right").focus();
-  await expect(page.getByTestId("looks-right")).toBeFocused();
+  expect(await tabUntil(page, "looks-right")).toBe("looks-right");
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(new RegExp(`/sessions/${SESSION_ID}`));
+});
+
+test("auto-confirmed layout is read-only", async ({ page }) => {
+  const layout = layoutFixture("high");
+  layout.auto_confirmed = true;
+  await mockOnlineApi(page, { layout, autoConfirmed: true, status: "processing" });
+  await page.goto(`/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { name: /the layout we used/i })).toBeVisible();
+  await expect(page.getByTestId("back-to-session")).toBeVisible();
+  await expect(page.getByTestId("looks-right")).toHaveCount(0);
+  await expect(page.getByTestId("analyse-audio")).toHaveCount(0);
+});
+
+test("consent-off skips camera steps and links to settings", async ({ page }) => {
+  await mockOnlineApi(page, { status: "processing", consentOff: true, startedAgo: 45 });
+  await page.goto(`/sessions/${SESSION_ID}`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("link", { name: /open settings/i }).first()).toBeVisible();
+  await expect(page.locator('[data-stage="layout"][data-status="skipped"]')).toBeVisible();
+  await expect(page.getByText(/skipped · audio only/i).first()).toBeVisible();
+});
+
+test("S4 user-confirmed layout says by you", async ({ page }) => {
+  await mockOnlineApi(page, { status: "processing", startedAgo: 45 });
+  await page.goto(`/sessions/${SESSION_ID}`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByText(/by you/i).first()).toBeVisible();
+  await expect(page.getByText(/confirmed automatically/i)).toHaveCount(0);
 });
 
 test("reduced motion keeps the preparing scan line still", async ({ page }) => {

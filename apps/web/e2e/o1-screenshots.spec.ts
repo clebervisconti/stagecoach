@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { mkdirSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { silentWav } from "./helpers.ts";
 import { SESSION_ID, layoutFixture, mockOnlineApi } from "./online-helpers.ts";
 
@@ -166,12 +168,15 @@ test.describe("O1 design screenshots", () => {
           await page.goto(`/sessions/${SESSION_ID}`, { waitUntil: "domcontentloaded" });
           await waitReady(page, page.getByTestId("prepare-error"));
           await expect(page.getByTestId("upload-another")).toBeVisible();
+          await expect(page.getByText(/couldn't prepare/i)).toBeVisible();
+          await expect(page.getByText(/usually under a minute/i)).toHaveCount(0);
+          await expect(page.getByTestId("stage-log")).toHaveCount(0);
           await snap(page, "s2_error", width, theme);
         });
 
         test(`S3 high ${width} ${theme}`, async ({ page }) => {
           await themeAndWidth(page, width, theme);
-          await mockOnlineApi(page, { layout: layoutFixture("high") });
+          await mockOnlineApi(page, { status: "layout_review", layout: layoutFixture("high") });
           await page.goto(`/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
           await waitReady(page, page.getByTestId("confidence-line"));
           await snap(page, "s3_high", width, theme);
@@ -179,7 +184,7 @@ test.describe("O1 design screenshots", () => {
 
         test(`S3 check ${width} ${theme}`, async ({ page }) => {
           await themeAndWidth(page, width, theme);
-          await mockOnlineApi(page, { layout: layoutFixture("check") });
+          await mockOnlineApi(page, { status: "layout_review", layout: layoutFixture("check") });
           await page.goto(`/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
           await waitReady(page, page.getByTestId("confidence-line"));
           await snap(page, "s3_check", width, theme);
@@ -187,7 +192,7 @@ test.describe("O1 design screenshots", () => {
 
         test(`S3 unsure ${width} ${theme}`, async ({ page }) => {
           await themeAndWidth(page, width, theme);
-          await mockOnlineApi(page, { layout: layoutFixture("unsure") });
+          await mockOnlineApi(page, { status: "layout_review", layout: layoutFixture("unsure") });
           await page.goto(`/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
           await waitReady(page, page.getByTestId("confidence-line"));
           await snap(page, "s3_unsure", width, theme);
@@ -195,7 +200,7 @@ test.describe("O1 design screenshots", () => {
 
         test(`S3 empty ${width} ${theme}`, async ({ page }) => {
           await themeAndWidth(page, width, theme);
-          await mockOnlineApi(page, { layout: layoutFixture("empty") });
+          await mockOnlineApi(page, { status: "layout_review", layout: layoutFixture("empty") });
           await page.goto(`/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
           await waitReady(page, page.getByTestId("layout-empty"));
           await snap(page, "s3_empty", width, theme);
@@ -203,7 +208,7 @@ test.describe("O1 design screenshots", () => {
 
         test(`S3 camera ${width} ${theme}`, async ({ page }) => {
           await themeAndWidth(page, width, theme);
-          await mockOnlineApi(page, { layout: layoutFixture("camera") });
+          await mockOnlineApi(page, { status: "layout_review", layout: layoutFixture("camera") });
           await page.goto(`/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
           await waitReady(page, page.getByTestId("confidence-line"));
           await snap(page, "s3_camera", width, theme);
@@ -211,7 +216,7 @@ test.describe("O1 design screenshots", () => {
 
         test(`S3 screen ${width} ${theme}`, async ({ page }) => {
           await themeAndWidth(page, width, theme);
-          await mockOnlineApi(page, { layout: layoutFixture("screen") });
+          await mockOnlineApi(page, { status: "layout_review", layout: layoutFixture("screen") });
           await page.goto(`/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
           await waitReady(page, page.getByTestId("confidence-line"));
           await snap(page, "s3_screen", width, theme);
@@ -224,16 +229,21 @@ test.describe("O1 design screenshots", () => {
           await mockOnlineApi(page, { layout, autoConfirmed: true, status: "layout_review" });
           await page.goto(`/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
           await waitReady(page, page.getByTestId("confidence-line"));
-          await expect(page.getByText(/confirmed automatically/i).first()).toBeVisible();
+          await expect(page.getByText(/the layout we used/i)).toBeVisible();
+          await expect(page.getByTestId("back-to-session")).toBeVisible();
+          await expect(page.getByTestId("looks-right")).toHaveCount(0);
+          await expect(page.getByTestId("analyse-audio")).toHaveCount(0);
           await snap(page, "s3_auto", width, theme);
         });
 
         test(`S3 consent off ${width} ${theme}`, async ({ page }) => {
           await themeAndWidth(page, width, theme);
-          await mockOnlineApi(page, { status: "processing", consentOff: true, autoConfirmed: true, startedAgo: 45 });
+          await mockOnlineApi(page, { status: "processing", consentOff: true, startedAgo: 45 });
           await page.goto(`/sessions/${SESSION_ID}`, { waitUntil: "domcontentloaded" });
           await waitReady(page, page.getByTestId("processing"));
-          await expect(page.getByText(/confirmed automatically/i).first()).toBeVisible();
+          await expect(page.getByRole("link", { name: /open settings/i }).first()).toBeVisible();
+          await expect(page.locator('[data-stage="layout"][data-status="skipped"]')).toBeVisible();
+          await expect(page.getByText(/skipped · audio only/i).first()).toBeVisible();
           await snap(page, "s3_consent", width, theme);
         });
 
@@ -243,6 +253,8 @@ test.describe("O1 design screenshots", () => {
           await page.goto(`/sessions/${SESSION_ID}`, { waitUntil: "domcontentloaded" });
           await waitReady(page, page.getByTestId("processing"));
           await expect(page.getByText(/measuring camera presence/i)).toBeVisible();
+          await expect(page.getByText(/by you/i).first()).toBeVisible();
+          await expect(page.getByText(/confirmed automatically/i)).toHaveCount(0);
           await expect(page.locator('[data-stage="layout_review"]')).toHaveAttribute("data-status", "succeeded");
           await expect(page.locator('[data-status="running"]')).toHaveCount(1);
           await snap(page, "s4_success", width, theme);
@@ -282,7 +294,7 @@ test.describe("O1 design screenshots", () => {
 
       test(`S3 high pt-BR ${width} dark`, async ({ page }) => {
         await themeAndWidth(page, width, "dark");
-        await mockOnlineApi(page, { locale: "pt-BR", layout: layoutFixture("high") });
+        await mockOnlineApi(page, { locale: "pt-BR", status: "layout_review", layout: layoutFixture("high") });
         await page.goto(`/pt-BR/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
         await waitReady(page, page.getByTestId("confidence-line"));
         await snap(page, "s3_high_pt-BR", width, "dark");
@@ -295,6 +307,34 @@ test.describe("O1 design screenshots", () => {
         await waitReady(page, page.getByTestId("report"));
         await snap(page, "s5_success_pt-BR", width, "dark");
       });
+
+      test(`S3 check pt-BR ${width} dark`, async ({ page }) => {
+        await themeAndWidth(page, width, "dark");
+        await mockOnlineApi(page, { locale: "pt-BR", status: "layout_review", layout: layoutFixture("check") });
+        await page.goto(`/pt-BR/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
+        await waitReady(page, page.getByTestId("confidence-line"));
+        await expect(page.getByText(/câmara|câmera/i).first()).toBeVisible();
+        await snap(page, "s3_check_pt-BR", width, "dark");
+      });
+
+      test(`S4 processing pt-BR ${width} dark`, async ({ page }) => {
+        await themeAndWidth(page, width, "dark");
+        await mockOnlineApi(page, { locale: "pt-BR", status: "processing", startedAgo: 45 });
+        await page.goto(`/pt-BR/sessions/${SESSION_ID}`, { waitUntil: "domcontentloaded" });
+        await waitReady(page, page.getByTestId("processing"));
+        await snap(page, "s4_success_pt-BR", width, "dark");
+      });
     });
   }
+
+  test("screenshot set has no byte-identical duplicates", () => {
+    const files = readdirSync(OUT).filter((name) => name.endsWith(".png"));
+    const seen = new Map<string, string>();
+    for (const file of files) {
+      const hash = createHash("md5").update(readFileSync(join(OUT, file))).digest("hex");
+      const previous = seen.get(hash);
+      expect(previous, `duplicate screenshot ${file} == ${previous}`).toBeUndefined();
+      seen.set(hash, file);
+    }
+  });
 });

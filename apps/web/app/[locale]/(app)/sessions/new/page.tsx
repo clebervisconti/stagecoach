@@ -4,7 +4,8 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ModeStep } from "@/components/sessions/new/mode-step";
-import { RecordingStep, type RecordingDraft, type UploadTelemetry } from "@/components/sessions/new/recording-step";
+import { RecordingStep, type RecordingDraft, type UploadFailure, type UploadTelemetry } from "@/components/sessions/new/recording-step";
+import { formatBytes } from "@/lib/online";
 import { WizardStepper } from "@/components/sessions/new/wizard-stepper";
 import {
   isDeliveryMode,
@@ -40,7 +41,7 @@ function NewSessionWizard() {
   const [onlineEnabled, setOnlineEnabled] = useState<boolean | null>(null);
   const [uploading, setUploading] = useState(false);
   const [telemetry, setTelemetry] = useState<UploadTelemetry | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<UploadFailure | null>(null);
   const lastSubmit = useRef<{
     draft: RecordingDraft;
     file: File;
@@ -153,11 +154,27 @@ function NewSessionWizard() {
           xhrRef.current = request;
         },
       );
-      if (!uploaded.ok) throw new Error(uploaded.detail || t("uploadError"));
+      if (!uploaded.ok) {
+        if (uploaded.status === 413) {
+          setUploadError({
+            kind: "too_large",
+            message: t("fileTooLarge", { size: formatBytes(payload.file.size), limit: "2 GB" }),
+          });
+        } else if (uploaded.status >= 500 || uploaded.status === 0) {
+          setUploadError({ kind: "network", message: t("uploadFailed") });
+        } else {
+          setUploadError({ kind: "other", message: uploaded.detail || t("uploadError") });
+        }
+        setUploading(false);
+        return;
+      }
       router.push(`${prefix}/sessions/${created.id}`);
     } catch (reason) {
-      const message = reason instanceof Error ? reason.message : t("uploadError");
-      setUploadError(friendlyUploadError(message, t));
+      const network = reason instanceof TypeError || (reason instanceof Error && /abort|failed|network/i.test(reason.message));
+      setUploadError({
+        kind: network ? "network" : "other",
+        message: reason instanceof Error ? reason.message : t("uploadError"),
+      });
       setUploading(false);
     }
   }
@@ -170,7 +187,7 @@ function NewSessionWizard() {
     }
     setUploading(false);
     setTelemetry(null);
-    setUploadError(t("uploadCancelled"));
+    setUploadError({ kind: "other", message: t("uploadCancelled") });
   }
 
   if (onlineEnabled !== true) {
@@ -224,19 +241,12 @@ function NewSessionWizard() {
   );
 }
 
-function friendlyUploadError(detail: string, t: (key: string, values?: Record<string, string>) => string): string {
-  if (/413|larger than|2 GB|limit/i.test(detail)) return t("http413", { limit: "2 GB" });
-  if (/longer than|120/i.test(detail)) return t("fileTooLong", { limit: "120" });
-  if (/failed|network|dropped/i.test(detail)) return t("uploadFailed");
-  return detail;
-}
-
 function sendUpload(
   url: string,
   body: FormData,
   onProgress: (value: UploadTelemetry) => void,
   capture: (request: XMLHttpRequest) => void,
-): Promise<{ ok: boolean; detail?: string }> {
+): Promise<{ ok: boolean; status: number; detail?: string }> {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     capture(request);
@@ -255,8 +265,8 @@ function sendUpload(
         eta: speed > 0 ? remaining / speed : null,
       });
     };
-    request.onerror = () => reject(new Error("upload failed"));
-    request.onabort = () => reject(new Error("upload cancelled"));
+    request.onerror = () => reject(new TypeError("upload failed"));
+    request.onabort = () => reject(new TypeError("upload cancelled"));
     request.onload = () => {
       let detail = "";
       try {
@@ -265,7 +275,7 @@ function sendUpload(
       } catch {
         detail = "";
       }
-      resolve({ ok: request.status >= 200 && request.status < 300, detail });
+      resolve({ ok: request.status >= 200 && request.status < 300, status: request.status, detail });
     };
     request.send(body);
   });

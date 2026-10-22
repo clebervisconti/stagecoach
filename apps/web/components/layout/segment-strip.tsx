@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { formatClock, formatRange, layoutComposition, type LayoutSegment } from "@/lib/online";
 
 export function SegmentStrip({
@@ -9,26 +12,27 @@ export function SegmentStrip({
   selected: number;
   onSelect: (index: number) => void;
 }) {
+  const t = useTranslations("online");
   const duration = segments[0]?.t_end ?? 0;
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between gap-3">
-        <p className="cs-eyebrow">Layout over time</p>
+        <p className="cs-eyebrow">{t("layoutOverTime")}</p>
         <p className="font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
-          {segments.length} segment{segments.length === 1 ? "" : "s"}
+          {t("segmentCount", { n: String(segments.length) })}
         </p>
       </div>
-      <div role="listbox" aria-label="Layout segments" className="mt-3 flex gap-2 overflow-x-auto">
+      <div role="listbox" aria-label={t("layoutOverTime")} className="mt-3 flex gap-2 overflow-x-auto">
         {segments.map((segment) => {
           const composition = layoutComposition(segment);
           const summary =
             composition === "camera_screen"
-              ? "Camera + screen"
+              ? t("composition.cameraScreen")
               : composition === "camera"
-                ? "Camera only"
+                ? t("composition.camera")
                 : composition === "screen"
-                  ? "Screen only"
-                  : "No video";
+                  ? t("composition.screen")
+                  : t("composition.none");
           const selectedChip = selected === segment.index;
           return (
             <button
@@ -36,7 +40,13 @@ export function SegmentStrip({
               type="button"
               role="option"
               aria-selected={selectedChip}
-              aria-label={`Segment ${segment.index + 1} of ${segments.length}, ${formatClock(segment.t_start)} to ${formatClock(segment.t_end)}, ${summary}`}
+              aria-label={t("segmentAria", {
+                n: String(segment.index + 1),
+                of: String(segments.length),
+                start: formatClock(segment.t_start),
+                end: formatClock(segment.t_end),
+                summary,
+              })}
               onClick={() => onSelect(segment.index)}
               className={`shrink-0 rounded-full px-3 py-1 font-mono text-xs uppercase tracking-[0.08em] ${
                 selectedChip

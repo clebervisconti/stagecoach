@@ -41,6 +41,7 @@ type SessionDetail = {
   language: string;
   slot_min: number | null;
   created_at: string;
+  media?: { duration_s?: number | null } | null;
   job: null | {
     status: string;
     error: { message?: string } | null;
@@ -48,6 +49,28 @@ type SessionDetail = {
     steps: StepSnapshot[];
   };
 };
+
+function isAutoConfirmed(steps: StepSnapshot[] | undefined): boolean {
+  return Boolean(
+    steps?.some(
+      (step) =>
+        step.stage === "layout_review" &&
+        step.status === "succeeded" &&
+        (step.detail === "confirmed_automatically" || step.message === "Confirmed automatically"),
+    ),
+  );
+}
+
+function isConsentOff(steps: StepSnapshot[] | undefined): boolean {
+  return Boolean(
+    steps?.some(
+      (step) =>
+        step.problem === "consent_video_off" ||
+        (step.status === "skipped" &&
+          (step.stage === "layout" || step.stage === "layout_review" || step.stage === "vision" || step.stage === "region_crops")),
+    ),
+  );
+}
 
 function isReport(value: unknown): value is AnalysisReport {
   if (!value || typeof value !== "object") return false;
@@ -143,7 +166,7 @@ export default function SessionPage() {
         if (!active) return;
         setSession(body);
         const ready = body.status === "ready" || body.status === "partial";
-        if (ready) {
+        if (ready || body.status === "processing") {
           await loadArtifacts();
         }
       } catch (reason) {
@@ -159,7 +182,8 @@ export default function SessionPage() {
       if (!active) return;
       const event = parseProgressData(message.data);
       if (event?.type === "stage") setLive(event);
-      if (event?.type === "done" || shouldReloadReport(event)) void refresh();
+      if (shouldReloadReport(event)) void loadArtifacts();
+      if (event?.type === "done") void refresh();
     };
     return () => {
       active = false;
@@ -216,13 +240,19 @@ export default function SessionPage() {
     session?.status === "preparing" ||
     session?.status === "layout_review" ||
     (session?.status === "failed" && !report);
-  const durationMin = report?.media?.duration_s ? report.media.duration_s / 60 : null;
+  const durationS = session?.media?.duration_s ?? report?.media?.duration_s ?? null;
+  const durationMin = durationS ? durationS / 60 : null;
   const slotLabel =
     session?.slot_min && durationMin
       ? `${session.slot_min} ${t("minutes")} → ${durationMin.toFixed(1)} ${t("minutes")}`
-      : session?.slot_min
-        ? `${session.slot_min} ${t("minutes")}`
-        : null;
+      : null;
+  const autoConfirmed = isAutoConfirmed(session?.job?.steps);
+  const consentOff = isConsentOff(session?.job?.steps);
+  const layoutDone =
+    Boolean(session?.job?.steps?.some((step) => step.stage === "layout_review" && (step.status === "succeeded" || step.status === "skipped"))) ||
+    session?.status === "processing" ||
+    session?.status === "ready" ||
+    session?.status === "partial";
 
   return (
     <div className="container mx-auto space-y-8 px-4 py-8">
@@ -230,7 +260,12 @@ export default function SessionPage() {
         <WizardStepper
           mode={session.delivery_mode as DeliveryMode}
           current="layout"
-          layoutDone={session.status === "processing" || Boolean(session.job?.steps?.some((step) => step.stage === "layout_review" && step.status === "succeeded"))}
+          layoutDone={layoutDone}
+          autoConfirmed={autoConfirmed}
+          consentOff={consentOff}
+          onSelect={(id) => {
+            if (id === "layout" && session) router.push(`${sessionsPath}/${session.id}/layout`);
+          }}
         />
       )}
       <div className="flex items-start justify-between gap-4">
@@ -250,7 +285,7 @@ export default function SessionPage() {
                 kinds={report?.layout_summary?.kinds}
                 camera={report?.layout_summary?.camera_visible_ratio}
                 screen={report?.layout_summary?.screen_visible_ratio}
-                compact={!report}
+                compact={showPrepare || !report}
               />
             )}
             <p className="font-mono text-xs uppercase tracking-[0.08em]">
@@ -307,11 +342,11 @@ export default function SessionPage() {
         <PreparingPanel
           title={session.title}
           posterUrl={`/api/stagecoach/sessions/${session.id}/poster`}
-          durationS={540}
+          durationS={durationS}
           steps={session.job?.steps ?? []}
           startedAt={session.job?.created_at ?? session.created_at}
           failed={session.status === "failed" ? session.job?.error?.message || "unreadable" : null}
-          skipReview={Boolean(session.job?.steps?.some((step) => step.stage === "layout_review" && step.status === "succeeded"))}
+          skipReview={autoConfirmed}
         />
       )}
 
@@ -334,11 +369,12 @@ export default function SessionPage() {
           deliveryMode={session.delivery_mode}
           sourceKind={session.source_kind}
           sessionStatus={session.status}
-          autoConfirmed={session.job?.steps?.some((step) => step.stage === "layout_review" && step.status === "succeeded") || session.job?.steps?.some((step) => step.message === "Confirmed automatically")}
+          autoConfirmed={autoConfirmed}
+          consentOff={consentOff}
         />
       )}
 
-      {terminal && session && (
+      {terminal && session && !showPrepare && (
         <ProcessingTimeline
           mode="notes"
           steps={session.job?.steps ?? []}
@@ -529,9 +565,16 @@ function ModeBadge({
   const Icon = mode === "stage" ? Mic : mode === "webinar" ? Users : mode === "online_talk" ? Globe : Play;
   const hasCamera = (camera ?? 0) > 0 || kinds?.some((kind) => kind.includes("camera") || kind === "composite");
   const hasScreen = (screen ?? 0) > 0 || kinds?.some((kind) => kind.includes("screen") || kind === "composite");
+  const t = useTranslations("online");
   const half =
-    hasCamera && hasScreen ? "Camera + screen" : hasCamera ? "Camera only" : hasScreen ? "Screen only" : "Audio only";
-  const label = mode === "webinar" ? "Webinar" : mode === "online_talk" ? "Online talk" : mode === "recorded_video" ? "Recorded video" : "On stage";
+    hasCamera && hasScreen
+      ? t("composition.cameraScreen")
+      : hasCamera
+        ? t("composition.camera")
+        : hasScreen
+          ? t("composition.screen")
+          : t("composition.none");
+  const label = t(`modes.${mode}.title`);
   return (
     <span
       className="inline-flex items-center gap-2 rounded-full border border-[color:var(--line-strong)] px-3 py-1 text-xs uppercase tracking-[0.08em] text-[color:var(--text-strong)]"

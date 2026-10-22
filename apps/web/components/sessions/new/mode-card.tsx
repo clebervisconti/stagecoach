@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Globe, Mic, Play, Users } from "lucide-react";
 import type { DeliveryMode } from "@/lib/online";
 import { ModePictogram } from "@/components/sessions/pictograms/mode-pictogram";
@@ -30,6 +33,7 @@ export function ModeCard({
   onSelect: () => void;
   onActivate: () => void;
 }) {
+  const t = useTranslations("online");
   const Icon = ICONS[mode];
   return (
     <div
@@ -81,7 +85,7 @@ export function ModeCard({
         </p>
         <div className="mt-auto hidden md:block">
           <div className="mt-6 border-t border-[color:var(--line-subtle)] pt-3">
-            <p className="text-[11px] uppercase tracking-[0.12em] text-[color:var(--text-tertiary)]">We coach</p>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-[color:var(--text-tertiary)]">{t("weCoach")}</p>
             <p className="mt-1 text-sm text-[color:var(--text-secondary)]">{coach}</p>
           </div>
         </div>

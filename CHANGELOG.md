@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upload limits are 2 GB and 120 minutes. Online modes require the flag and an allowlisted email (OD-10).
 - Processing timeline and PARTIAL badge follow CYBERSPHERE v2 (icon + word, no colour-only status).
 - Design-review rework: mode cards reflow at 390, selected fill/border, Q&A switch, file-too-large alert, preparing-only S2, HTML layout boxes, timeline order, and a true S5 success fixture.
+- Design-review v2: restore the Stage player and processing report, drop fixture values from production, distinguish auto vs user layout confirmation, read-only auto layout, consent-off skips, and pt-BR layout copy.
 
 ### Blank delivery categories on a scored talk
 

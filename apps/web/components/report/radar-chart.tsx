@@ -4,10 +4,19 @@ import { useTranslations } from "next-intl";
 import type { PillarId } from "@/lib/report-types";
 import { radarAxisPoint, radarPolygon, type RadarPoint } from "@/lib/report-view";
 
-const SIZE = 280;
-const CX = 140;
-const CY = 140;
+const PAD = 48;
+const SIZE = 280 + PAD * 2;
+const CX = 140 + PAD;
+const CY = 140 + PAD;
 const RADIUS = 96;
+
+function wrapLabel(text: string): string[] {
+  if (text.length <= 14) return [text];
+  const split = text.lastIndexOf(" ", 14);
+  const at = split > 4 ? split : 14;
+  const second = text.slice(at).trim();
+  return second ? [text.slice(0, at).trim(), second] : [text];
+}
 
 type RadarChartProps = {
   points: RadarPoint[];
@@ -28,9 +37,10 @@ export function RadarChart({ points, goalPoints }: RadarChartProps) {
       <figcaption className="text-sm font-medium">{t("radarCaption")}</figcaption>
       <svg
         viewBox={`0 0 ${SIZE} ${SIZE}`}
+        overflow="visible"
         role="img"
         aria-hidden="true"
-        className="mx-auto h-64 w-64"
+        className="mx-auto h-80 w-80"
       >
         <defs>
           <pattern id="radar-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -66,7 +76,11 @@ export function RadarChart({ points, goalPoints }: RadarChartProps) {
                 dominantBaseline="middle"
                 className="fill-foreground text-[10px]"
               >
-                {t(`pillars.${point.id as PillarId}`)}
+                {wrapLabel(t(`pillars.${point.id as PillarId}`)).map((line, lineIndex, lines) => (
+                  <tspan key={line} x={label.x} dy={lineIndex === 0 ? (lines.length > 1 ? "-0.5em" : "0") : "1.1em"}>
+                    {line}
+                  </tspan>
+                ))}
               </text>
             </g>
           );

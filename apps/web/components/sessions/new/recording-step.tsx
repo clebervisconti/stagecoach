@@ -44,6 +44,11 @@ export type UploadTelemetry = {
   eta: number | null;
 };
 
+export type UploadFailure = {
+  kind: "too_large" | "network" | "other";
+  message: string;
+};
+
 type FileMeta = {
   file: File;
   duration: number | null;
@@ -80,7 +85,7 @@ export function RecordingStep({
   lastContext: ContextType | null;
   uploading: boolean;
   telemetry: UploadTelemetry | null;
-  uploadError: string | null;
+  uploadError: UploadFailure | null;
   onBack: () => void;
   onChangeMode: () => void;
   onSubmit: (payload: {
@@ -202,8 +207,8 @@ export function RecordingStep({
   }
 
   const readOnly = uploading;
-  const tooLarge = Boolean(uploadError && /too large|2 GB|413/i.test(uploadError));
-  const networkFail = Boolean(uploadError && /failed|dropped|network/i.test(uploadError) && !tooLarge);
+  const tooLarge = uploadError?.kind === "too_large";
+  const networkFail = uploadError?.kind === "network";
 
   return (
     <div className="mx-auto grid w-full min-w-0 max-w-[1100px] gap-12 lg:grid-cols-[minmax(0,680px)_340px]">
@@ -263,7 +268,7 @@ export function RecordingStep({
                   </p>
                   <p className="mt-1 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">
                     {[
-                      tooLarge ? "2.4 GB" : formatBytes(media.file.size),
+                      formatBytes(media.file.size),
                       media.duration != null ? formatClockSafe(media.duration) : null,
                       media.width && media.height ? `${media.width}×${media.height}` : null,
                     ]
@@ -515,7 +520,7 @@ export function RecordingStep({
                 </span>
                 <span className="text-[color:var(--text)]">
                   {" "}
-                  · {tooLarge ? t("fileTooLarge", { size: "2.4 GB", limit: "2 GB" }) : uploadError}
+                  · {tooLarge ? t("fileTooLarge", { size: formatBytes(media?.file.size ?? 0), limit: "2 GB" }) : uploadError.message}
                 </span>
               </span>
             </p>

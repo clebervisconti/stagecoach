@@ -56,7 +56,15 @@ export function SummaryCard({ report }: SummaryCardProps) {
       {report.session?.delivery_mode && report.session.delivery_mode !== "stage" && (
         <p className="mt-2 text-sm text-muted-foreground">{t("coreDeliveryHint")}</p>
       )}
-      <p className="mt-4 leading-7">{report.insights.summary}</p>
+      <p className="mt-4 leading-7">
+        {t("measuredSummary", {
+          score: String(headline.score ?? "—"),
+          ci: String(report.overall.display_band ?? 4),
+          n: String(report.categories.filter((category) => category.applicable && category.score != null).length),
+          of: String(report.categories.length),
+          m: String(report.categories.filter((category) => !category.applicable || category.score == null).length),
+        })}
+      </p>
       {warnings.map((warning) => (
         <p key={warning} className="mt-3 flex items-start gap-2 text-sm">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-warning)]" aria-hidden="true" />

@@ -103,13 +103,15 @@ export type StepSnapshot = {
   status: string;
   message?: string | null;
   error?: string | null;
+  detail?: string | null;
+  problem?: string | null;
 };
 
 export type StageView = {
   stage: string;
   status: StageState;
   detail: string | null;
-  problem: "visionUnavailable" | null;
+  problem: "visionUnavailable" | "consent_video_off" | null;
 };
 
 function asStageState(status: string): StageState {
@@ -127,8 +129,9 @@ function asStageState(status: string): StageState {
   return "running";
 }
 
-export function stageProblem(error: string | null | undefined): "visionUnavailable" | null {
+export function stageProblem(error: string | null | undefined): "visionUnavailable" | "consent_video_off" | null {
   if (!error) return null;
+  if (/consent_video_off/i.test(error)) return "consent_video_off";
   if (/mediapipe|modulenotfounderror/i.test(error)) return "visionUnavailable";
   return null;
 }
@@ -189,7 +192,10 @@ export function pipelineTimeline(
     const status = asStageState(step.status);
     const problem =
       status === "failed" || status === "skipped"
-        ? stageProblem(step.error) || stageProblem(step.message)
+        ? (step.problem === "consent_video_off" ? "consent_video_off" : null) ||
+          stageProblem(step.problem) ||
+          stageProblem(step.error) ||
+          stageProblem(step.message)
         : null;
     const raw = status === "failed" ? step.error || step.message : step.message;
     return {
@@ -206,7 +212,12 @@ export function pipelineTimeline(
       (row) => !PREPARE_STAGES.has(row.stage) && (row.status === "succeeded" || row.status === "running"),
     );
     const pastReview = PAST_REVIEW.has(options?.sessionStatus ?? "");
-    if (review && (pastReview || laterDone) && (review.status === "pending" || review.status === "waiting")) {
+    if (
+      review &&
+      review.status !== "skipped" &&
+      (pastReview || laterDone) &&
+      (review.status === "pending" || review.status === "waiting")
+    ) {
       review.status = "succeeded";
       review.detail =
         options?.layoutConfirmed === "auto" ? "confirmed_automatically" : "by_you";

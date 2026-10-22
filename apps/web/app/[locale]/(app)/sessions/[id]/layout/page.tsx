@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { Info } from "lucide-react";
@@ -17,12 +17,15 @@ export default function LayoutReviewPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const prefix = locale === "en" ? "" : `/${locale}`;
+  const sessionHref = `${prefix}/sessions/${params.id}`;
   const [layout, setLayout] = useState<LayoutView | null>(null);
   const [mode, setMode] = useState<DeliveryMode>("webinar");
+  const [sessionStatus, setSessionStatus] = useState("layout_review");
   const [selected, setSelected] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const lastAudioOnly = useRef(false);
 
   useEffect(() => {
     document.getElementById("layout-title")?.focus({ preventScroll: true });
@@ -35,8 +38,9 @@ export default function LayoutReviewPage() {
       try {
         const session = await fetch(`/api/stagecoach/sessions/${params.id}`, { cache: "no-store" });
         if (session.ok) {
-          const body = (await session.json()) as { delivery_mode?: string };
+          const body = (await session.json()) as { delivery_mode?: string; status?: string };
           if (isDeliveryMode(body.delivery_mode)) setMode(body.delivery_mode);
+          if (body.status) setSessionStatus(body.status);
         }
         const response = await fetch(`/api/stagecoach/sessions/${params.id}/layout`, { cache: "no-store" });
         if (!response.ok) throw new Error(t("layoutLoadError"));
@@ -57,6 +61,7 @@ export default function LayoutReviewPage() {
   }, [params.id, t]);
 
   async function accept(audioOnly: boolean) {
+    lastAudioOnly.current = audioOnly;
     setBusy(true);
     setError(null);
     try {
@@ -66,7 +71,7 @@ export default function LayoutReviewPage() {
         body: JSON.stringify({ audio_only: audioOnly }),
       });
       if (!response.ok) throw new Error(t("acceptError"));
-      router.push(`${prefix}/sessions/${params.id}`);
+      router.push(sessionHref);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("acceptError"));
       setBusy(false);
@@ -86,16 +91,35 @@ export default function LayoutReviewPage() {
   const preview = segment?.preview_url
     ? `/api/stagecoach${segment.preview_url.replace("/api/v1", "")}`
     : null;
+  const reviewing = sessionStatus === "layout_review" || sessionStatus === "preparing" || sessionStatus === "created";
+  const readOnly = Boolean(layout?.auto_confirmed || (layout && !reviewing));
+  const auto = Boolean(layout?.auto_confirmed);
 
   return (
     <div className="px-5 py-8 md:px-16 md:pt-12">
-      <WizardStepper mode={mode} current="layout" layoutDone={Boolean(layout?.auto_confirmed)} />
-      <p className="cs-eyebrow">{t("checkLayout")}</p>
+      <WizardStepper
+        mode={mode}
+        current="layout"
+        layoutDone={readOnly || auto}
+        autoConfirmed={auto}
+        onSelect={(id) => {
+          if (id === "where") router.push(`${prefix}/sessions/new?step=where&mode=${mode}`);
+          if (id === "recording") router.push(`${prefix}/sessions/new?step=recording&mode=${mode}`);
+          if (id === "layout") router.push(`${prefix}/sessions/${params.id}/layout`);
+        }}
+      />
+      <p className="cs-eyebrow">{readOnly ? t("layoutEyebrow") : t("checkLayout")}</p>
       <h1 id="layout-title" tabIndex={-1} className="cs-wizard-title mt-3 max-w-4xl outline-none">
-        {empty && !loading ? t("emptyTitle") : t("layoutTitle")}
+        {readOnly ? t("usedTitle") : empty && !loading ? t("emptyTitle") : t("layoutTitle")}
       </h1>
       <p className="mt-3 max-w-3xl text-base leading-7 text-[color:var(--text-secondary)] md:text-lg md:leading-[30px]">
-        {empty && !loading ? t("emptyLead") : t("layoutLead")}
+        {readOnly
+          ? auto
+            ? t("usedLeadAuto")
+            : t("usedLeadYou")
+          : empty && !loading
+            ? t("emptyLead")
+            : t("layoutLead")}
       </p>
 
       {loading && (
@@ -108,7 +132,7 @@ export default function LayoutReviewPage() {
         </div>
       )}
 
-      {!loading && empty && (
+      {!loading && empty && !readOnly && (
         <div className="cs-empty mt-10 rounded-[var(--radius-sm)] border p-10 text-center" data-testid="layout-empty">
           <Info className="relative mx-auto h-6 w-6 text-[color:var(--text-tertiary)]" aria-hidden="true" />
           <p className="relative mt-4 text-sm">{t("noRegions")}</p>
@@ -137,35 +161,54 @@ export default function LayoutReviewPage() {
           <div className="space-y-8">
             <ConfidenceLine layout={layout} />
             <LayoutLegend roles={roles} />
-            <div className="space-y-3">
-              <button
-                type="button"
-                data-testid="looks-right"
-                disabled={busy}
-                onClick={() => void accept(false)}
-                className="inline-flex h-11 w-full items-center justify-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-5 text-xs uppercase tracking-[0.08em] text-[color:var(--text-inverse)]"
-              >
-                {t("looksRight")}
-              </button>
-              <button
-                type="button"
-                data-testid="analyse-audio"
-                disabled={busy}
-                onClick={() => void accept(true)}
+            {readOnly ? (
+              <a
+                href={sessionHref}
+                data-testid="back-to-session"
                 className="inline-flex h-11 w-full items-center justify-center rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] px-5 text-xs uppercase tracking-[0.08em]"
               >
-                {t("analyseAudio")}
-              </button>
-              <p className="text-sm text-[color:var(--text-secondary)]">{t("boxesWrong")}</p>
-            </div>
+                ← {t("backToSession")}
+              </a>
+            ) : (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  data-testid="looks-right"
+                  disabled={busy}
+                  onClick={() => void accept(false)}
+                  className="inline-flex h-11 w-full items-center justify-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-5 text-xs uppercase tracking-[0.08em] text-[color:var(--text-inverse)]"
+                >
+                  {t("looksRight")}
+                </button>
+                <button
+                  type="button"
+                  data-testid="analyse-audio"
+                  disabled={busy}
+                  onClick={() => void accept(true)}
+                  className="inline-flex h-11 w-full items-center justify-center rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] px-5 text-xs uppercase tracking-[0.08em]"
+                >
+                  {t("analyseAudio")}
+                </button>
+                <p className="text-sm text-[color:var(--text-secondary)]">{t("boxesWrong")}</p>
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {error && (
         <div role="alert" className="mt-6 rounded-[var(--radius-sm)] border border-[color:var(--status-critical)] p-4">
-          <p className="text-sm text-[color:var(--status-critical)]">{error}</p>
-          <button type="button" className="mt-3 text-xs uppercase tracking-[0.08em]" onClick={() => void accept(false)}>
+          <p className="text-sm">
+            <span className="font-display text-xs font-bold uppercase tracking-[0.08em] text-[color:var(--status-critical)]">
+              ✕ {t("acceptErrorWord")}
+            </span>
+            <span className="text-[color:var(--text)]"> · {error}</span>
+          </p>
+          <button
+            type="button"
+            className="mt-3 text-xs uppercase tracking-[0.08em]"
+            onClick={() => void accept(lastAudioOnly.current)}
+          >
             {t("tryAgain")}
           </button>
         </div>

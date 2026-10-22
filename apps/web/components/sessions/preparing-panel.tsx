@@ -31,9 +31,10 @@ export function PreparingPanel({
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
+    if (failed) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [failed]);
 
   const ingest = steps.find((step) => step.stage === "ingest");
   const layout = steps.find((step) => step.stage === "layout");
@@ -48,7 +49,12 @@ export function PreparingPanel({
       id: "media",
       status: ingest?.status === "succeeded" ? "done" : ingest?.status === "failed" ? "failed" : ingest ? "running" : "pending",
       title: t("prepMedia"),
-      detail: ingest?.status === "succeeded" ? t("prepMediaDone", { duration: durationS ? formatClock(durationS) : "—" }) : t("prepMediaHint"),
+      detail:
+        ingest?.status === "succeeded"
+          ? durationS
+            ? t("prepMediaDone", { duration: formatClock(durationS) })
+            : t("prepMediaReady")
+          : t("prepMediaHint"),
       time: ingest?.status === "succeeded" ? formatClock(9) : null,
     },
     {
@@ -93,10 +99,10 @@ export function PreparingPanel({
       <div className="rounded-[var(--radius-sm)] border border-[color:var(--line)] p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="cs-eyebrow">{t("preparingTitle")}</h2>
-            <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{t("usuallyMinute")}</p>
+            <h2 className="cs-eyebrow">{failed ? t("couldntPrepare") : t("preparingTitle")}</h2>
+            {!failed && <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{t("usuallyMinute")}</p>}
           </div>
-          <p className="font-mono text-sm tabular-nums">{elapsed}</p>
+          {!failed && <p className="font-mono text-sm tabular-nums">{elapsed}</p>}
         </div>
 
         {failed ? (
