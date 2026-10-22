@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bake YuNet and Silero VAD into the worker image (ADR-073, ADR-074, ADR-075).
+"""Bake runtime models into the worker image (ADR-073–ADR-075, ADR-078).
 
 Downloads are SHA-256 checked. A mismatch fails the process so a Docker build
 cannot ship a swapped model. Runtime still has the same fallbacks.
@@ -12,6 +12,7 @@ import os
 import sys
 import tarfile
 import tempfile
+import zipfile
 import urllib.request
 from pathlib import Path
 
@@ -32,6 +33,32 @@ SILERO_TARBALL_SHA256 = "bc53dd7437f6f4a04e9bb946081b08db5ad8268df12ffaf10bc147c
 SILERO_JIT_RELPATH = "src/silero_vad/data/silero_vad.jit"
 SILERO_JIT_SHA256 = "e1122837f4154c511485fe0b9c64455f7b929c96fbb8d79fbdb336383ebd3720"
 SILERO_HUBCONF_SHA256 = "2637a3a91d061a6e921853f5de5430f873c292662b46e5fd61edaf648b4ae5bd"
+
+# Systran/faster-whisper-small (MIT). Hashes from the HF main blob on 22 Oct 2026.
+FASTER_WHISPER_REPO = "Systran/faster-whisper-small"
+FASTER_WHISPER_DIRNAME = "small"
+FASTER_WHISPER_FILES = (
+    ("model.bin", "3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671"),
+    ("config.json", "b55496ac7940a7ae47d2c01eab40edfd8701feec1229d9cce3b40014383fb828"),
+    ("tokenizer.json", "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab"),
+    ("vocabulary.txt", "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913"),
+)
+
+# NLTK tokenizers used by whisperX 3.8.6 (punkt_tab; punkt is the fallback).
+NLTK_PACKAGES = (
+    {
+        "name": "punkt_tab",
+        "url": "https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/tokenizers/punkt_tab.zip",
+        "sha256": "e57f64187974277726a3417ca6f181ec5403676c717672eef6a748a7b20e0106",
+        "marker": "tokenizers/punkt_tab/english/abbrev_types.txt",
+    },
+    {
+        "name": "punkt",
+        "url": "https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/tokenizers/punkt.zip",
+        "sha256": "51c3078994aeaf650bfc8e028be4fb42b4a0d177d41c012b6a983979653660ec",
+        "marker": "tokenizers/punkt/english.pickle",
+    },
+)
 
 
 def sha256_file(path: Path) -> str:
@@ -107,6 +134,59 @@ def prefetch_silero(models_dir: Path) -> Path:
     return dest
 
 
+def prefetch_mediapipe(models_dir: Path) -> list[Path]:
+    """Bake pose / hand / face landmarker .task files (SHA from MODEL_REGISTRY)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from pipeline.vision.models import MODEL_REGISTRY
+
+    written: list[Path] = []
+    for row in MODEL_REGISTRY:
+        if not str(row.get("filename", "")).endswith(".task"):
+            continue
+        dest = models_dir / row["filename"]
+        if dest.is_file() and sha256_file(dest) == row["sha256"]:
+            written.append(dest)
+            continue
+        download(row["url"], dest)
+        require_sha(dest, row["sha256"], row["filename"])
+        written.append(dest)
+    if len(written) != 3:
+        raise RuntimeError(f"expected 3 MediaPipe .task files, got {written}")
+    return written
+
+
+def prefetch_faster_whisper(models_dir: Path) -> Path:
+    dest = models_dir / "faster-whisper" / FASTER_WHISPER_DIRNAME
+    dest.mkdir(parents=True, exist_ok=True)
+    base = f"https://huggingface.co/{FASTER_WHISPER_REPO}/resolve/main"
+    for filename, digest in FASTER_WHISPER_FILES:
+        path = dest / filename
+        if path.is_file() and sha256_file(path) == digest:
+            continue
+        download(f"{base}/{filename}", path)
+        require_sha(path, digest, f"{FASTER_WHISPER_REPO}/{filename}")
+    return dest
+
+
+def prefetch_nltk(models_dir: Path) -> Path:
+    dest = models_dir / "nltk_data"
+    tokenizers = dest / "tokenizers"
+    tokenizers.mkdir(parents=True, exist_ok=True)
+    for package in NLTK_PACKAGES:
+        marker = dest / package["marker"]
+        if marker.is_file():
+            continue
+        with tempfile.TemporaryDirectory() as tmp:
+            archive = Path(tmp) / f"{package['name']}.zip"
+            download(package["url"], archive)
+            require_sha(archive, package["sha256"], f"nltk {package['name']} zip")
+            with zipfile.ZipFile(archive) as zipped:
+                zipped.extractall(tokenizers)
+        if not marker.is_file():
+            raise RuntimeError(f"nltk {package['name']} extract missed {marker}")
+    return dest
+
+
 def _copytree(source: Path, dest: Path) -> None:
     dest.mkdir(parents=True, exist_ok=True)
     for child in source.rglob("*"):
@@ -124,7 +204,14 @@ def main() -> int:
     models_dir.mkdir(parents=True, exist_ok=True)
     yunet = prefetch_yunet(models_dir)
     silero = prefetch_silero(models_dir)
-    print(f"yunet={yunet} silero={silero}")
+    tasks = prefetch_mediapipe(models_dir)
+    whisper = prefetch_faster_whisper(models_dir)
+    nltk_dir = prefetch_nltk(models_dir)
+    print(
+        f"yunet={yunet} silero={silero} "
+        f"mediapipe={[str(path) for path in tasks]} "
+        f"faster_whisper={whisper} nltk={nltk_dir}"
+    )
     return 0
 
 
