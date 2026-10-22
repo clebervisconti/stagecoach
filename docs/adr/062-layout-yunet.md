@@ -13,7 +13,7 @@ Composite recordings need a face box to find the camera tile. MediaPipe landmark
 
 - Face boxes come from **YuNet** (OpenCV Zoo, `cv2.FaceDetectorYN`, ONNX).
 - Licence: **MIT**. Evidence: https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/LICENSE (S66). The model file is not vendored in this public repo.
-- Pin: `face_detection_yunet_2023mar.onnx`, SHA-256 `8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4`, downloaded 22 Oct 2026 from the OpenCV Zoo main branch.
+- Pin: `face_detection_yunet_2023mar.onnx`, SHA-256 `8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4`, downloaded 22 Oct 2026 from the OpenCV Zoo main branch. The worker image now bakes this file at build time (ADR-075); `ensure_models` remains the runtime fallback.
 - `pipeline/layout/faces.py` defines a `FaceDetector` protocol, `YuNetFaceDetector`, and `FakeFaceDetector` (scripted boxes for tests).
 - Full layout segmentation, review, and crops wait for O1. O0 only lands the registry and the detector protocol.
 

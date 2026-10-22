@@ -2,8 +2,13 @@
 """Generate synthetic online-session fixtures (spec §14.2, E0-5).
 
 Produces `composite_pip_tr`, `screen_only`, and `camera_only` with ffmpeg
-lavfi. No personal data. Video files are written next to committed manifests
-only when `--out` is given; they must not be committed.
+lavfi. The composite camera tile uses the generated synthetic face in
+`fixtures/assets/` (not a real person). No personal data. Video files are
+written next to committed manifests only when `--out` is given; they must
+not be committed.
+
+`--duration` and `--resolution` override the manifest so a 120 s or 60 min
+clip can be generated for real-stack timing.
 """
 
 from __future__ import annotations
@@ -14,10 +19,27 @@ import subprocess
 from pathlib import Path
 
 MANIFESTS = Path(__file__).resolve().parent / "fixtures"
+FACE_ASSET = MANIFESTS / "assets" / "synthetic_face.png"
 
 
 def _run(cmd: list[str]) -> None:
     subprocess.run(cmd, check=True, capture_output=True)
+
+
+def _even(value: int) -> int:
+    """yuv420p requires even width and height."""
+    return max(2, value - (value % 2))
+
+
+def parse_resolution(text: str) -> tuple[int, int]:
+    raw = text.lower().replace(" ", "")
+    if "x" not in raw:
+        raise ValueError(f"resolution must look like 1920x1080, got {text!r}")
+    width_s, height_s = raw.split("x", 1)
+    width, height = int(width_s), int(height_s)
+    if width < 2 or height < 2:
+        raise ValueError(f"resolution too small: {text}")
+    return _even(width), _even(height)
 
 
 def _mux_silence(dest: Path, duration: float) -> None:
@@ -94,8 +116,12 @@ def write_camera_only(dest: Path, duration: float, width: int, height: int, fps:
 
 def write_composite_pip_tr(dest: Path, duration: float, width: int, height: int, fps: int) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
-    tile_w = int(width * 0.1667)
-    tile_h = int(height * 0.2222)
+    if not FACE_ASSET.is_file():
+        raise FileNotFoundError(
+            f"synthetic face asset missing: {FACE_ASSET}. See tests/online/fixtures/README.md"
+        )
+    tile_w = _even(int(width * 0.1667))
+    tile_h = _even(int(height * 0.2222))
     _run(
         [
             "ffmpeg",
@@ -103,16 +129,18 @@ def write_composite_pip_tr(dest: Path, duration: float, width: int, height: int,
             "lavfi",
             "-i",
             f"color=c=0x1a1a2e:s={width}x{height}:d={duration}:r={fps}",
-            "-f",
-            "lavfi",
+            "-loop",
+            "1",
             "-i",
-            f"color=c=0xc68642:s={tile_w}x{tile_h}:d={duration}:r={fps}",
+            str(FACE_ASSET),
             "-filter_complex",
             (
                 "[0:v]drawtext=text='Slide 1':fontcolor=white:fontsize=72:"
-                "x=80:y=80[bg];[1:v]format=yuv420p[tile];"
+                f"x=80:y=80[bg];[1:v]scale={tile_w}:{tile_h},format=yuv420p[tile];"
                 "[bg][tile]overlay=x=main_w-overlay_w:y=0"
             ),
+            "-t",
+            str(duration),
             "-pix_fmt",
             "yuv420p",
             "-c:v",
@@ -152,23 +180,46 @@ GENERATORS = {
 }
 
 
-def generate_one(fixture_id: str, out_dir: Path) -> Path:
+def generate_one(
+    fixture_id: str,
+    out_dir: Path,
+    *,
+    duration: float | None = None,
+    width: int | None = None,
+    height: int | None = None,
+) -> Path:
     manifest_path = MANIFESTS / fixture_id / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
     dest = out_dir / fixture_id / "source.mp4"
+    duration_s = float(duration if duration is not None else manifest["duration_s"])
+    frame_w = _even(int(width if width is not None else manifest["width"]))
+    frame_h = _even(int(height if height is not None else manifest["height"]))
     GENERATORS[fixture_id](
         dest,
-        float(manifest["duration_s"]),
-        int(manifest["width"]),
-        int(manifest["height"]),
+        duration_s,
+        frame_w,
+        frame_h,
         int(manifest["fps"]),
     )
-    dest.with_name("manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    written = dict(manifest)
+    written["duration_s"] = duration_s
+    written["width"] = frame_w
+    written["height"] = frame_h
+    dest.with_name("manifest.json").write_text(json.dumps(written, indent=2) + "\n")
     return dest
 
 
-def generate_all(out_dir: Path) -> list[Path]:
-    return [generate_one(name, out_dir) for name in GENERATORS]
+def generate_all(
+    out_dir: Path,
+    *,
+    duration: float | None = None,
+    width: int | None = None,
+    height: int | None = None,
+) -> list[Path]:
+    return [
+        generate_one(name, out_dir, duration=duration, width=width, height=height)
+        for name in GENERATORS
+    ]
 
 
 def main() -> None:
@@ -180,10 +231,23 @@ def main() -> None:
         action="append",
         help="Generate a subset (repeatable)",
     )
+    parser.add_argument(
+        "--duration",
+        type=float,
+        help="Override manifest duration_s (use 120 or 3600 for real-stack timing)",
+    )
+    parser.add_argument(
+        "--resolution",
+        type=str,
+        help="Override WxH, e.g. 1920x1080 or 1280x720",
+    )
     args = parser.parse_args()
+    width = height = None
+    if args.resolution:
+        width, height = parse_resolution(args.resolution)
     names = args.only or list(GENERATORS)
     for name in names:
-        path = generate_one(name, args.out)
+        path = generate_one(name, args.out, duration=args.duration, width=width, height=height)
         print(f"wrote {path}")
 
 

@@ -9,7 +9,7 @@ Owner decision 2026-10-16: production mail is **Resend**, free tier. This docume
 | `RESEND_API_KEY` | yes | Dashboard API key. Never commit. |
 | `STAGECOACH_EMAIL_FROM` | yes | Verified From, e.g. `Stage Coach <noreply@cybersphere.com.br>` |
 | `EMAIL_PROVIDER` | no | `console` (default) forces the stand-in even if a key is present |
-| `STAGECOACH_PUBLIC_URL` | no | Used in verify/reset links; falls back to `NEXTAUTH_URL` |
+| `STAGECOACH_PUBLIC_URL` | no | Used in verify/reset links; compose default `http://127.0.0.1:8870`. LION production sets `https://stagecoach.cybersphere.com.br` in `.env` |
 
 When `RESEND_API_KEY` is unset, the API keeps the console / in-memory stand-in. CI never calls `api.resend.com`.
 

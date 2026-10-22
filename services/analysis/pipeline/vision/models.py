@@ -75,7 +75,8 @@ MODEL_REGISTRY: list[dict[str, Any]] = [
         "license_evidence": (
             "OpenCV Zoo face_detection_yunet LICENSE (MIT), fetched 22 Oct 2026: "
             "https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/LICENSE "
-            "(S66). Model is not vendored in this public repo."
+            "(S66). Model is not vendored in this public repo. The worker image "
+            "bakes it into /models at build time (ADR-075)."
         ),
         "delegate": "CPU",
         "used_by": "layout",

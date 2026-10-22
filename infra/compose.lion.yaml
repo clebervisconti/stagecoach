@@ -1,41 +1,66 @@
-# LION host overlay. Splunk already owns :8000; another service owns :5432.
-# Publish only loopback 8870 (web), plus Redis 6380 and MinIO 9010 when used.
+# LION host overlay (OrbStack / Apple Silicon).
+# Splunk already owns :8000; another service owns :5432.
+#
+# Compose merges sequence fields. `ports: []` does NOT clear the base list —
+# use !reset / !override so only loopback 8870, 6380, and 9010 are published.
 #
 #   docker compose -f docker-compose.yml -f infra/compose.lion.yaml \
-#     --profile web --profile minio up -d
+#     --profile web --profile minio --profile workers up -d
+#
+# Or: make lion-build && make lion-up
 #
 # Never bind host 8000 or 5432.
 
 services:
   postgres:
-    ports: []
+    ports: !reset []
 
   api:
-    ports: []
+    ports: !reset []
+    command:
+      [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+      ]
     environment:
       LLM_PROVIDER: ${LLM_PROVIDER:-local}
       LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
       XAI_API_KEY: ${XAI_API_KEY:-}
+      STAGECOACH_PUBLIC_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
 
   worker:
     environment:
       LLM_PROVIDER: ${LLM_PROVIDER:-local}
       LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
       XAI_API_KEY: ${XAI_API_KEY:-}
+      SILERO_VAD_DIR: /models/silero-vad
 
   redis:
-    ports:
+    ports: !override
       - "127.0.0.1:6380:6379"
 
   minio:
-    ports:
+    ports: !override
       - "127.0.0.1:9010:9000"
 
   web:
-    ports:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      target: runner
+    ports: !override
       - "127.0.0.1:8870:3000"
+    volumes: !reset []
+    # Production standalone server from apps/web/Dockerfile (not the Next.js dev server).
+    command: ["node", "server.js"]
     environment:
-      NEXTAUTH_URL: http://127.0.0.1:8870
+      NEXTAUTH_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
+      STAGECOACH_PUBLIC_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
+      NODE_ENV: production
 
   mailpit:
-    ports: []
+    ports: !reset []

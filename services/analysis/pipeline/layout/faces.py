@@ -1,7 +1,9 @@
 """Face boxes for layout detection (spec §9.2, ADR-062).
 
-YuNet (MIT, OpenCV FaceDetectorYN) is the production detector. Tests inject
-`FakeFaceDetector` with scripted boxes so CI never needs a personal face.
+YuNet (MIT, OpenCV FaceDetectorYN) is the production detector. The worker
+image bakes the ONNX file into /models (ADR-075). Tests inject
+`FakeFaceDetector` with scripted boxes so unit tests never need a personal
+face. The composite fixture uses a generated CC0 face for the real YuNet path.
 """
 
 from __future__ import annotations

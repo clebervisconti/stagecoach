@@ -1,0 +1,5 @@
+# CPU torch for linux/amd64 (no CUDA). The +cpu wheels live on the PyTorch index.
+# Keep this pin identical to requirements-torch-arm64.txt aside from the local version tag.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.4.1+cpu
+torchaudio==2.4.1+cpu

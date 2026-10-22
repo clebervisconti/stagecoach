@@ -27,11 +27,34 @@ tests/
   fixtures/           - Test media files
 ```
 
+## Torch and arm64
+
+The worker image must build on **linux/arm64** (LION / OrbStack) from this
+tree. `torch==2.4.1+cpu` has no aarch64 wheel.
+
+| Arch | Pin | Index |
+|---|---|---|
+| linux/amd64 | `torch==2.4.1+cpu`, `torchaudio==2.4.1+cpu` | `https://download.pytorch.org/whl/cpu` |
+| linux/arm64 | `torch==2.4.1`, `torchaudio==2.4.1` | PyPI |
+
+Install `requirements-torch.txt` (markers) or the arch-specific file
+**before** `requirements.txt`. Alignment is installed with
+`-c requirements-torch-$ARCH.txt` so pyannote cannot float torch.
+
+The Dockerfile is multi-stage: `g++`, `make`, `ninja`, and
+`CMAKE_POLICY_VERSION_MINIMUM=3.5` are build-only (parselmouth on arm64).
+YuNet and Silero VAD are hash-checked into `/models` at build time.
+
+```bash
+# Host install (amd64 CI / local)
+pip install -r requirements-torch.txt -r requirements.txt
+```
+
 ## Development
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+pip install -r requirements-torch.txt -r requirements.txt
 
 # Start worker (CPU queue)
 celery -A pipeline.celery_app worker -Q cpu --loglevel=info

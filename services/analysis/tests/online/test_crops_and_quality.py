@@ -21,7 +21,7 @@ def test_crops_from_original_composite(tmp_path: Path):
         duration_s=2.0,
         frame_width=1920,
         frame_height=1080,
-        detector=FakeFaceDetector([FaceDetection(x=820, y=20, w=90, h=110, score=0.92)]),
+        detector=FakeFaceDetector([FaceDetection(x=810, y=8, w=140, h=100, score=0.92)]),
         preview_source=video,
     )
     artifacts = write_region_tracks(

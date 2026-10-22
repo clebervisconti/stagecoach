@@ -204,7 +204,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           cd services/analysis
-          pip install -r requirements.txt
+          pip install -r requirements-torch.txt -r requirements.txt
       
       - name: Run worker tests
         run: |
@@ -213,6 +213,85 @@ jobs:
 
       - name: Golden fixtures
         run: python scripts/process_local.py --golden
+
+  worker-arm64-gate:
+    name: Worker arm64 gate
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+      - name: Decide whether to build
+        id: decide
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" != "pull_request" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "build on ${GITHUB_EVENT_NAME} (main / dispatch)"
+            exit 0
+          fi
+          git fetch --no-tags origin "${{ github.base_ref }}" || {
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "could not fetch base; building"
+            exit 0
+          }
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -E \
+            '^(services/analysis/|packages/)|(^|/)Dockerfile$|(^|/)requirements[^/]*\.txt$|^\.github/workflows/ci\.yml$'; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "worker-related paths changed"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "no worker / packages / Dockerfile / requirements change"
+          fi
+
+  worker-arm64-image:
+    name: Worker arm64 image
+    needs: worker-arm64-gate
+    if: needs.worker-arm64-gate.outputs.build == 'true'
+    # Public-repo GitHub-hosted arm64. No QEMU. No paid runner (ADR-077).
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Start timer
+        run: echo "BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
+      - name: Build linux/arm64 worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: services/analysis
+          file: services/analysis/Dockerfile
+          platforms: linux/arm64
+          load: true
+          tags: stagecoach-worker:arm64
+          provenance: false
+          # Cache probe after the ADR-077 cold write (scope=worker-arm64).
+          cache-from: type=gha,scope=worker-arm64
+          cache-to: type=gha,mode=max,scope=worker-arm64
+      - name: Record time and size
+        run: |
+          set -euo pipefail
+          seconds=$(( $(date +%s) - BUILD_START ))
+          size=$(docker image inspect stagecoach-worker:arm64 --format '{{.Size}}')
+          echo "arm64_build_seconds=${seconds}"
+          echo "arm64_image_bytes=${size}"
+          {
+            echo "## Worker linux/arm64 image"
+            echo "- runner: ubuntu-24.04-arm (native, no QEMU)"
+            echo "- build time: ${seconds}s"
+            echo "- size bytes: ${size}"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Import smoke
+        run: |
+          docker run --rm --platform linux/arm64 stagecoach-worker:arm64 \
+            python -c "import torch, torchaudio, parselmouth, mediapipe, cv2; print('torch', torch.__version__); print('torchaudio', torchaudio.__version__); print('parselmouth', parselmouth.__version__); print('mediapipe', mediapipe.__version__); print('cv2', cv2.__version__)"
 
   validate-config:
     name: Validate Scoring Config
@@ -1047,6 +1126,13 @@ jobs:
           echo "=== All Service Logs ==="
           docker compose logs
       
+      - name: Worker amd64 image size
+        if: always()
+        run: |
+          docker image inspect stagecoach-worker --format 'amd64_image_bytes={{.Size}}' \
+            || docker image inspect stagecoach-worker:latest --format 'amd64_image_bytes={{.Size}}' \
+            || echo "amd64 worker image not present"
+
       - name: Cleanup
         if: always()
         run: docker compose down -v

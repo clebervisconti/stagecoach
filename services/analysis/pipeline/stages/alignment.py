@@ -9,6 +9,7 @@ Per SPEC §6.3 and issue #21:
 
 import json
 import logging
+import os
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -16,9 +17,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
-import whisperx
 
 logger = logging.getLogger(__name__)
+
+SILERO_HUB_REPO = "snakers4/silero-vad"
+SILERO_MODEL = "silero_vad"
+SILERO_DEFAULT_DIR = Path("/models/silero-vad")
 
 # Gap detection threshold (per SPEC §6.3)
 GAP_THRESHOLD_MS = 300  # Re-decode speech gaps longer than this
@@ -88,15 +92,47 @@ class AlignmentOutput:
         }
 
 
+def silero_local_dir() -> Optional[Path]:
+    """Pinned Silero checkout baked into the image, if present."""
+    candidates = []
+    env = os.environ.get("SILERO_VAD_DIR")
+    if env:
+        candidates.append(Path(env))
+    candidates.append(SILERO_DEFAULT_DIR)
+    for path in candidates:
+        if (path / "hubconf.py").is_file():
+            return path
+    return None
+
+
 def load_silero_vad():
-    """Load Silero VAD model."""
+    """Load Silero VAD without prompting for trust_repo (EOF-safe).
+
+    Prefer the hash-checked copy baked at image build time. The GitHub hub
+    fallback always passes trust_repo=True so newer torch.hub never calls
+    input() and dies with 'EOF when reading a line' in the worker.
+    """
+    local = silero_local_dir()
     try:
-        model, utils = torch.hub.load(
-            repo_or_dir='snakers4/silero-vad',
-            model='silero_vad',
-            force_reload=False,
-            onnx=False
-        )
+        if local is not None:
+            logger.info("Loading Silero VAD from %s", local)
+            model, utils = torch.hub.load(
+                repo_or_dir=str(local),
+                model=SILERO_MODEL,
+                source="local",
+                trust_repo=True,
+                force_reload=False,
+                onnx=False,
+            )
+        else:
+            logger.warning("Silero VAD checkout missing; falling back to torch.hub")
+            model, utils = torch.hub.load(
+                repo_or_dir=SILERO_HUB_REPO,
+                model=SILERO_MODEL,
+                trust_repo=True,
+                force_reload=False,
+                onnx=False,
+            )
         (get_speech_timestamps, _, read_audio, *_) = utils
         return model, get_speech_timestamps, read_audio
     except Exception as e:
@@ -160,7 +196,8 @@ def align_words_whisperx(
         List of aligned words with precise boundaries
     """
     logger.info(f"Aligning words with WhisperX for language: {language}")
-    
+    import whisperx
+
     # Map language code
     lang_code = language if language in ["en", "pt"] else "en"
     
@@ -175,7 +212,6 @@ def align_words_whisperx(
     )
     
     # Load audio
-    import whisperx
     audio = whisperx.load_audio(str(audio_path))
     
     # Align transcript

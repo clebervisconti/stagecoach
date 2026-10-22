@@ -19,10 +19,11 @@ aiohttp==3.11.11
 # Media processing
 ffmpeg-python==0.2.0
 
-# ML/AI - Install torch CPU-only first
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.4.1+cpu
-torchaudio==2.4.1+cpu
+# ML/AI — torch/torchaudio 2.4.1 live in requirements-torch-*.txt (ADR-073).
+# linux/amd64: +cpu wheels from download.pytorch.org/whl/cpu.
+# linux/arm64: PyPI CPU wheels (no 2.4.1+cpu aarch64 build).
+# Install the matching file (or requirements-torch.txt) before this one.
+# Alignment installs with -c so pyannote cannot float torch to 2.14.x.
 
 # ASR
 faster-whisper==1.0.3

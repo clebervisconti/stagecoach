@@ -6,7 +6,7 @@
   "duration_s": 2.0,
   "fps": 15,
   "layout": "composite",
-  "origin": "synthetic ffmpeg lavfi; no personal data",
+  "origin": "synthetic ffmpeg lavfi + generated synthetic face (fixtures/assets/synthetic_face.png); no personal data",
   "segments": [
     {"t0": 0.0, "t1": 2.0, "kind": "composite"}
   ],
