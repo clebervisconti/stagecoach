@@ -23,6 +23,7 @@ from app.models.consent import Consent
 from app.models.user import User, uuid7
 from app.llm_providers import normalize_llm_settings, provider_catalog
 from app.retention import DEFAULT_RETENTION_POLICY, RETENTION_POLICIES, normalize_retention_policy
+from app.online_flags import user_online_modes_enabled
 
 router = APIRouter(prefix="/me", tags=["users"])
 
@@ -82,6 +83,7 @@ class UserProfile(BaseModel):
     accessibility_profile: Optional[dict] = None
     retention_policy: str = DEFAULT_RETENTION_POLICY
     llm_settings: Optional[dict] = None
+    online_modes_enabled: bool = False
 
 
 class UserProfileUpdate(BaseModel):
@@ -152,6 +154,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
         accessibility_profile=current_user.accessibility_profile,
         retention_policy=parse_retention_policy(getattr(current_user, "retention_policy", None)),
         llm_settings=parse_llm_settings(getattr(current_user, "llm_settings", None)),
+        online_modes_enabled=user_online_modes_enabled(current_user.email),
     )
 
 
@@ -196,6 +199,7 @@ async def update_me(
         accessibility_profile=current_user.accessibility_profile,
         retention_policy=parse_retention_policy(getattr(current_user, "retention_policy", None)),
         llm_settings=parse_llm_settings(getattr(current_user, "llm_settings", None)),
+        online_modes_enabled=user_online_modes_enabled(current_user.email),
     )
 
 

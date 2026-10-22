@@ -46,21 +46,33 @@ def test_online_mode_is_404_when_flag_off(monkeypatch):
 
 def test_webinar_accepted_when_flag_on(monkeypatch):
     monkeypatch.setenv("ONLINE_MODES_ENABLED", "true")
+    monkeypatch.setenv("ONLINE_MODES_ALLOWED_EMAILS", "owner@example.invalid")
     data = _stage(delivery_mode="webinar", camera_setup=None, rights_attested=True)
-    gate_online_session_fields(data)
+    gate_online_session_fields(data, "owner@example.invalid")
     assert data.camera_setup == "unknown"
 
 
 def test_webinar_requires_rights(monkeypatch):
     monkeypatch.setenv("ONLINE_MODES_ENABLED", "true")
+    monkeypatch.setenv("ONLINE_MODES_ALLOWED_EMAILS", "owner@example.invalid")
     data = _stage(delivery_mode="webinar", camera_setup="unknown")
     with pytest.raises(HTTPException) as exc:
-        gate_online_session_fields(data)
+        gate_online_session_fields(data, "owner@example.invalid")
     assert exc.value.status_code == 400
+
+
+def test_online_mode_denied_for_other_accounts(monkeypatch):
+    monkeypatch.setenv("ONLINE_MODES_ENABLED", "true")
+    monkeypatch.setenv("ONLINE_MODES_ALLOWED_EMAILS", "owner@example.invalid")
+    data = _stage(delivery_mode="webinar", camera_setup="unknown", rights_attested=True)
+    with pytest.raises(HTTPException) as exc:
+        gate_online_session_fields(data, "other@example.invalid")
+    assert exc.value.status_code == 404
 
 
 def test_url_source_is_404_when_url_flag_off(monkeypatch):
     monkeypatch.setenv("ONLINE_MODES_ENABLED", "true")
+    monkeypatch.setenv("ONLINE_MODES_ALLOWED_EMAILS", "owner@example.invalid")
     monkeypatch.delenv("URL_INGEST_ENABLED", raising=False)
     data = _stage(
         delivery_mode="recorded_video",
@@ -71,7 +83,7 @@ def test_url_source_is_404_when_url_flag_off(monkeypatch):
         target_length_min=12,
     )
     with pytest.raises(HTTPException) as exc:
-        gate_online_session_fields(data)
+        gate_online_session_fields(data, "owner@example.invalid")
     assert exc.value.status_code == 404
 
 
