@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-14",
+  "updated": "2026-10-22",
   "openface_used": false,
   "emotion_inference": false,
   "cpu_only": true,
@@ -37,12 +37,24 @@
       "delegate": "CPU",
       "model_card": "https://storage.googleapis.com/mediapipe-assets/Model%20Card%20Blendshape%20V2.pdf",
       "license_evidence": "schmidt-sebastian, mediapipe#6355 (2026-10-05): models Apache2 unless noted. Blendshape scores stored as numbers only; no emotion classifier."
+    },
+    {
+      "component": "layout_face",
+      "model_name": "face_detection_yunet_2023mar",
+      "version": "2023mar",
+      "filename": "face_detection_yunet_2023mar.onnx",
+      "url": "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx",
+      "sha256": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+      "license": "MIT",
+      "delegate": "CPU",
+      "used_by": "layout",
+      "license_evidence": "OpenCV Zoo face_detection_yunet LICENSE (MIT), fetched 22 Oct 2026: https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/LICENSE (S66)."
     }
   ],
   "dependencies": [
     {
       "name": "mediapipe",
-      "version": "0.10.31",
+      "version": "1.1.1",
       "license": "Apache-2.0",
       "evidence": "PyPI classifiers License :: OSI Approved :: Apache Software License; package license field Apache 2.0. github.com/google-ai-edge/mediapipe LICENSE fetched 2026-10-14."
     },

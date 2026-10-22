@@ -1,8 +1,8 @@
 """Fusion + scoring stage (issue #30, SPEC §6.8).
 
 Maps existing metrics.json, audio features, transcript, and content_llm
-outputs onto scoring-config v1.0.0. Missing inputs make a category N/A;
-scores are never invented.
+outputs onto scoring-config v1.1.0 (mode=stage by default). Missing inputs
+make a category N/A; scores are never invented.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from pipeline.partial import vision_failed_na_reason, vision_failed_warning
 logger = logging.getLogger(__name__)
 
 STAGE_VERSION = "1.0.0"
-SCORING_CONFIG_VERSION = "1.0.0"
+SCORING_CONFIG_VERSION = "1.1.0"
 PIPELINE_VERSION = "1.0.0"
 SCHEMA_VERSION = "1.0.0"
 
@@ -42,6 +42,12 @@ CONTENT_TEXT_CATEGORIES = {
     "impact",
 }
 QA_NOT_IN_SLOT_REASON = "This session did not include a Q&A segment."
+ONLINE_STAGE_NA = {
+    "screen_flow": "Screen flow is not scored for on-stage sessions.",
+    "on_camera_presence": "On-camera presence is not scored for on-stage sessions.",
+    "online_engagement": "This category is not scored for on-stage sessions.",
+    "production_quality": "Production quality is not scored for on-stage sessions.",
+}
 
 PILLAR_OF = {
     "core_message": "message",
@@ -61,6 +67,10 @@ PILLAR_OF = {
     "energy_presence": "presence_time",
     "time_management": "presence_time",
     "qa": "presence_time",
+    "screen_flow": "visuals",
+    "on_camera_presence": "body",
+    "online_engagement": "presence_time",
+    "production_quality": "production",
 }
 
 CLAIM_TYPE_LEVEL = {"none": 1, "topic": 2, "vague_claim": 3, "claim": 5}
@@ -238,6 +248,14 @@ def _min_evidence_ok(category_id: str, config: dict[str, Any], stats: dict[str, 
             px = float(extras.get("face_px_median") or 0.0)
             if px < float(threshold):
                 return False, f"Median face height {px:.0f} px is below {threshold}."
+        if key == "screen_visible_s" and float(extras.get("screen_visible_s") or 0) < float(threshold):
+            return False, f"Need at least {threshold}s of visible screen."
+        if key == "screen_segments" and int(extras.get("screen_segments") or 0) < int(threshold):
+            return False, f"Need at least {threshold} screen segments."
+        if key == "camera_visible_s" and float(extras.get("camera_visible_s") or 0) < float(threshold):
+            return False, f"Need at least {threshold}s of visible camera."
+        if key == "has_audio" and threshold and not extras.get("has_audio", True):
+            return False, "No audio track, so production quality is unavailable."
     return True, None
 
 
@@ -515,7 +533,13 @@ def _metrics_from_bundle(
         if category_id == "vocal_variety" and music_flag:
             continue
         metric_def = config["categories"][category_id]["metrics"][metric_id]
-        if not (metric_def.get("llm_level") or "curve" in metric_def or "context_curves" in metric_def or "mapping" in metric_def):
+        if not (
+            metric_def.get("llm_level")
+            or "curve" in metric_def
+            or "context_curves" in metric_def
+            or "mode_curves" in metric_def
+            or "mapping" in metric_def
+        ):
             continue
         grouped[category_id].append(
             _metric_payload(
@@ -666,6 +690,7 @@ def _score_one(
     item: dict[str, Any],
     context: str,
     config: dict[str, Any],
+    mode: str = "stage",
 ) -> dict[str, Any]:
     metric_def = config["categories"][item["category_id"]]["metrics"][item["id"]]
     score_context = context
@@ -681,6 +706,7 @@ def _score_one(
         item["confidence"],
         category_id=item["category_id"],
         context=score_context,
+        mode=mode,
     )
     item["score"] = scored["score"]
     item["included"] = scored["included"]
@@ -957,10 +983,11 @@ def run_fusion_scoring(
     metrics_path: Optional[Path] = None,
     content_path: Optional[Path] = None,
     packages_dir: Optional[Path] = None,
+    delivery_mode: str = "stage",
 ) -> dict[str, Any]:
     """Build analysis_result.json from existing stage artifacts only."""
     _ensure_scoring_path()
-    from scoring import ScoringEngine
+    from scoring import ScoringEngine, effective_weights
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -972,6 +999,9 @@ def run_fusion_scoring(
     config = engine.config
     if context_type not in config.get("weights", {}):
         context_type = "keynote"
+    if delivery_mode not in (config.get("modes") or {"stage": {}}):
+        delivery_mode = "stage"
+    mode_weights = effective_weights(config, context_type, delivery_mode)
 
     transcript = _read_json(transcript_path) or _read_json(output_dir / "transcript.json") or {}
     if not transcript:
@@ -1034,15 +1064,22 @@ def run_fusion_scoring(
         "slot_min": slot_min,
         "qa_detected": bool((content or {}).get("qa", {}).get("pairs")),
         "question_count": len((content or {}).get("qa", {}).get("pairs") or []),
+        "has_audio": bool(((ingest or {}).get("media_info") or {}).get("has_audio", True)),
+        "screen_visible_s": float((ingest or {}).get("screen_visible_s") or 0),
+        "screen_segments": int((ingest or {}).get("screen_segments") or 0),
+        "camera_visible_s": float((ingest or {}).get("camera_visible_s") or 0),
     }
 
     scored_metrics: list[dict[str, Any]] = []
     categories_out: list[dict[str, Any]] = []
     for category_id in config["categories"]:
-        weight = float(config["weights"].get(context_type, {}).get(category_id, 0))
+        weight = float(mode_weights.get(category_id, 0))
         na_reason = None
         applicable = True
-        if category_id in VIDEO_CATEGORIES:
+        if delivery_mode == "stage" and category_id in ONLINE_STAGE_NA:
+            applicable = False
+            na_reason = ONLINE_STAGE_NA[category_id]
+        elif category_id in VIDEO_CATEGORIES:
             consents = _read_json(output_dir / "consents.json")
             expr = _read_json(output_dir / "expression_metrics.json")
             audio_only = camera_setup == "audio_only" or bool(
@@ -1225,7 +1262,7 @@ def run_fusion_scoring(
         prepared = []
         for item in raw_items:
             try:
-                prepared.append(_score_one(engine, dict(item), context_type, config))
+                prepared.append(_score_one(engine, dict(item), context_type, config, mode=delivery_mode))
             except Exception as exc:
                 logger.info("Skipping metric %s: %s", item.get("id"), exc)
 
@@ -1235,7 +1272,7 @@ def run_fusion_scoring(
 
         cat = None
         if applicable:
-            cat = engine.score_category(category_id, prepared, context_type)
+            cat = engine.score_category(category_id, prepared, context_type, mode=delivery_mode)
             if cat["score"] is None:
                 # Metrics existed, but every one was below the inclusion floor
                 # (confidence under 0.40) or had no usable weight.
@@ -1321,6 +1358,7 @@ def run_fusion_scoring(
             for c in categories_out
         ],
         context_type,
+        mode=delivery_mode,
     )
     if overall["score"] is not None:
         overall["score"] = int(round(overall["score"]))

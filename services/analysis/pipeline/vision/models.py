@@ -61,6 +61,26 @@ MODEL_REGISTRY: list[dict[str, Any]] = [
         "delegate": "CPU",
         "model_card": "https://storage.googleapis.com/mediapipe-assets/Model%20Card%20Blendshape%20V2.pdf",
     },
+    {
+        "component": "layout_face",
+        "model_name": "face_detection_yunet_2023mar",
+        "version": "2023mar",
+        "filename": "face_detection_yunet_2023mar.onnx",
+        "url": (
+            "https://github.com/opencv/opencv_zoo/raw/main/models/"
+            "face_detection_yunet/face_detection_yunet_2023mar.onnx"
+        ),
+        "sha256": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+        "license": "MIT",
+        "license_evidence": (
+            "OpenCV Zoo face_detection_yunet LICENSE (MIT), fetched 22 Oct 2026: "
+            "https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/LICENSE "
+            "(S66). Model is not vendored in this public repo."
+        ),
+        "delegate": "CPU",
+        "used_by": "layout",
+        "load_with": "layout",
+    },
 ]
 
 
@@ -79,12 +99,25 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def ensure_models(models_dir: Path | None = None) -> dict[str, Path]:
-    """Download missing models and verify SHA-256. Returns filename → path."""
+def ensure_models(
+    models_dir: Path | None = None,
+    *,
+    components: set[str] | None = None,
+    include_layout: bool = False,
+) -> dict[str, Path]:
+    """Download missing models and verify SHA-256. Returns filename → path.
+
+    Layout models (YuNet) are skipped unless `include_layout` is true or
+    `components` names them. Vision callers must not pull YuNet by default.
+    """
     root = Path(models_dir) if models_dir is not None else default_models_dir()
     root.mkdir(parents=True, exist_ok=True)
     paths: dict[str, Path] = {}
     for row in MODEL_REGISTRY:
+        if components is not None and row["component"] not in components:
+            continue
+        if components is None and row.get("used_by") == "layout" and not include_layout:
+            continue
         dest = root / row["filename"]
         if dest.exists() and _sha256(dest) == row["sha256"]:
             paths[row["filename"]] = dest

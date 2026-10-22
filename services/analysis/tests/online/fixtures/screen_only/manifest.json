@@ -1,0 +1,18 @@
+{
+  "id": "screen_only",
+  "seed": 1,
+  "width": 1920,
+  "height": 1080,
+  "duration_s": 2.0,
+  "fps": 15,
+  "layout": "screen_full",
+  "origin": "synthetic ffmpeg lavfi; no personal data",
+  "segments": [
+    {"t0": 0.0, "t1": 2.0, "kind": "screen_full"}
+  ],
+  "regions": {
+    "screen": {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
+  },
+  "transitions": [],
+  "dead_air": []
+}

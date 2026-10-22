@@ -185,7 +185,7 @@ def test_missing_content_marks_text_categories_unavailable(tmp_path: Path):
             assert "audio-only" in (by_id[cid]["na_reason"] or "").lower()
         else:
             assert by_id[cid]["na_reason"] == reason
-    assert result["provenance"]["scoring_config_version"] == "1.0.0"
+    assert result["provenance"]["scoring_config_version"] == "1.1.0"
     jsonschema.validate(instance=result, schema=SCHEMA)
 
 
@@ -275,7 +275,7 @@ def test_content_and_metrics_score_audio_text_categories(tmp_path: Path):
     assert "pp_wpm" in metric_ids
     assert "cm_message_identifiable" in metric_ids
     assert "gb_gesture_activity_ratio" not in metric_ids
-    assert result["provenance"]["scoring_config_version"] == "1.0.0"
+    assert result["provenance"]["scoring_config_version"] == "1.1.0"
     assert any(m["name"] == "faster-whisper-tiny" for m in result["provenance"]["models"])
     assert (tmp_path / "analysis_result.json").exists()
     assert (tmp_path / "series_pace.json").exists()

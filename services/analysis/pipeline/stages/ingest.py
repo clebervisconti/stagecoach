@@ -414,57 +414,86 @@ def generate_sprites(input_path: Path, output_dir: Path, duration: float) -> Lis
     return sprites
 
 
+def _skin_ratio(bgr) -> float:
+    """Share of pixels in a YCrCb skin band (heuristic, not identity)."""
+    import cv2
+    import numpy as np
+
+    ycrcb = cv2.cvtColor(bgr, cv2.COLOR_BGR2YCrCb)
+    mask = cv2.inRange(ycrcb, (0, 133, 77), (255, 173, 127))
+    return float(np.count_nonzero(mask)) / float(mask.size or 1)
+
+
+def _mean_motion(grays) -> float:
+    import cv2
+    import numpy as np
+
+    if len(grays) < 2:
+        return 0.0
+    diffs = [float(np.mean(cv2.absdiff(a, b))) / 255.0 for a, b in zip(grays, grays[1:])]
+    return float(np.mean(diffs))
+
+
+def score_person_presence(frames_bgr: list) -> float:
+    """Combine skin-tone area and temporal motion into [0, 1].
+
+    Appendix C C2: replaces the constant 0.8 placeholder. Screen-like
+    frames (test patterns, slides) score low; a large moving skin blob scores high.
+    """
+    import cv2
+    import numpy as np
+
+    if len(frames_bgr) < 2:
+        return 0.2
+    skins = [_skin_ratio(frame) for frame in frames_bgr]
+    grays = [cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) for frame in frames_bgr]
+    skin = float(np.mean(skins))
+    motion = _mean_motion(grays)
+    skin_term = min(1.0, skin / 0.12) if skin >= 0.008 else 0.08
+    motion_term = min(1.0, motion / 0.05)
+    return max(0.0, min(1.0, 0.7 * skin_term + 0.3 * motion_term))
+
+
 def detect_person_presence(video_path: Path, num_samples: int = 20) -> float:
-    """Detect person presence in video using simple heuristics.
-    
-    Samples frames and checks for motion/variation to distinguish
-    screen recordings from camera recordings.
-    
+    """Detect person presence in video using skin + motion heuristics.
+
+    Samples frames and scores them. Higher = more likely a camera person
+    is in frame; below 0.5 is treated as a screen recording.
+
     Args:
         video_path: Path to video file
         num_samples: Number of frames to sample
-        
+
     Returns:
         Confidence score 0-1 (higher = more likely contains person)
     """
-    # Simple heuristic: check frame variance
-    # Screen recordings have low temporal variance
-    # This is a placeholder - real implementation would use CV
-    
+    import cv2
+
     try:
-        # Extract sample frames
         with tempfile.TemporaryDirectory() as tmpdir:
             sample_pattern = Path(tmpdir) / "sample_%03d.jpg"
-            
             cmd = [
                 "ffmpeg",
                 "-i", str(video_path),
-                "-vf", f"select='not(mod(n\\,floor(n_frames/{num_samples})))',scale=160:-2",
-                "-vsync", "0",
+                "-vf", f"fps=2,scale=160:-2",
+                "-frames:v", str(max(2, num_samples)),
                 "-q:v", "8",
+                "-y",
                 str(sample_pattern),
             ]
-            
-            subprocess.run(
-                cmd,
-                check=True,
-                capture_output=True,
-                timeout=60,
-            )
-            
-            # Count actual samples
-            samples = list(Path(tmpdir).glob("sample_*.jpg"))
-            
-            # If we have very few samples or static frames, likely screen recording
-            if len(samples) < num_samples / 2:
+            subprocess.run(cmd, check=True, capture_output=True, timeout=60)
+            samples = sorted(Path(tmpdir).glob("sample_*.jpg"))
+            if len(samples) < 2:
                 return 0.2
-            
-            # Placeholder: real implementation would analyze frames
-            # For now, assume person present if not audio-only
-            return 0.8
-            
+            frames = []
+            for path in samples:
+                image = cv2.imread(str(path))
+                if image is not None:
+                    frames.append(image)
+            if len(frames) < 2:
+                return 0.2
+            return score_person_presence(frames)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        # On error, assume low confidence
         return 0.3
 
 
