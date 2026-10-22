@@ -317,6 +317,42 @@
   background-image: url("/graphics/grid-dots-tile-on-light.svg");
 }
 
+.cs-wizard-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-strong);
+  font-size: 32px;
+  line-height: 34px;
+}
+
+@media (min-width: 768px) {
+  .cs-wizard-title {
+    font-size: 48px;
+    line-height: 48px;
+  }
+}
+
+@keyframes cs-scan {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.cs-scan-line {
+  animation: cs-scan 2s linear 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-scan-line {
+    animation: none;
+  }
+}
+
 .lucide {
   stroke-width: 1.5;
 }
