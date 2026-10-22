@@ -18,6 +18,7 @@ import yaml
 
 REPO = Path(__file__).resolve().parents[3]
 LION = REPO / "infra" / "compose.lion.yaml"
+MAKEFILE = REPO / "Makefile"
 
 COMPOSE_ENV = {
     "POSTGRES_PASSWORD": "ci-lion-compose",
@@ -162,3 +163,49 @@ def test_lion_public_url_reads_from_env():
     web_env = _service_env(data["services"]["web"])
     assert api_env.get("STAGECOACH_PUBLIC_URL") == public
     assert web_env.get("NEXTAUTH_URL") == public
+
+
+def test_makefile_lion_targets_pass_project_env_and_override():
+    text = MAKEFILE.read_text(encoding="utf-8")
+    assert "COMPOSE_PROJECT_NAME ?=" in text
+    assert "ENV_FILE ?=" in text
+    assert "LION_OVERRIDE ?=" in text
+    assert "LION_SERVICES ?=" in text
+    assert "-p $(COMPOSE_PROJECT_NAME)" in text
+    assert "--env-file $(ENV_FILE)" in text or "ENV_FILE_FLAG" in text
+    assert "up -d $(LION_SERVICES)" in text
+    assert "LION_SERVICES ?= postgres redis minio api worker web mailpit" in text
+    assert "worker-beat" not in text.split("LION_SERVICES ?=")[1].split("\n", 1)[0]
+
+
+def test_makefile_lion_up_dry_run_command():
+    result = subprocess.run(
+        [
+            "make",
+            "-n",
+            "lion-up",
+            "COMPOSE_PROJECT_NAME=lab-lion",
+            "ENV_FILE=/tmp/stagecoach-ci.env",
+            "LION_OVERRIDE=infra/compose.lion.yaml",
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    command = result.stdout
+    compose_line = [line for line in command.splitlines() if "docker compose" in line][-1]
+    assert "-p lab-lion" in compose_line
+    assert "worker-beat" not in compose_line
+    assert " up -d " in compose_line
+    assert "worker" in compose_line
+    assert "--profile" in compose_line
+
+
+@pytest.mark.skipif(shutil.which("docker") is None, reason="docker not on PATH")
+def test_lion_overlay_drops_worker_beat_from_workers_profile():
+    data = _compose_config()
+    services = data.get("services") or {}
+    assert "worker" in services
+    assert "worker-beat" not in services

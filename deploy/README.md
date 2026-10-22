@@ -57,11 +57,32 @@ make lion-build
 make lion-up
 ```
 
+The `make lion-*` targets take the same knobs the lab actually uses. None
+of these files belong in git if they hold secrets:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `COMPOSE_PROJECT_NAME` | `stagecoach` | Compose project (`-p`) so lab containers do not collide with another stack |
+| `ENV_FILE` | `.env` | Passed as `--env-file` when the file exists. Create it on LION; do not commit it |
+| `LION_OVERRIDE` | empty | Extra compose file (loopback / local ports). Example: `infra/compose.lion.local.yaml` on the host only |
+| `LION_SERVICES` | `postgres redis minio api worker web mailpit` | Services started by `lion-up`. **worker-beat is omitted** |
+
+```bash
+make lion-up \
+  COMPOSE_PROJECT_NAME=stagecoach \
+  ENV_FILE=.env \
+  LION_OVERRIDE=infra/compose.lion.local.yaml
+```
+
+`worker-beat` is on the `lion-beat` profile, not `workers`. Do not start it
+on LION unless you pass `--profile lion-beat`.
+
 The API overlay command is production uvicorn (no `--reload`). The worker
 image is a multi-stage build: `g++` / `make` / `ninja` stay in the build
 stage so `praat-parselmouth` can compile on arm64. Torch is `2.4.1+cpu`
 from the PyTorch CPU index on amd64 and `2.4.1` from PyPI on arm64.
-YuNet and Silero VAD are baked into `/models` at build time.
+YuNet, Silero VAD, MediaPipe `.task` files, faster-whisper `small`, and
+NLTK `punkt` / `punkt_tab` are baked into `/models` at build time.
 
 MinIO is `cgr.dev/chainguard/minio:latest-dev` pinned by image-index digest
 (quay.io/minio/minio returns 401; the image is multi-arch and AGPL). The

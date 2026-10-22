@@ -118,6 +118,8 @@ services:
       STAGECOACH_KEK: ${STAGECOACH_KEK:-}
       MEDIAPIPE_MODELS_DIR: /models
       SILERO_VAD_DIR: /models/silero-vad
+      FASTER_WHISPER_DIR: /models/faster-whisper
+      NLTK_DATA: /models/nltk_data
       LLM_PROVIDER: ${LLM_PROVIDER:-local}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}

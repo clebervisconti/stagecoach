@@ -182,6 +182,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             ffmpeg \
+            espeak-ng \
             pkg-config \
             libavformat-dev \
             libavcodec-dev \
@@ -200,11 +201,23 @@ jobs:
             tesseract-ocr-eng \
             tesseract-ocr-por \
             poppler-utils
+
+      - name: Cache ASR and alignment models
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/huggingface
+            ~/.cache/torch
+            ~/nltk_data
+          key: worker-align-${{ runner.os }}-py3.11
       
       - name: Install Python dependencies
         run: |
           cd services/analysis
           pip install -r requirements-torch.txt -r requirements.txt
+          pip install -r requirements-alignment.txt -c requirements-torch-amd64.txt
+          pip install --no-deps git+https://github.com/m-bain/whisperX.git@v3.8.6
+          python -c "import nltk; nltk.download('punkt_tab'); nltk.download('punkt')"
       
       - name: Run worker tests
         run: |
@@ -291,7 +304,12 @@ jobs:
       - name: Import smoke
         run: |
           docker run --rm --platform linux/arm64 stagecoach-worker:arm64 \
-            python -c "import torch, torchaudio, parselmouth, mediapipe, cv2; print('torch', torch.__version__); print('torchaudio', torchaudio.__version__); print('parselmouth', parselmouth.__version__); print('mediapipe', mediapipe.__version__); print('cv2', cv2.__version__)"
+            python -c "import torch, torchaudio, parselmouth, mediapipe, cv2, nltk, whisperx; print('torch', torch.__version__); print('torchaudio', torchaudio.__version__); print('parselmouth', parselmouth.__version__); print('mediapipe', mediapipe.__version__); print('cv2', cv2.__version__); print('whisperx', whisperx.__file__)"
+
+      - name: Offline baked-model smoke (no outbound HTTP)
+        run: |
+          docker run --rm --network=none --platform linux/arm64 stagecoach-worker:arm64 \
+            python scripts/offline_runtime_smoke.py
 
   validate-config:
     name: Validate Scoring Config
@@ -1126,6 +1144,12 @@ jobs:
           echo "=== All Service Logs ==="
           docker compose logs
       
+      - name: Offline baked-model smoke (no outbound HTTP)
+        run: |
+          CID=$(docker compose ps -q worker)
+          IMAGE=$(docker inspect -f '{{.Image}}' "$CID")
+          docker run --rm --network=none "$IMAGE" python scripts/offline_runtime_smoke.py
+
       - name: Worker amd64 image size
         if: always()
         run: |

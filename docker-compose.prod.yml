@@ -86,6 +86,8 @@ services:
       HF_HOME: /models/huggingface
       MEDIAPIPE_MODELS_DIR: /models
       SILERO_VAD_DIR: /models/silero-vad
+      FASTER_WHISPER_DIR: /models/faster-whisper
+      NLTK_DATA: /models/nltk_data
       STAGECOACH_ARTIFACT_KEY: ${STAGECOACH_ARTIFACT_KEY:-}
       STAGECOACH_KEK: ${STAGECOACH_KEK:-}
       OTEL_SERVICE_NAME: stagecoach

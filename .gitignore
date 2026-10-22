@@ -60,6 +60,7 @@ dist/
 *.mkv
 *.webm
 *.wav
+!services/analysis/tests/online/fixtures/assets/synthetic_speech.wav
 *.mp3
 *.m4a
 *.flac

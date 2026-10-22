@@ -11,6 +11,7 @@ Per SPEC §6.3 and issue #20:
 
 import json
 import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -120,6 +121,24 @@ def get_model_name(ci_mode: bool = False) -> str:
     return os.getenv("ASR_MODEL", DEFAULT_MODEL)
 
 
+def resolve_whisper_model(model_name: str) -> str:
+    """Prefer a hash-checked copy baked into the image (ADR-078)."""
+    env = os.environ.get("FASTER_WHISPER_DIR")
+    candidates = []
+    if env:
+        root = Path(env)
+        candidates.append(root / model_name)
+        if root.name == model_name:
+            candidates.append(root)
+    candidates.append(Path("/models/faster-whisper") / model_name)
+    candidates.append(Path(f"/models/faster-whisper-{model_name}"))
+    for path in candidates:
+        if (path / "model.bin").is_file():
+            logger.info("Using baked faster-whisper model at %s", path)
+            return str(path)
+    return model_name
+
+
 def load_model(model_name: str, device: str = "cpu", compute_type: str = "int8"):
     """Load faster-whisper model.
     
@@ -134,11 +153,12 @@ def load_model(model_name: str, device: str = "cpu", compute_type: str = "int8")
         Loaded WhisperModel instance
     """
     from faster_whisper import WhisperModel
-    
-    logger.info(f"Loading faster-whisper model: {model_name} on {device} with {compute_type}")
+
+    resolved = resolve_whisper_model(model_name)
+    logger.info(f"Loading faster-whisper model: {resolved} on {device} with {compute_type}")
     
     model = WhisperModel(
-        model_name,
+        resolved,
         device=device,
         compute_type=compute_type,
         cpu_threads=4,

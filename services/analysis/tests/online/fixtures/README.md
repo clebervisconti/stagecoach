@@ -1,6 +1,7 @@
 # Online fixture assets
 
-Generated videos are git-ignored. Manifests and the synthetic face stay in git.
+Generated videos are git-ignored. Manifests, the synthetic face, and the
+synthetic speech clip stay in git.
 
 ## `assets/synthetic_face.png`
 
@@ -9,6 +10,14 @@ Generated videos are git-ignored. Manifests and the synthetic face stay in git.
 - **Licence:** Original work in this repository, dedicated to the public domain under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
 - **Source:** Drawn by `tests/online/generate_online_fixtures.py` / the generator used to create this PNG. No third-party image, no identifiable person.
 - **Use:** Stretched to the PiP tile so YuNet detects it and `grow_tile` can recover the tile (camera and screen IoU ≥ 0.85).
+
+## `assets/synthetic_speech.wav`
+
+- **What:** About 12 s of English webinar text spoken by **espeak-ng** `en-us` at 145 wpm, resampled to 16 kHz mono PCM. The generator loops this clip to the video duration.
+- **Why:** The previous fixture used `anullsrc` silence. Cyberlabs' 120 s run saw 0 ASR words and 0 VAD segments, so WhisperX alignment never ran.
+- **Text (original, not a quotation):** "Welcome to this webinar. Today we will cover three points. First, the plan. Second, the evidence. Third, the next steps. Thank you."
+- **Licence:** The waveform is synthetic TTS. [espeak-ng](https://github.com/espeak-ng/espeak-ng) is GPL-3.0. The spoken words are original to this repository. Not a recording of a person and not a recording of Cleber. No third-party voice corpus.
+- **Regenerate:** `espeak-ng -v en-us -s 145 -w /tmp/raw.wav "$TEXT"` then `ffmpeg -i /tmp/raw.wav -ar 16000 -ac 1` into this path. `generate_online_fixtures.py` will recreate the file if it is missing and espeak-ng is installed.
 
 ## Generating videos
 

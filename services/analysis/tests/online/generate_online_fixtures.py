@@ -3,9 +3,10 @@
 
 Produces `composite_pip_tr`, `screen_only`, and `camera_only` with ffmpeg
 lavfi. The composite camera tile uses the generated synthetic face in
-`fixtures/assets/` (not a real person). No personal data. Video files are
-written next to committed manifests only when `--out` is given; they must
-not be committed.
+`fixtures/assets/` (not a real person). Audio is license-clean espeak-ng
+speech from `fixtures/assets/synthetic_speech.wav`, not a recording.
+No personal data. Video files are written next to committed manifests
+only when `--out` is given; they must not be committed.
 
 `--duration` and `--resolution` override the manifest so a 120 s or 60 min
 clip can be generated for real-stack timing.
@@ -20,6 +21,11 @@ from pathlib import Path
 
 MANIFESTS = Path(__file__).resolve().parent / "fixtures"
 FACE_ASSET = MANIFESTS / "assets" / "synthetic_face.png"
+SPEECH_ASSET = MANIFESTS / "assets" / "synthetic_speech.wav"
+SPEECH_TEXT = (
+    "Welcome to this webinar. Today we will cover three points. "
+    "First, the plan. Second, the evidence. Third, the next steps. Thank you."
+)
 
 
 def _run(cmd: list[str]) -> None:
@@ -42,7 +48,48 @@ def parse_resolution(text: str) -> tuple[int, int]:
     return _even(width), _even(height)
 
 
-def _mux_silence(dest: Path, duration: float) -> None:
+def synthesize_speech(dest: Path) -> Path:
+    """Write the committed espeak-ng clip, or regenerate it when missing."""
+    if dest.is_file() and dest.stat().st_size > 0:
+        return dest
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    raw = dest.with_suffix(".espeak.wav")
+    try:
+        _run(
+            [
+                "espeak-ng",
+                "-v",
+                "en-us",
+                "-s",
+                "145",
+                "-w",
+                str(raw),
+                SPEECH_TEXT,
+            ]
+        )
+        _run(
+            [
+                "ffmpeg",
+                "-i",
+                str(raw),
+                "-ar",
+                "16000",
+                "-ac",
+                "1",
+                "-c:a",
+                "pcm_s16le",
+                "-y",
+                str(dest),
+            ]
+        )
+    finally:
+        raw.unlink(missing_ok=True)
+    return dest
+
+
+def _mux_speech(dest: Path, duration: float) -> None:
+    """Loop the synthetic speech clip to cover `duration` (no silence)."""
+    speech = synthesize_speech(SPEECH_ASSET)
     tmp = dest.with_suffix(".vid.mp4")
     dest.replace(tmp)
     _run(
@@ -50,15 +97,16 @@ def _mux_silence(dest: Path, duration: float) -> None:
             "ffmpeg",
             "-i",
             str(tmp),
-            "-f",
-            "lavfi",
+            "-stream_loop",
+            "-1",
             "-i",
-            f"anullsrc=r=16000:cl=mono:d={duration}",
+            str(speech),
             "-c:v",
             "copy",
             "-c:a",
             "aac",
-            "-shortest",
+            "-t",
+            str(duration),
             "-y",
             str(dest),
         ]
@@ -85,7 +133,7 @@ def write_screen_only(dest: Path, duration: float, width: int, height: int, fps:
             str(dest),
         ]
     )
-    _mux_silence(dest, duration)
+    _mux_speech(dest, duration)
 
 
 def write_camera_only(dest: Path, duration: float, width: int, height: int, fps: int) -> None:
@@ -111,7 +159,7 @@ def write_camera_only(dest: Path, duration: float, width: int, height: int, fps:
             str(dest),
         ]
     )
-    _mux_silence(dest, duration)
+    _mux_speech(dest, duration)
 
 
 def write_composite_pip_tr(dest: Path, duration: float, width: int, height: int, fps: int) -> None:
@@ -149,7 +197,7 @@ def write_composite_pip_tr(dest: Path, duration: float, width: int, height: int,
             str(dest),
         ]
     )
-    _mux_silence(dest, duration)
+    _mux_speech(dest, duration)
 
 
 def write_no_regions(dest: Path, duration: float, width: int, height: int, fps: int) -> None:
@@ -169,7 +217,7 @@ def write_no_regions(dest: Path, duration: float, width: int, height: int, fps: 
             str(dest),
         ]
     )
-    _mux_silence(dest, duration)
+    _mux_speech(dest, duration)
 
 
 GENERATORS = {

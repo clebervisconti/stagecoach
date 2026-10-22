@@ -27,9 +27,11 @@ SILERO_DEFAULT_DIR = Path("/models/silero-vad")
 # Gap detection threshold (per SPEC §6.3)
 GAP_THRESHOLD_MS = 300  # Re-decode speech gaps longer than this
 
-# Wav2vec2 models for alignment per language
+# Wav2vec2 models for alignment per language.
+# English uses whisperX's torchaudio pipeline (WAV2VEC2_ASR_BASE_960H) so CI
+# and LION do not pull the 1.2 GB facebook/wav2vec2-large checkpoint.
 ALIGNMENT_MODELS = {
-    "en": "facebook/wav2vec2-large-960h-lv60-self",
+    "en": "WAV2VEC2_ASR_BASE_960H",
     "pt": "jonatasgrosman/wav2vec2-large-xlsr-53-portuguese",
 }
 

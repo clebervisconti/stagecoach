@@ -9,6 +9,7 @@ from typing import Any, Optional
 
 import numpy as np
 
+from pipeline.layout.face_visibility import ratio_from_detections
 from pipeline.layout.faces import FaceDetection, FaceDetector, FakeFaceDetector, YuNetFaceDetector
 from pipeline.layout.review import needs_layout_review
 from pipeline.layout.sampling import extract_preview_jpeg, sample_frames
@@ -201,6 +202,7 @@ def detect_layout(
         "status": "detected",
         "confidence": round(confidence, 3),
         "review_reason": review_reason,
+        "face_visible_ratio": ratio_from_detections(detections),
         "frame": {
             "width": int(frame_width),
             "height": int(frame_height),

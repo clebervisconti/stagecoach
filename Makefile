@@ -1,6 +1,17 @@
 .PHONY: help install dev down logs test lint type clean migrate generate-types check-generated lion-build lion-config lion-up
 
-LION_COMPOSE = docker compose -f docker-compose.yml -f infra/compose.lion.yaml --profile web --profile minio --profile workers
+# LION (OrbStack / linux/arm64). The lab checkout uses a compose project name,
+# an env file, and sometimes a local loopback override that is not in git.
+# Do not put secrets in this repository. worker-beat is excluded by default.
+COMPOSE_PROJECT_NAME ?= stagecoach
+ENV_FILE ?= .env
+LION_OVERRIDE ?=
+LION_SERVICES ?= postgres redis minio api worker web mailpit
+ENV_FILE_FLAG = $(if $(wildcard $(ENV_FILE)),--env-file $(ENV_FILE),)
+LION_OVERRIDE_FLAG = $(if $(strip $(LION_OVERRIDE)),-f $(LION_OVERRIDE),)
+LION_COMPOSE = docker compose -p $(COMPOSE_PROJECT_NAME) $(ENV_FILE_FLAG) \
+	-f docker-compose.yml -f infra/compose.lion.yaml $(LION_OVERRIDE_FLAG) \
+	--profile web --profile minio --profile workers
 
 help:
 	@echo "Stage Coach Development Commands"
@@ -18,7 +29,8 @@ help:
 	@echo "  make clean           - Clean build artifacts"
 	@echo "  make lion-build      - Build API/web/worker images for LION (linux/arm64 or host)"
 	@echo "  make lion-config     - Print merged LION compose (ports must be 8870/6380/9010)"
-	@echo "  make lion-up         - Start the LION overlay (loopback 8870/6380/9010)"
+	@echo "  make lion-up         - Start the LION overlay (loopback 8870/6380/9010; no worker-beat)"
+	@echo "                         COMPOSE_PROJECT_NAME ENV_FILE LION_OVERRIDE LION_SERVICES"
 
 install:
 	@echo "Installing Python dependencies..."
@@ -80,7 +92,8 @@ lion-config:
 
 lion-up:
 	@echo "Starting LION overlay on 127.0.0.1:8870 (web), :6380 (Redis), :9010 (MinIO)..."
-	$(LION_COMPOSE) up -d
+	@echo "project=$(COMPOSE_PROJECT_NAME) env=$(ENV_FILE) override=$(LION_OVERRIDE) (beat excluded)"
+	$(LION_COMPOSE) up -d $(LION_SERVICES)
 
 clean:
 	@echo "Cleaning build artifacts..."

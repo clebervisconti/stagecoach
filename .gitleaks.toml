@@ -1,0 +1,12 @@
+# Extend the default rules. Allow only this public model checksum, not the file.
+# gitleaks-action@v2 ships 8.24.3, which still reads the singular [allowlist] table.
+title = "stagecoach"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public Systran/faster-whisper-small companion-file SHA-256 from Hugging Face (MIT)"
+regexes = [
+  '''fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab''',
+]

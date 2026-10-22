@@ -155,6 +155,20 @@ def _read_json(path: Optional[Path]) -> Optional[dict[str, Any]]:
     return data if isinstance(data, dict) else None
 
 
+def _first_number(*values: Any) -> Optional[float]:
+    """Return the first value that is not None. 0.0 is a real measurement."""
+    for value in values:
+        if value is not None:
+            return float(value)
+    return None
+
+
+def _ratio_from(payload: Optional[dict[str, Any]], key: str = "face_visible_ratio") -> Optional[float]:
+    if not payload or key not in payload or payload[key] is None:
+        return None
+    return float(payload[key])
+
+
 def _normalize_language(value: Optional[str]) -> str:
     if value and value.startswith("pt"):
         return "pt-BR"
@@ -1482,6 +1496,7 @@ def run_fusion_scoring(
     gesture_payload = _read_json(output_dir / "gesture_metrics.json") or {}
     gaze_payload = _read_json(output_dir / "gaze_metrics.json") or {}
     expr_payload = _read_json(output_dir / "expression_metrics.json") or {}
+    camera_face_payload = _read_json(output_dir / "camera_face_quality.json") or {}
 
     evidence = _evidence_from_inputs(transcript, scored_metrics, content, output_dir=output_dir)
     by_cat: dict[str, list[str]] = {}
@@ -1574,15 +1589,23 @@ def run_fusion_scoring(
         "quality": {
             "asr_mean_word_prob": stats["mean_word_prob"],
             "snr_db": audio.get("snr_db"),
-            "face_visible_ratio": quality_payload.get("face_visible_ratio")
-            or gaze_payload.get("face_visible_ratio")
-            or expr_payload.get("face_visible_ratio"),
-            "person_visible_ratio": quality_payload.get("person_visible_ratio")
-            or gesture_payload.get("person_visible_ratio"),
-            "hands_visible_ratio": gesture_payload.get("hands_visible_ratio"),
-            "face_px_median": gaze_payload.get("face_px_median")
-            or expr_payload.get("face_px_median")
-            or quality_payload.get("mean_face_height_px"),
+            "face_visible_ratio": _first_number(
+                _ratio_from(camera_face_payload),
+                _ratio_from(layout_payload),
+                _ratio_from(quality_payload),
+                _ratio_from(gaze_payload),
+                _ratio_from(expr_payload),
+            ),
+            "person_visible_ratio": _first_number(
+                _ratio_from(quality_payload, "person_visible_ratio"),
+                _ratio_from(gesture_payload, "person_visible_ratio"),
+            ),
+            "hands_visible_ratio": _ratio_from(gesture_payload, "hands_visible_ratio"),
+            "face_px_median": _first_number(
+                gaze_payload.get("face_px_median") if gaze_payload else None,
+                expr_payload.get("face_px_median") if expr_payload else None,
+                quality_payload.get("mean_face_height_px") if quality_payload else None,
+            ),
             "warnings": warnings,
         },
         "overall": {

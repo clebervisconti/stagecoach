@@ -43,7 +43,9 @@ Install `requirements-torch.txt` (markers) or the arch-specific file
 
 The Dockerfile is multi-stage: `g++`, `make`, `ninja`, and
 `CMAKE_POLICY_VERSION_MINIMUM=3.5` are build-only (parselmouth on arm64).
-YuNet and Silero VAD are hash-checked into `/models` at build time.
+YuNet, Silero VAD, MediaPipe landmarker `.task` files, faster-whisper
+`small`, and NLTK `punkt` / `punkt_tab` are hash-checked into `/models`
+at build time. Runtime download remains a fallback.
 
 ```bash
 # Host install (amd64 CI / local)

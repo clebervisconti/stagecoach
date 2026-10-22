@@ -6,7 +6,9 @@ and no recordings. Generated video files are git-ignored.
 
 `composite_pip_tr` overlays `fixtures/assets/synthetic_face.png` in the camera
 tile. That PNG is a generated drawing (not a photograph, not a real person),
-released as CC0. See `fixtures/README.md`.
+released as CC0. Audio is `fixtures/assets/synthetic_speech.wav`: espeak-ng
+`en-us` TTS of original webinar text (GPL-3.0 engine; not a person's voice).
+See `fixtures/README.md`.
 
 Optional real-face integration (`@pytest.mark.real_faces`) may download CC0 or
 CC-BY talking-head stills into `tests/online/cache/` at test time. That cache is

@@ -15,6 +15,7 @@ from pipeline.stages.asr import (
     TranscriptOutput,
     Word,
     get_model_name,
+    resolve_whisper_model,
 )
 
 
@@ -130,3 +131,16 @@ def test_language_confidence_threshold():
     """Test language confidence threshold is reasonable."""
     assert 0.5 <= LANGUAGE_CONFIDENCE_THRESHOLD <= 1.0
     assert LANGUAGE_CONFIDENCE_THRESHOLD == 0.8
+
+
+def test_resolve_whisper_model_prefers_baked_dir(tmp_path, monkeypatch):
+    baked = tmp_path / "faster-whisper" / "small"
+    baked.mkdir(parents=True)
+    (baked / "model.bin").write_bytes(b"not-a-real-model")
+    monkeypatch.setenv("FASTER_WHISPER_DIR", str(tmp_path / "faster-whisper"))
+    assert resolve_whisper_model("small") == str(baked)
+
+
+def test_resolve_whisper_model_falls_back_to_name(monkeypatch):
+    monkeypatch.delenv("FASTER_WHISPER_DIR", raising=False)
+    assert resolve_whisper_model("tiny") == "tiny"

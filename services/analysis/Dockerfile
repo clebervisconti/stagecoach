@@ -56,12 +56,22 @@ COPY . .
 
 ENV MEDIAPIPE_MODELS_DIR=/models
 ENV SILERO_VAD_DIR=/models/silero-vad
+ENV FASTER_WHISPER_DIR=/models/faster-whisper
+ENV NLTK_DATA=/models/nltk_data
 RUN python scripts/prefetch_models.py && \
     python -c "from pathlib import Path; \
-p=Path('/models/face_detection_yunet_2023mar.onnx'); \
-assert p.is_file(), p; \
-s=Path('/models/silero-vad/hubconf.py'); \
-assert s.is_file(), s"
+root=Path('/models'); \
+needed=[ \
+  root/'face_detection_yunet_2023mar.onnx', \
+  root/'silero-vad'/'hubconf.py', \
+  root/'pose_landmarker_full.task', \
+  root/'hand_landmarker.task', \
+  root/'face_landmarker.task', \
+  root/'faster-whisper'/'small'/'model.bin', \
+  root/'nltk_data'/'tokenizers'/'punkt_tab'/'english'/'abbrev_types.txt', \
+]; \
+missing=[str(p) for p in needed if not p.is_file()]; \
+assert not missing, missing"
 
 FROM mirror.gcr.io/library/python:3.11-slim-bookworm AS runtime
 
@@ -95,6 +105,8 @@ RUN playwright install-deps chromium && playwright install chromium
 
 ENV MEDIAPIPE_MODELS_DIR=/models
 ENV SILERO_VAD_DIR=/models/silero-vad
+ENV FASTER_WHISPER_DIR=/models/faster-whisper
+ENV NLTK_DATA=/models/nltk_data
 ENV PYTHONPATH=/app:/packages
 
 RUN mkdir -p /tmp/stagecoach
