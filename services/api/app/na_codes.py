@@ -5,10 +5,30 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parents[3]
-_SCHEMAS = _ROOT / "packages" / "schemas"
-if str(_SCHEMAS) not in sys.path:
-    sys.path.insert(0, str(_SCHEMAS))
+
+def _ensure_schemas_path() -> None:
+    """Find packages/schemas without assuming a repo-relative depth.
+
+    In Docker the API lives at /app/app/..., so parents[3] raises IndexError.
+    Prefer the compose mount at /packages/schemas.
+    """
+    here = Path(__file__).resolve().parent
+    candidates = [Path("/packages/schemas")]
+    for parent in [here, *here.parents]:
+        candidates.append(parent / "packages" / "schemas")
+        candidates.append(parent / "schemas")
+    for path in candidates:
+        try:
+            if (path / "na_codes.py").is_file():
+                resolved = str(path)
+                if resolved not in sys.path:
+                    sys.path.insert(0, resolved)
+                return
+        except OSError:
+            continue
+
+
+_ensure_schemas_path()
 
 from na_codes import NA_CODES, S5_TO_NA_CODE, infer_na_code  # noqa: E402
 
