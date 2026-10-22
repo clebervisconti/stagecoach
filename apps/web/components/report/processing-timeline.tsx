@@ -69,7 +69,7 @@ export function ProcessingTimeline({
   }, []);
 
   const stages = pipelineTimeline(steps, live, { deliveryMode, sourceKind });
-  const current = stages.find((stage) => stage.status === "running");
+  const current = stages.find((stage) => stage.status === "running" || stage.status === "waiting");
   const elapsed = startedAt ? formatElapsed(now - new Date(startedAt).getTime()) : null;
   const slow = Boolean(current && startedAt && now - new Date(startedAt).getTime() > 90_000);
   const problems = stages.filter((stage) => stage.status === "failed" || stage.status === "skipped");
@@ -206,6 +206,14 @@ function StageMark({ status }: { status: string }) {
   }
   if (status === "skipped") {
     return <span className="mt-0.5 text-[color:var(--text-tertiary)]" aria-hidden="true">—</span>;
+  }
+  if (status === "waiting") {
+    return (
+      <span className="mt-0.5 inline-flex items-center gap-1 text-[color:var(--text-secondary)]">
+        <span aria-hidden="true">◐</span>
+        <span className="text-[11px] uppercase tracking-[0.08em]">Waiting for you</span>
+      </span>
+    );
   }
   if (status === "running") {
     return <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-[color:var(--text-strong)]" aria-hidden="true" />;

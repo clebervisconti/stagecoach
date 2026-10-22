@@ -96,7 +96,7 @@ export function pipelineStages(deliveryMode = "stage", sourceKind = "upload"): r
   return stagesForMode(deliveryMode, sourceKind);
 }
 
-export type StageState = "pending" | "running" | "succeeded" | "failed" | "skipped";
+export type StageState = "pending" | "running" | "succeeded" | "failed" | "skipped" | "waiting";
 
 export type StepSnapshot = {
   stage: string;
@@ -118,7 +118,8 @@ function asStageState(status: string): StageState {
     status === "running" ||
     status === "succeeded" ||
     status === "failed" ||
-    status === "skipped"
+    status === "skipped" ||
+    status === "waiting"
   ) {
     return status;
   }
@@ -137,6 +138,8 @@ export function pipelineTimeline(
   live?: StageProgressEvent | null,
   options?: { deliveryMode?: string; sourceKind?: string },
 ): StageView[] {
+  const deliveryMode = options?.deliveryMode ?? "stage";
+  const foldAlignment = deliveryMode !== "stage";
   const byStage = new Map<string, StepSnapshot>();
   for (const step of steps) byStage.set(step.stage, step);
   if (live?.type === "stage") {
@@ -148,12 +151,28 @@ export function pipelineTimeline(
       error: previous?.error ?? null,
     });
   }
+  if (foldAlignment) {
+    const alignment = byStage.get("alignment");
+    if (alignment && (alignment.status === "running" || alignment.status === "pending" || alignment.status === "waiting")) {
+      const asr = byStage.get("asr");
+      byStage.set("asr", {
+        stage: "asr",
+        status: "running",
+        message: asr?.message ?? alignment.message ?? null,
+        error: asr?.error ?? null,
+      });
+    }
+    byStage.delete("alignment");
+  }
 
-  const names = [...pipelineStages(options?.deliveryMode ?? "stage", options?.sourceKind ?? "upload")] as string[];
-  for (const step of steps) {
+  const names = [...pipelineStages(deliveryMode, options?.sourceKind ?? "upload")] as string[];
+  for (const step of byStage.values()) {
+    if (foldAlignment && step.stage === "alignment") continue;
     if (!names.includes(step.stage)) names.push(step.stage);
   }
-  if (live?.type === "stage" && !names.includes(live.stage)) names.push(live.stage);
+  if (live?.type === "stage" && !(foldAlignment && live.stage === "alignment") && !names.includes(live.stage)) {
+    names.push(live.stage);
+  }
 
   return names.map((stage) => {
     const step = byStage.get(stage);

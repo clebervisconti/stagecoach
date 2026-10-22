@@ -281,33 +281,33 @@ export function RecordingStep({
                 </button>
               </div>
             ) : (
-              <label className="mt-2 flex min-h-[140px] cursor-pointer flex-col items-start justify-center rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] bg-[color:var(--bg-subtle)] p-5">
+              <label
+                className="mt-2 flex min-h-[140px] cursor-pointer flex-col items-start justify-center rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] bg-[color:var(--bg-subtle)] p-5"
+                onClick={() => fileInput.current?.click()}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    fileInput.current?.click();
+                  }
+                }}
+                tabIndex={0}
+              >
                 <Upload className="h-5 w-5" aria-hidden="true" />
                 <p className="mt-3 text-sm">
                   {t("dropHere")}{" "}
                   <span className="uppercase tracking-[0.08em]">{t("browseFiles")}</span>
                 </p>
                 <p className="mt-1 text-sm text-[color:var(--text-secondary)]">{t("fileHint", { limit: "2 GB" })}</p>
-                <input
-                  ref={fileInput}
-                  type="file"
-                  data-testid="session-file"
-                  accept=".mp4,.mov,.m4a,.wav,.webm,.mkv,.mp3,.ogg,.flac,audio/*,video/*"
-                  className="sr-only"
-                  onChange={(event) => void chooseFile(event.target.files?.[0])}
-                />
               </label>
             )}
-            {!media && (
-              <input
-                ref={fileInput}
-                type="file"
-                data-testid="session-file"
-                accept=".mp4,.mov,.m4a,.wav,.webm,.mkv,.mp3,.ogg,.flac,audio/*,video/*"
-                className="sr-only"
-                onChange={(event) => void chooseFile(event.target.files?.[0])}
-              />
-            )}
+            <input
+              ref={fileInput}
+              type="file"
+              data-testid="session-file"
+              accept=".mp4,.mov,.m4a,.wav,.webm,.mkv,.mp3,.ogg,.flac,audio/*,video/*"
+              className="sr-only"
+              onChange={(event) => void chooseFile(event.target.files?.[0])}
+            />
             {fileError && (
               <p role="alert" className="mt-2 flex items-start gap-2 text-sm text-[color:var(--status-critical)]">
                 <X className="mt-0.5 h-4 w-4" aria-hidden="true" />

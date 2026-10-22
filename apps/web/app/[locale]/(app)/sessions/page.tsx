@@ -29,13 +29,14 @@ export default function SessionsPage() {
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [uploadName, setUploadName] = useState("");
   const [error, setError] = useState("");
-  const [onlineModes, setOnlineModes] = useState(false);
+  const [onlineModes, setOnlineModes] = useState<"unknown" | "on" | "off">("unknown");
 
   const loadSessions = useCallback(async () => {
     const response = await fetch("/api/stagecoach/sessions", { cache: "no-store" });
     if (!response.ok) throw new Error(t("loadError"));
     const body = await response.json();
     setSessions(body.sessions);
+    setError("");
   }, [t]);
 
   useEffect(() => {
@@ -46,8 +47,8 @@ export default function SessionsPage() {
     };
     fetch("/api/stagecoach/me", { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : { online_modes_enabled: false }))
-      .then((body: { online_modes_enabled?: boolean }) => setOnlineModes(Boolean(body.online_modes_enabled)))
-      .catch(() => setOnlineModes(false));
+      .then((body: { online_modes_enabled?: boolean }) => setOnlineModes(body.online_modes_enabled ? "on" : "off"))
+      .catch(() => setOnlineModes("off"));
     const initial = window.setTimeout(refresh, 0);
     const timer = window.setInterval(() => {
       void loadSessions().catch(() => undefined);
@@ -104,7 +105,7 @@ export default function SessionsPage() {
           type="button"
           data-testid="new-session"
           onClick={() => {
-            if (onlineModes) {
+            if (onlineModes === "on") {
               router.push(`${prefix}/sessions/new?step=where`);
               return;
             }
