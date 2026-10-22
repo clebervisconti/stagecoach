@@ -57,7 +57,12 @@ export function WizardStepper({
               className={currentStep ? "text-[color:var(--text-strong)]" : done ? "text-[color:var(--text)]" : ""}
             >
               {clickable ? (
-                <button type="button" className="uppercase tracking-[0.12em]" onClick={() => onSelect?.(step.id)}>
+                <button
+                  type="button"
+                  data-testid={`stepper-${step.id}`}
+                  className="uppercase tracking-[0.12em]"
+                  onClick={() => onSelect?.(step.id)}
+                >
                   <span className="sr-only">{t("stepper.stepOf", { n: String(step.n), of: String(steps.length), label })}</span>
                   <span aria-hidden="true">{`${step.n} · ${label}`}</span>
                 </button>

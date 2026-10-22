@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseProgressData, pipelineStages, pipelineTimeline, shouldReloadReport, stageProblem } from "./progress.ts";
+import { parseProgressData, pipelineStages, pipelineTimeline, sessionConsentOff, shouldReloadReport, stageProblem } from "./progress.ts";
 
 test("partial_ready carries scored category ids", () => {
   const event = parseProgressData(
@@ -95,6 +95,30 @@ test("a skipped vision step names the missing install", () => {
   const vision = view.find((stage) => stage.stage === "vision");
   assert.equal(vision?.status, "skipped");
   assert.equal(vision?.problem, "visionUnavailable");
+});
+
+test("consent-off comes from the explicit signal, not a skipped vision step", () => {
+  assert.equal(stageProblem("consent_denied:video_analysis"), "consent_video_off");
+  assert.equal(
+    sessionConsentOff({
+      consent: { video_analysis: true },
+      job: { steps: [{ stage: "vision", status: "skipped", problem: "visionUnavailable", message: "mediapipe_unavailable" }] },
+    }),
+    false,
+  );
+  assert.equal(
+    sessionConsentOff({
+      consent: { video_analysis: false },
+      job: { steps: [{ stage: "vision", status: "skipped", problem: "consent_video_off" }] },
+    }),
+    true,
+  );
+  assert.equal(
+    sessionConsentOff({
+      job: { steps: [{ stage: "layout", status: "skipped" }, { stage: "vision", status: "skipped" }] },
+    }),
+    false,
+  );
 });
 
 test("online pipeline lists layout and production quality and hides alignment", () => {

@@ -1064,7 +1064,27 @@ def prepare_session_task(
         emit_progress(job_id, "ingest", "succeeded", pct=40, message="Media prepared", session_id=session_id)
 
         layout = result.get("layout")
-        if not result.get("skip_layout") and layout is not None:
+        if result.get("skip_layout"):
+            skip_reason = result.get("reason") or "audio_only_media"
+            na_code = "consent_video_off" if skip_reason == "consent_video_off" else skip_reason
+            skip_started = datetime.utcnow()
+            for stage in ("layout", "layout_review", "region_crops"):
+                _record_job_step(
+                    job_id=job_id,
+                    stage=stage,
+                    status="skipped",
+                    started_at=skip_started,
+                    metrics={"reason": skip_reason, "na_code": na_code},
+                )
+                emit_progress(
+                    job_id,
+                    stage,
+                    "skipped",
+                    pct=80,
+                    message=skip_reason,
+                    session_id=session_id,
+                )
+        elif layout is not None:
             emit_progress(
                 job_id,
                 "layout",
@@ -1119,14 +1139,15 @@ def prepare_session_task(
                 session_id=session_id,
             )
             return {"job_id": job_id, "session_id": session_id, "status": "layout_review"}
-        emit_progress(
-            job_id,
-            "layout_review",
-            "succeeded",
-            pct=95,
-            message="Layout confirmed automatically",
-            session_id=session_id,
-        )
+        if not result.get("skip_layout"):
+            emit_progress(
+                job_id,
+                "layout_review",
+                "succeeded",
+                pct=95,
+                message="Layout confirmed automatically",
+                session_id=session_id,
+            )
         _enqueue_mvp_analysis(analysis_kwargs)
         return {"job_id": job_id, "session_id": session_id, "status": "processing"}
     except Exception as exc:
@@ -1210,6 +1231,7 @@ def run_mvp_analysis_task(
                 started_at=started,
                 metrics={
                     "reason": vision_decision_early["reason"],
+                    "na_code": "consent_video_off",
                     "run_pose": False,
                     "run_expression_metrics": False,
                     "keep_raw_landmarks": False,
@@ -1516,17 +1538,20 @@ def run_mvp_analysis_task(
                     vision_status,
                     reason=vision_result.get("skip_reason") or vision_gate.get("reason"),
                 )
+                skip_reason = vision_result.get("skip_reason") or vision_gate.get("reason")
+                vision_metrics = vision_result.get("metrics") or {
+                    "reason": skip_reason,
+                    "run_pose": decide_vision(snapshot).run_pose,
+                }
+                if vision_status == "skipped" and skip_reason:
+                    vision_metrics = {**vision_metrics, "reason": skip_reason, "na_code": skip_reason}
                 _record_job_step(
                     job_id=job_id,
                     stage="vision",
                     status=vision_status,
                     started_at=started,
                     outputs=vision_result.get("artifacts"),
-                    metrics=vision_result.get("metrics")
-                    or {
-                        "reason": vision_result.get("skip_reason") or vision_gate.get("reason"),
-                        "run_pose": decide_vision(snapshot).run_pose,
-                    },
+                    metrics=vision_metrics,
                 )
                 emit_progress(
                     job_id,

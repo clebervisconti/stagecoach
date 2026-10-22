@@ -102,6 +102,7 @@ export function ModeStep({
       <div className="mt-10 flex items-center justify-between gap-3">
         <button
           type="button"
+          data-testid="cancel-mode"
           onClick={onCancel}
           className="inline-flex h-11 items-center rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] px-5 text-xs uppercase tracking-[0.08em]"
         >

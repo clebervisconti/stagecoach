@@ -19,7 +19,7 @@ import { VoiceTab } from "@/components/report/voice-tab";
 import type { BodyPayload, SlidesPayload } from "@/lib/body-slides";
 import { exportFileUrl, exportStatusUrl, exportUrl } from "@/lib/pdf-export";
 import { formatTimestamp } from "@/lib/player";
-import { eventsUrl, parseProgressData, shouldReloadReport, type StageProgressEvent, type StepSnapshot } from "@/lib/progress";
+import { eventsUrl, parseProgressData, sessionConsentOff, shouldReloadReport, type StageProgressEvent, type StepSnapshot } from "@/lib/progress";
 import { ProcessingTimeline } from "@/components/report/processing-timeline";
 import { NotMeasured } from "@/components/report/not-measured";
 import { PreparingPanel } from "@/components/sessions/preparing-panel";
@@ -42,6 +42,7 @@ type SessionDetail = {
   slot_min: number | null;
   created_at: string;
   media?: { duration_s?: number | null } | null;
+  consent?: { video_analysis?: boolean } | null;
   job: null | {
     status: string;
     error: { message?: string } | null;
@@ -57,17 +58,6 @@ function isAutoConfirmed(steps: StepSnapshot[] | undefined): boolean {
         step.stage === "layout_review" &&
         step.status === "succeeded" &&
         (step.detail === "confirmed_automatically" || step.message === "Confirmed automatically"),
-    ),
-  );
-}
-
-function isConsentOff(steps: StepSnapshot[] | undefined): boolean {
-  return Boolean(
-    steps?.some(
-      (step) =>
-        step.problem === "consent_video_off" ||
-        (step.status === "skipped" &&
-          (step.stage === "layout" || step.stage === "layout_review" || step.stage === "vision" || step.stage === "region_crops")),
     ),
   );
 }
@@ -247,7 +237,7 @@ export default function SessionPage() {
       ? `${session.slot_min} ${t("minutes")} → ${durationMin.toFixed(1)} ${t("minutes")}`
       : null;
   const autoConfirmed = isAutoConfirmed(session?.job?.steps);
-  const consentOff = isConsentOff(session?.job?.steps);
+  const consentOff = session ? sessionConsentOff(session) : false;
   const layoutDone =
     Boolean(session?.job?.steps?.some((step) => step.stage === "layout_review" && (step.status === "succeeded" || step.status === "skipped"))) ||
     session?.status === "processing" ||
@@ -286,6 +276,7 @@ export default function SessionPage() {
                 camera={report?.layout_summary?.camera_visible_ratio}
                 screen={report?.layout_summary?.screen_visible_ratio}
                 compact={showPrepare || !report}
+                consentOff={consentOff}
               />
             )}
             <p className="font-mono text-xs uppercase tracking-[0.08em]">
@@ -555,19 +546,22 @@ function ModeBadge({
   camera,
   screen,
   compact = false,
+  consentOff = false,
 }: {
   mode: DeliveryMode;
   kinds?: string[];
   camera?: number | null;
   screen?: number | null;
   compact?: boolean;
+  consentOff?: boolean;
 }) {
   const Icon = mode === "stage" ? Mic : mode === "webinar" ? Users : mode === "online_talk" ? Globe : Play;
   const hasCamera = (camera ?? 0) > 0 || kinds?.some((kind) => kind.includes("camera") || kind === "composite");
   const hasScreen = (screen ?? 0) > 0 || kinds?.some((kind) => kind.includes("screen") || kind === "composite");
   const t = useTranslations("online");
-  const half =
-    hasCamera && hasScreen
+  const half = consentOff
+    ? t("setupAudio")
+    : hasCamera && hasScreen
       ? t("composition.cameraScreen")
       : hasCamera
         ? t("composition.camera")

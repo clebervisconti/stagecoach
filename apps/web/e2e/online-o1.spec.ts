@@ -74,34 +74,108 @@ test("report hides body tab and shows not measured for online", async ({ page })
   await expect(page.getByTestId("not-measured").getByText(/open settings/i).first()).toBeVisible();
 });
 
-async function tabUntil(page: import("@playwright/test").Page, testId: string, limit = 24) {
-  let current = "";
+async function focusKey(page: import("@playwright/test").Page): Promise<string> {
+  return page.evaluate(() => {
+    const el = document.activeElement as HTMLElement | null;
+    if (!el || el === document.body) return "body";
+    return (
+      el.getAttribute("data-testid") ||
+      el.getAttribute("aria-label") ||
+      `${el.tagName.toLowerCase()}:${(el.textContent || "").trim().slice(0, 48)}`
+    );
+  });
+}
+
+async function tabOrderUntil(page: import("@playwright/test").Page, stop: string, limit = 24): Promise<string[]> {
+  const order: string[] = [];
   for (let i = 0; i < limit; i += 1) {
     await page.keyboard.press("Tab");
-    current = await page.evaluate(() => document.activeElement?.getAttribute("data-testid") ?? "");
-    if (current === testId) return current;
+    const key = await focusKey(page);
+    order.push(key);
+    if (key === stop) return order;
   }
-  return current;
+  return order;
+}
+
+function boxesOverlap(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 test("keyboard-only walkthrough: mode, recording, layout", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await mockOnlineApi(page, { status: "layout_review", layout: layoutFixture("high") });
   await page.goto("/sessions/new?step=where", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: /where did you present/i })).toBeVisible();
-  const firstMode = await tabUntil(page, "mode-stage");
-  expect(firstMode).toBe("mode-stage");
+  await expect(page.getByRole("heading", { name: /where did you present/i })).toBeFocused();
+  expect(await tabOrderUntil(page, "continue-mode")).toEqual([
+    "mode-stage",
+    "cancel-mode",
+    "continue-mode",
+  ]);
+  await page.getByTestId("mode-stage").focus();
   await page.keyboard.press("Space");
   await expect(page.getByTestId("mode-stage")).toHaveAttribute("aria-checked", "true");
   await page.keyboard.press("ArrowRight");
   await expect(page.getByTestId("mode-webinar")).toHaveAttribute("aria-checked", "true");
-  expect(await tabUntil(page, "continue-mode")).toBe("continue-mode");
+  await page.getByTestId("continue-mode").focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: /add your recording/i })).toBeVisible();
   await page.goto(`/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("confidence-line")).toBeVisible();
-  expect(await tabUntil(page, "looks-right")).toBe("looks-right");
+  await expect(page.locator("#layout-title")).toBeFocused();
+  expect(await tabOrderUntil(page, "looks-right")).toEqual([
+    "layout-preview",
+    "Segment 1 of 1, 0:00 to 9:00, Camera + screen",
+    "looks-right",
+  ]);
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(new RegExp(`/sessions/${SESSION_ID}`));
+});
+
+test("player empty overlay stays on the video and leaves controls visible", async ({ page }) => {
+  await mockOnlineApi(page, { status: "ready", success: true });
+  await page.route("**/api/stagecoach/sessions/*/media/playback", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "{}" }),
+  );
+  await page.route("**/api/stagecoach/sessions/*/media", async (route) => {
+    if (route.request().url().includes("playback")) return route.fallback();
+    await new Promise(() => undefined);
+  });
+  await page.goto(`/sessions/${SESSION_ID}`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("report")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("timeline")).toBeVisible();
+  const overlay = page.getByTestId("player-empty");
+  await expect(overlay).toBeVisible();
+  const filters = page.getByRole("checkbox", { name: /filters/i });
+  const help = page.getByText(/space: play\/pause/i);
+  const lane = page.getByTestId("timeline-lane-fillers");
+  await expect(filters).toBeVisible();
+  await expect(help).toBeVisible();
+  await expect(lane).toBeVisible();
+  const overlayBox = await overlay.boundingBox();
+  const filtersBox = await filters.boundingBox();
+  const helpBox = await help.boundingBox();
+  const laneBox = await lane.boundingBox();
+  expect(overlayBox && filtersBox && !boxesOverlap(overlayBox, filtersBox)).toBeTruthy();
+  expect(overlayBox && helpBox && !boxesOverlap(overlayBox, helpBox)).toBeTruthy();
+  expect(overlayBox && laneBox && !boxesOverlap(overlayBox, laneBox)).toBeTruthy();
+  await expect(page.getByText(/playback is not available/i)).toHaveCount(0);
+});
+
+test("vision unavailable with consent on keeps layout confirmed", async ({ page }) => {
+  await mockOnlineApi(page, { status: "processing", visionUnavailable: true, startedAgo: 45 });
+  await page.goto(`/sessions/${SESSION_ID}`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("processing")).toBeVisible();
+  await expect(page.getByTestId("consent-off")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /open settings/i })).toHaveCount(0);
+  await expect(page.getByText(/camera analysis is off/i)).toHaveCount(0);
+  await expect(page.locator('[data-stage="layout"]')).toHaveAttribute("data-status", "succeeded");
+  await expect(page.locator('[data-stage="layout_review"]')).toHaveAttribute("data-status", "succeeded");
+  await expect(page.getByText(/by you/i).first()).toBeVisible();
+  await expect(page.locator('[data-stage="vision"]')).toHaveAttribute("data-status", "skipped");
+  await expect(page.locator('[data-stage="vision"]')).toContainText(/isn't available on this server/i);
 });
 
 test("auto-confirmed layout is read-only", async ({ page }) => {

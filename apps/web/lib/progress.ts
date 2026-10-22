@@ -131,9 +131,17 @@ function asStageState(status: string): StageState {
 
 export function stageProblem(error: string | null | undefined): "visionUnavailable" | "consent_video_off" | null {
   if (!error) return null;
-  if (/consent_video_off/i.test(error)) return "consent_video_off";
-  if (/mediapipe|modulenotfounderror/i.test(error)) return "visionUnavailable";
+  if (/consent_video_off|consent_denied/i.test(error)) return "consent_video_off";
+  if (/mediapipe|modulenotfounderror|vision[_]?unavailable/i.test(error)) return "visionUnavailable";
   return null;
+}
+
+export function sessionConsentOff(session: {
+  consent?: { video_analysis?: boolean } | null;
+  job?: { steps?: StepSnapshot[] } | null;
+}): boolean {
+  if (session.consent?.video_analysis === false) return true;
+  return Boolean(session.job?.steps?.some((step) => step.problem === "consent_video_off"));
 }
 
 const PREPARE_STAGES = new Set(["ingest", "layout", "layout_review", "sync", "region_crops"]);

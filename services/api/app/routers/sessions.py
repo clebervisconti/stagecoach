@@ -31,6 +31,7 @@ from app.deletion import (
 )
 from app.coaching import coaching_document, remember_baseline
 from app.consents.store import snapshot_for_user
+from app.na_codes import infer_na_code
 from app.session_plans import resolve_talk_plan
 from app.deck_safety import (
     ALLOWED_DECK_CONTENT_TYPES,
@@ -419,6 +420,29 @@ async def list_sessions(
     ]}
 
 
+def _step_problem(step: JobStep) -> Optional[str]:
+    """Serialize an explicit skip/fail code. Consent-off is never inferred from a bare skip."""
+    metrics = step.metrics if isinstance(step.metrics, dict) else {}
+    error = step.error if isinstance(step.error, dict) else {}
+    raw = metrics.get("na_code") or metrics.get("reason") or metrics.get("message") or error.get("message")
+    if not raw:
+        return None
+    text = str(raw)
+    if "consent_denied" in text.lower() or text == "consent_video_off":
+        return "consent_video_off"
+    code = infer_na_code(text)
+    if code in {"consent_video_off", "vision_unavailable"}:
+        return code
+    return None
+
+
+def _video_analysis_granted(snapshot: dict, steps: list[dict]) -> bool:
+    if any(row.get("problem") == "consent_video_off" for row in steps):
+        return False
+    purposes = (snapshot or {}).get("purposes") or {}
+    return bool((purposes.get("video_analysis") or {}).get("granted"))
+
+
 @router.get("/{session_id}")
 async def get_session(
     session_id: str,
@@ -440,6 +464,24 @@ async def get_session(
             .order_by(JobStep.created_at.asc())
             .all()
         )
+    step_rows = [
+        {
+            "stage": step.stage,
+            "status": step.status,
+            "metrics": step.metrics,
+            "message": (
+                step.metrics.get("message") or step.metrics.get("reason")
+                if isinstance(step.metrics, dict)
+                else None
+            ),
+            "error": step.error.get("message") if isinstance(step.error, dict) else None,
+            "problem": _step_problem(step),
+            "started_at": step.started_at.isoformat() if step.started_at else None,
+            "finished_at": step.finished_at.isoformat() if step.finished_at else None,
+        }
+        for step in steps
+    ]
+    snapshot = snapshot_for_user(db, current_user.id)
     return {
         "id": str(session.id),
         "title": session.title,
@@ -457,30 +499,14 @@ async def get_session(
         if getattr(session, "rights_attested_at", None)
         else None,
         "created_at": session.created_at.isoformat(),
+        "consent": {"video_analysis": _video_analysis_granted(snapshot, step_rows)},
         "job": (
             {
                 "id": str(job.id),
                 "status": job.status,
                 "error": job.error,
                 "created_at": job.created_at.isoformat(),
-                "steps": [
-                    {
-                        "stage": step.stage,
-                        "status": step.status,
-                        "metrics": step.metrics,
-                        "message": (
-                            step.metrics.get("message") or step.metrics.get("reason")
-                            if isinstance(step.metrics, dict)
-                            else None
-                        ),
-                        "error": step.error.get("message")
-                        if isinstance(step.error, dict)
-                        else None,
-                        "started_at": step.started_at.isoformat() if step.started_at else None,
-                        "finished_at": step.finished_at.isoformat() if step.finished_at else None,
-                    }
-                    for step in steps
-                ],
+                "steps": step_rows,
             }
             if job
             else None

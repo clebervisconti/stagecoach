@@ -19,7 +19,7 @@ export function SegmentStrip({
       <div className="flex items-center justify-between gap-3">
         <p className="cs-eyebrow">{t("layoutOverTime")}</p>
         <p className="font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
-          {t("segmentCount", { n: String(segments.length) })}
+          {t("segmentCount", { n: segments.length })}
         </p>
       </div>
       <div role="listbox" aria-label={t("layoutOverTime")} className="mt-3 flex gap-2 overflow-x-auto">

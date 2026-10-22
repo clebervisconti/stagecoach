@@ -27,7 +27,12 @@ export function LayoutPreview({
 
   return (
     <figure>
-      <div className="relative aspect-video overflow-hidden bg-black" tabIndex={0} aria-describedby="layout-preview-desc">
+      <div
+        className="relative aspect-video overflow-hidden bg-black"
+        tabIndex={0}
+        data-testid="layout-preview"
+        aria-describedby="layout-preview-desc"
+      >
         {src ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={src} alt="" className="h-full w-full object-contain" />
@@ -58,8 +63,7 @@ function RegionBox({ region, uncertain }: { region: LayoutRegion; uncertain: boo
   const y = region.y;
   const role = region.role === "other_participant" ? "ignore" : region.role;
   const kind = role === "camera" ? "camera" : role === "screen" ? "screen" : "ignored";
-  const label =
-    role === "camera" ? (uncertain ? t("chip.cameraCheck") : t("chip.camera")) : role === "screen" ? t("chip.screen") : t("chip.ignored");
+  const label = role === "camera" ? t("chip.camera") : role === "screen" ? t("chip.screen") : t("chip.ignored");
   return (
     <div
       className={`cs-region cs-region--${kind}`}
@@ -71,8 +75,9 @@ function RegionBox({ region, uncertain }: { region: LayoutRegion; uncertain: boo
       }}
     >
       <span className="cs-region__label">
-        {uncertain && <TriangleAlert className="h-3 w-3 text-[color:var(--status-warning)]" aria-hidden="true" />}
+        {uncertain && <TriangleAlert className="h-3 w-3 shrink-0 text-[color:var(--status-warning)]" aria-hidden="true" />}
         {label}
+        {uncertain && role === "camera" && <span className="cs-region__check"> · {t("confidenceCheck")}</span>}
       </span>
     </div>
   );

@@ -246,7 +246,12 @@ export function onlineReport(): AnalysisReport {
   return onlinePartialReport();
 }
 
-function stepsFor(status: string | undefined, autoConfirmed: boolean, consentOff = false) {
+function stepsFor(
+  status: string | undefined,
+  autoConfirmed: boolean,
+  consentOff = false,
+  visionUnavailable = false,
+) {
   if (consentOff) {
     return [
       { stage: "ingest", status: "succeeded", message: "Media ready" },
@@ -254,6 +259,16 @@ function stepsFor(status: string | undefined, autoConfirmed: boolean, consentOff
       { stage: "layout_review", status: "skipped", problem: "consent_video_off" },
       { stage: "region_crops", status: "skipped", problem: "consent_video_off" },
       { stage: "vision", status: "skipped", problem: "consent_video_off" },
+      { stage: "asr", status: "succeeded", message: "Transcript ready" },
+      { stage: "audio_features", status: "running", message: "Measuring pace and pauses" },
+    ];
+  }
+  if (visionUnavailable) {
+    return [
+      { stage: "ingest", status: "succeeded", message: "Media ready" },
+      { stage: "layout", status: "succeeded" },
+      { stage: "layout_review", status: "succeeded", message: autoConfirmed ? "Confirmed automatically" : "By you" },
+      { stage: "vision", status: "skipped", problem: "visionUnavailable", message: "mediapipe_unavailable" },
       { stage: "asr", status: "succeeded", message: "Transcript ready" },
       { stage: "audio_features", status: "running", message: "Measuring pace and pauses" },
     ];
@@ -297,6 +312,7 @@ export async function mockOnlineApi(
     startedAgo?: number;
     autoConfirmed?: boolean;
     consentOff?: boolean;
+    visionUnavailable?: boolean;
     locale?: "en" | "pt-BR";
     success?: boolean;
   } = {},
@@ -368,12 +384,18 @@ export async function mockOnlineApi(
           language: locale === "pt-BR" ? "pt-BR" : "en",
           slot_min: 60,
           media: { duration_s: options.status === "failed" ? null : 540 },
+          consent: { video_analysis: !options.consentOff },
           created_at: pastIso(startedAgo + 20),
           job: {
             status: options.status === "failed" ? "failed" : "running",
             error: options.status === "failed" ? { message: "unreadable" } : null,
             created_at: pastIso(startedAgo),
-            steps: stepsFor(options.status, Boolean(options.autoConfirmed), Boolean(options.consentOff)),
+            steps: stepsFor(
+              options.status,
+              Boolean(options.autoConfirmed),
+              Boolean(options.consentOff),
+              Boolean(options.visionUnavailable),
+            ),
           },
         }),
       });
@@ -421,6 +443,14 @@ export async function mockOnlineApi(
           camera.score = null;
           camera.na_code = "consent_video_off";
           camera.na_reason = "Video analysis is off.";
+        }
+      }
+      if (options.visionUnavailable) {
+        for (const category of report.categories) {
+          if (category.na_code === "consent_video_off") {
+            category.na_code = "vision_unavailable";
+            category.na_reason = "Camera analysis isn't available on this server yet.";
+          }
         }
       }
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(report) });

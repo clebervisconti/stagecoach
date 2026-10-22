@@ -55,7 +55,7 @@ export function PreparingPanel({
             ? t("prepMediaDone", { duration: formatClock(durationS) })
             : t("prepMediaReady")
           : t("prepMediaHint"),
-      time: ingest?.status === "succeeded" ? formatClock(9) : null,
+      time: ingest?.status === "succeeded" ? "—" : null,
     },
     {
       id: "layout",

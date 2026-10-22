@@ -88,17 +88,6 @@ export function ProcessingTimeline({
     sourceKind,
     sessionStatus: sessionStatus ?? (mode === "notes" ? "ready" : undefined),
     layoutConfirmed: autoConfirmed ? "auto" : "user",
-  }).map((stage) => {
-    if (
-      consentOff &&
-      (stage.stage === "layout" ||
-        stage.stage === "layout_review" ||
-        stage.stage === "region_crops" ||
-        stage.stage === "vision")
-    ) {
-      return { ...stage, status: "skipped" as const, problem: "consent_video_off" as const, detail: null };
-    }
-    return stage;
   });
   const current = stages.find((stage) => stage.status === "running" || stage.status === "waiting");
   const elapsed = startedAt ? formatElapsed(now - new Date(startedAt).getTime()) : null;

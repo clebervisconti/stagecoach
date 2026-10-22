@@ -59,10 +59,10 @@ export function SummaryCard({ report }: SummaryCardProps) {
       <p className="mt-4 leading-7">
         {t("measuredSummary", {
           score: String(headline.score ?? "—"),
-          ci: String(report.overall.display_band ?? 4),
-          n: String(report.categories.filter((category) => category.applicable && category.score != null).length),
-          of: String(report.categories.length),
-          m: String(report.categories.filter((category) => !category.applicable || category.score == null).length),
+          ci: report.overall.display_band != null ? String(report.overall.display_band) : "—",
+          n: report.categories.filter((category) => category.applicable && category.score != null).length,
+          of: report.categories.length,
+          m: report.categories.filter((category) => !category.applicable || category.score == null).length,
         })}
       </p>
       {warnings.map((warning) => (
