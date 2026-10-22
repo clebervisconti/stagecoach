@@ -16,25 +16,35 @@ export function SummaryCard({ report }: SummaryCardProps) {
   const line = formatOverallLine(headline.score, headline.band, levelName);
   const version = report.provenance?.scoring_config_version ?? "1.0.0";
   const warnings = report.quality?.warnings ?? [];
+  const core = report.core_delivery?.score ?? null;
+  const coreReady = typeof core === "number";
 
   return (
-    <section className="rounded-lg border bg-card p-6" aria-labelledby="report-summary-heading">
+    <section className="rounded-[var(--radius-sm)] border bg-card p-6" aria-labelledby="report-summary-heading">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground">{t("measuredScore")}</p>
-          <p id="report-summary-heading" className="cs-stat mt-1 text-4xl">
+          <p className="cs-eyebrow">{t("measuredScore")}</p>
+          <p id="report-summary-heading" className="cs-stat mt-1 text-4xl md:text-6xl">
             {line}
           </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {t("coverage")}: {Math.round(headline.coverage * 100)}% · {t("confidence")}:{" "}
-            {Math.round(headline.confidence * 100)}%
-          </p>
+          <div className="mt-4 flex flex-wrap gap-4 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">
+            <span title={!coreReady ? t("coreDeliveryNeed") : undefined}>
+              {t("coreDelivery")} {coreReady ? core : "—"}
+            </span>
+            <span>
+              {t("coverage")} {Math.round(headline.coverage * 100)}%
+            </span>
+            <span>
+              {t("confidence")} {Math.round(headline.confidence * 100)}%
+            </span>
+          </div>
         </div>
         {headline.partial && (
           <span
-            className="cs-status-warning px-3 py-1 text-sm"
+            className="cs-status-warning inline-flex items-center gap-1 px-3 py-1 text-sm"
             title={t("partialHint")}
           >
+            <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
             {t("partialBadge")}
           </span>
         )}
@@ -43,6 +53,9 @@ export function SummaryCard({ report }: SummaryCardProps) {
         <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>{t("weightsHint", { version })}</span>
       </p>
+      {report.session?.delivery_mode && report.session.delivery_mode !== "stage" && (
+        <p className="mt-2 text-sm text-muted-foreground">{t("coreDeliveryHint")}</p>
+      )}
       <p className="mt-4 leading-7">{report.insights.summary}</p>
       {warnings.map((warning) => (
         <p key={warning} className="mt-3 flex items-start gap-2 text-sm text-[color:var(--status-warning)]">

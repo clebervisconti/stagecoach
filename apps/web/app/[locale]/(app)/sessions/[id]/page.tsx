@@ -21,6 +21,10 @@ import { exportFileUrl, exportStatusUrl, exportUrl } from "@/lib/pdf-export";
 import { formatTimestamp } from "@/lib/player";
 import { eventsUrl, parseProgressData, shouldReloadReport, type StageProgressEvent, type StepSnapshot } from "@/lib/progress";
 import { ProcessingTimeline } from "@/components/report/processing-timeline";
+import { NotMeasured } from "@/components/report/not-measured";
+import { PreparingPanel } from "@/components/sessions/preparing-panel";
+import { formatClock, type DeliveryMode } from "@/lib/online";
+import { Globe, Mic, Play, Users } from "lucide-react";
 import { goalRadarPoints, radarPoints, type GoalLike } from "@/lib/report-view";
 import { exportVtt, type TranscriptPayload } from "@/lib/transcript";
 import type { TimelinePayload } from "@/lib/timeline";
@@ -31,6 +35,8 @@ type SessionDetail = {
   title: string;
   status: string;
   context_type: string;
+  delivery_mode?: string;
+  source_kind?: string;
   language: string;
   slot_min: number | null;
   created_at: string;
@@ -136,7 +142,7 @@ export default function SessionPage() {
         if (!active) return;
         setSession(body);
         const ready = body.status === "ready" || body.status === "partial";
-        if (ready || body.status === "processing") {
+        if (ready || body.status === "processing" || body.status === "preparing") {
           await loadArtifacts();
         }
       } catch (reason) {
@@ -230,13 +236,23 @@ export default function SessionPage() {
             ← {t("back")}
           </button>
           <h1 className="text-3xl font-bold">{session?.title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {session?.created_at ? new Date(session.created_at).toLocaleString(locale) : ""}
-            {session?.context_type ? ` · ${session.context_type.replaceAll("_", " ")}` : ""}
-            {session?.language ? ` · ${session.language}` : ""}
-            {slotLabel ? ` · ${t("slotVsActual")}: ${slotLabel}` : ""}
-            {report?.overall.partial ? ` · ${t("partial")}` : ""}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+            {session?.delivery_mode && session.delivery_mode !== "stage" && (
+              <ModeBadge
+                mode={session.delivery_mode as DeliveryMode}
+                kinds={report?.layout_summary?.kinds}
+                camera={report?.layout_summary?.camera_visible_ratio}
+                screen={report?.layout_summary?.screen_visible_ratio}
+              />
+            )}
+            <p>
+              {session?.created_at ? new Date(session.created_at).toLocaleString(locale) : ""}
+              {session?.language ? ` · ${session.language}` : ""}
+              {report?.media?.duration_s ? ` · ${formatClock(report.media.duration_s)}` : ""}
+              {slotLabel ? ` · ${t("slotVsActual")}: ${slotLabel}` : ""}
+              {report?.overall.partial ? ` · ${t("partial")}` : ""}
+            </p>
+          </div>
         </div>
         <div className="flex flex-col items-end gap-2">
           {report && (
@@ -279,11 +295,36 @@ export default function SessionPage() {
         </div>
       )}
 
-      {!terminal && session && (
+      {session?.status === "layout_review" && (
+        <div role="status" className="rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] p-4">
+          <a href={`${sessionsPath}/${session.id}/layout`} className="text-xs uppercase tracking-[0.08em]">
+            Check the layout
+          </a>
+          <p className="mt-2 text-sm text-[color:var(--text-secondary)]">
+            Confirm the layout before we analyse this recording.
+          </p>
+        </div>
+      )}
+
+      {session?.status === "preparing" && (
+        <PreparingPanel
+          title={session.title}
+          posterUrl={`/api/stagecoach/sessions/${session.id}/poster`}
+          durationS={report?.media?.duration_s ?? null}
+          steps={session.job?.steps ?? []}
+          startedAt={session.job?.created_at ?? session.created_at}
+          failed={session.job?.error?.message}
+        />
+      )}
+
+      {!terminal && session && session.status !== "preparing" && session.status !== "layout_review" && (
         <ProcessingTimeline
           steps={session.job?.steps ?? []}
           live={live}
           startedAt={session.job?.created_at ?? session.created_at}
+          deliveryMode={session.delivery_mode}
+          sourceKind={session.source_kind}
+          autoConfirmed={session.job?.steps?.some((step) => step.stage === "layout_review" && step.status === "succeeded")}
         />
       )}
 
@@ -327,9 +368,20 @@ export default function SessionPage() {
             />
             <KeyMetrics report={report} />
           </div>
+          <NotMeasured report={report} />
           <div>
             <div role="tablist" aria-label={t("tabs")} className="mb-4 flex flex-wrap gap-2">
-              {(["categories", "transcript", "voice", "timeline", "body", "slides", "objectives"] as const).map((id) => (
+              {(
+                [
+                  "categories",
+                  "transcript",
+                  "voice",
+                  "timeline",
+                  ...(session?.delivery_mode && session.delivery_mode !== "stage" ? [] : (["body"] as const)),
+                  "slides",
+                  "objectives",
+                ] as const
+              ).map((id) => (
                 <button
                   key={id}
                   type="button"
@@ -420,5 +472,33 @@ export default function SessionPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function ModeBadge({
+  mode,
+  kinds,
+  camera,
+  screen,
+}: {
+  mode: DeliveryMode;
+  kinds?: string[];
+  camera?: number | null;
+  screen?: number | null;
+}) {
+  const Icon = mode === "stage" ? Mic : mode === "webinar" ? Users : mode === "online_talk" ? Globe : Play;
+  const hasCamera = (camera ?? 0) > 0 || kinds?.some((kind) => kind.includes("camera") || kind === "composite");
+  const hasScreen = (screen ?? 0) > 0 || kinds?.some((kind) => kind.includes("screen") || kind === "composite");
+  const half =
+    hasCamera && hasScreen ? "Camera + screen" : hasCamera ? "Camera only" : hasScreen ? "Screen only" : "Audio only";
+  const label = mode === "webinar" ? "Webinar" : mode === "online_talk" ? "Online talk" : mode === "recorded_video" ? "Recorded video" : "On stage";
+  return (
+    <span
+      className="inline-flex items-center gap-2 rounded-full border border-[color:var(--line-strong)] px-3 py-1 text-xs uppercase tracking-[0.08em] text-[color:var(--text-strong)]"
+      aria-label={`Mode: ${label.toLowerCase()}, ${half.toLowerCase()}`}
+    >
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+      {label} · {half}
+    </span>
   );
 }

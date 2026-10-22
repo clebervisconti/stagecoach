@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseProgressData, pipelineTimeline, shouldReloadReport, stageProblem } from "./progress.ts";
+import { parseProgressData, pipelineStages, pipelineTimeline, shouldReloadReport, stageProblem } from "./progress.ts";
 
 test("partial_ready carries scored category ids", () => {
   const event = parseProgressData(
@@ -95,6 +95,25 @@ test("a skipped vision step names the missing install", () => {
   const vision = view.find((stage) => stage.stage === "vision");
   assert.equal(vision?.status, "skipped");
   assert.equal(vision?.problem, "visionUnavailable");
+});
+
+test("online pipeline lists layout and production quality and hides alignment", () => {
+  const stages = pipelineStages("webinar", "upload");
+  assert.equal(stages.includes("layout"), true);
+  assert.equal(stages.includes("production_quality"), true);
+  assert.equal(stages.includes("alignment"), false);
+  assert.deepEqual(pipelineStages("stage"), [
+    "ingest",
+    "asr",
+    "alignment",
+    "audio_features",
+    "partial_scoring",
+    "vision",
+    "slides",
+    "content_llm",
+    "fusion_scoring",
+    "report",
+  ]);
 });
 
 test("legacy stage payloads without type still parse", () => {

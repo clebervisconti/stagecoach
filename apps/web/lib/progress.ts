@@ -77,6 +77,8 @@ export function eventsUrl(sessionId: string): string {
   return `/api/stagecoach/sessions/${sessionId}/events`;
 }
 
+import { pipelineStages as stagesForMode } from "./online.ts";
+
 export const PIPELINE_STAGES = [
   "ingest",
   "asr",
@@ -89,6 +91,10 @@ export const PIPELINE_STAGES = [
   "fusion_scoring",
   "report",
 ] as const;
+
+export function pipelineStages(deliveryMode = "stage", sourceKind = "upload"): readonly string[] {
+  return stagesForMode(deliveryMode, sourceKind);
+}
 
 export type StageState = "pending" | "running" | "succeeded" | "failed" | "skipped";
 
@@ -129,6 +135,7 @@ export function stageProblem(error: string | null | undefined): "visionUnavailab
 export function pipelineTimeline(
   steps: StepSnapshot[],
   live?: StageProgressEvent | null,
+  options?: { deliveryMode?: string; sourceKind?: string },
 ): StageView[] {
   const byStage = new Map<string, StepSnapshot>();
   for (const step of steps) byStage.set(step.stage, step);
@@ -142,7 +149,7 @@ export function pipelineTimeline(
     });
   }
 
-  const names = [...PIPELINE_STAGES] as string[];
+  const names = [...pipelineStages(options?.deliveryMode ?? "stage", options?.sourceKind ?? "upload")] as string[];
   for (const step of steps) {
     if (!names.includes(step.stage)) names.push(step.stage);
   }

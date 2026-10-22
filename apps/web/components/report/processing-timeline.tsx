@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, Check, Loader2 } from "lucide-react";
+import { AlertTriangle, Check, CircleX } from "lucide-react";
 import {
   pipelineTimeline,
   type StageProgressEvent,
@@ -20,6 +20,13 @@ const STAGE_KEYS = [
   "content_llm",
   "fusion_scoring",
   "report",
+  "layout",
+  "layout_review",
+  "production_quality",
+  "region_crops",
+  "sync",
+  "camera_presence",
+  "screen_flow",
 ] as const;
 
 type StageKey = (typeof STAGE_KEYS)[number];
@@ -40,32 +47,44 @@ export function ProcessingTimeline({
   live,
   startedAt,
   mode = "live",
+  deliveryMode = "stage",
+  sourceKind = "upload",
+  autoConfirmed = false,
 }: {
   steps: StepSnapshot[];
   live: StageProgressEvent | null;
   startedAt: string | null;
   mode?: "live" | "notes";
+  deliveryMode?: string;
+  sourceKind?: string;
+  autoConfirmed?: boolean;
 }) {
   const t = useTranslations("report");
   const [now, setNow] = useState(() => Date.now());
+  const [preparedOpen, setPreparedOpen] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const stages = pipelineTimeline(steps, live);
+  const stages = pipelineTimeline(steps, live, { deliveryMode, sourceKind });
   const current = stages.find((stage) => stage.status === "running");
   const elapsed = startedAt ? formatElapsed(now - new Date(startedAt).getTime()) : null;
-  const slow = Boolean(
-    current && startedAt && now - new Date(startedAt).getTime() > 90_000,
-  );
+  const slow = Boolean(current && startedAt && now - new Date(startedAt).getTime() > 90_000);
   const problems = stages.filter((stage) => stage.status === "failed" || stage.status === "skipped");
+  const prepared = new Set(["ingest", "layout", "layout_review"]);
+  const preparedDone =
+    deliveryMode !== "stage" &&
+    stages.filter((stage) => prepared.has(stage.stage)).every((stage) => stage.status === "succeeded" || stage.status === "skipped");
+  const visible = preparedDone && !preparedOpen
+    ? stages.filter((stage) => !prepared.has(stage.stage))
+    : stages;
 
   if (mode === "notes") {
     if (!problems.length) return null;
     return (
-      <div className="rounded-xl border border-[color:var(--status-warning)] bg-[color:var(--status-warning-subtle)] p-4" data-testid="stage-log">
+      <div className="rounded-[var(--radius-sm)] border border-[color:var(--status-warning)] bg-[color:var(--status-warning-subtle)] p-4" data-testid="stage-log">
         <h2 className="text-sm font-semibold">{t("activityLog")}</h2>
         <ul className="mt-2 space-y-2 text-sm">
           {problems.map((stage) => (
@@ -83,11 +102,11 @@ export function ProcessingTimeline({
   }
 
   return (
-    <section className="rounded-xl border bg-card p-6 shadow-sm" data-testid="processing">
+    <section className="rounded-[var(--radius-sm)] border bg-card p-6" data-testid="processing">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--text-strong)]" aria-hidden="true" />
             <h2 className="text-xl font-semibold">{t("processing")}</h2>
           </div>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
@@ -97,25 +116,44 @@ export function ProcessingTimeline({
                 })
               : t("processingHint")}
           </p>
+          {autoConfirmed && (
+            <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{t("layoutAuto")}</p>
+          )}
         </div>
         {elapsed && (
-          <p className="rounded-full bg-muted px-3 py-1 text-sm font-medium tabular-nums">
+          <p className="font-mono text-sm tabular-nums">
             {t("elapsed", { time: elapsed })}
           </p>
         )}
       </div>
 
-      {slow && <p className="mt-4 text-sm text-muted-foreground">{t("stillWorking")}</p>}
+      {slow && <p className="mt-4 font-mono text-sm text-muted-foreground">{t("stillWorking")}</p>}
+
+      {preparedDone && (
+        <button
+          type="button"
+          className="mt-6 flex items-center gap-2 text-sm"
+          onClick={() => setPreparedOpen((value) => !value)}
+        >
+          <Check className="h-4 w-4 text-[color:var(--text-secondary)]" aria-hidden="true" />
+          {t("preparedCollapsed")}
+        </button>
+      )}
 
       <ol className="mt-6 space-y-2">
-        {stages.map((stage) => {
+        {visible.map((stage) => {
           const label = isStageKey(stage.stage) ? t(stage.stage) : stage.stage.replaceAll("_", " ");
-          const detail = stage.problem ? t(stage.problem) : stage.detail;
+          const detail =
+            stage.status === "skipped"
+              ? t("skippedReason", { reason: stage.problem ? t(stage.problem) : stage.detail || t("stageSkipped") })
+              : stage.problem
+                ? t(stage.problem)
+                : stage.detail;
           return (
             <li
               key={stage.stage}
-              className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm ${
-                stage.status === "running" ? "bg-primary/10" : ""
+              className={`flex items-start gap-3 rounded-[var(--radius-sm)] px-3 py-2 text-sm ${
+                stage.status === "running" ? "bg-[color:var(--bg-muted)]" : ""
               }`}
               data-stage={stage.stage}
               data-status={stage.status}
@@ -135,7 +173,7 @@ export function ProcessingTimeline({
       </ol>
 
       {problems.length > 0 && (
-        <div className="mt-6 rounded-lg border border-[color:var(--status-warning)] bg-[color:var(--status-warning-subtle)] p-4" data-testid="stage-log">
+        <div className="mt-6 rounded-[var(--radius-sm)] border border-[color:var(--status-warning)] bg-[color:var(--status-warning-subtle)] p-4" data-testid="stage-log">
           <h3 className="text-sm font-semibold">{t("activityLog")}</h3>
           <ul className="mt-2 space-y-2 text-sm">
             {problems.map((stage) => (
@@ -156,13 +194,21 @@ export function ProcessingTimeline({
 
 function StageMark({ status }: { status: string }) {
   if (status === "succeeded") {
-    return <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-success)]" aria-hidden="true" />;
+    return <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--text-secondary)]" aria-hidden="true" />;
   }
   if (status === "failed") {
-    return <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-critical)]" aria-hidden="true" />;
+    return (
+      <span className="mt-0.5 inline-flex items-center gap-1 text-[color:var(--status-critical)]">
+        <CircleX className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="text-[11px] uppercase tracking-[0.08em]">Failed</span>
+      </span>
+    );
+  }
+  if (status === "skipped") {
+    return <span className="mt-0.5 text-[color:var(--text-tertiary)]" aria-hidden="true">—</span>;
   }
   if (status === "running") {
-    return <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden="true" />;
+    return <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-[color:var(--text-strong)]" aria-hidden="true" />;
   }
-  return <span className="mt-1 h-3 w-3 shrink-0 rounded-full border border-muted-foreground/40" aria-hidden="true" />;
+  return <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full border border-muted-foreground/40" aria-hidden="true" />;
 }
