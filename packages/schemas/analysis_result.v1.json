@@ -22,7 +22,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "1.0.0"
+      "enum": ["1.0.0", "1.1.0"]
     },
     "session": {
       "type": "object",
@@ -52,9 +52,15 @@
         "slot_min": {"type": ["number", "null"]},
         "qa_in_slot": {"type": "boolean"},
         "camera_setup": {
-          "enum": ["stage", "to_camera", "screen_recording", "audio_only", "unknown"]
+          "enum": ["stage", "to_camera", "screen_recording", "audio_only", "unknown", "composite"]
         },
-        "talk_plan_id": {"type": ["string", "null"]}
+        "talk_plan_id": {"type": ["string", "null"]},
+        "delivery_mode": {
+          "enum": ["stage", "webinar", "online_talk", "recorded_video"]
+        },
+        "source_kind": {
+          "enum": ["upload", "two_track", "url"]
+        }
       }
     },
     "provenance": {
@@ -225,6 +231,28 @@
           "pillar": {"type": "string"},
           "applicable": {"type": "boolean"},
           "na_reason": {"type": ["string", "null"]},
+          "na_code": {
+            "type": ["string", "null"],
+            "enum": [
+              null,
+              "not_in_phase",
+              "consent_video_off",
+              "vision_unavailable",
+              "camera_not_visible",
+              "camera_too_small",
+              "audio_only_chosen",
+              "audio_only_media",
+              "no_screen",
+              "qa_not_detected",
+              "qa_declared_none",
+              "target_length_missing",
+              "insufficient_speech",
+              "hands_not_visible",
+              "stage_mode",
+              "no_slides",
+              "not_applicable"
+            ]
+          },
           "score": {"type": ["integer", "null"]},
           "level": {"type": ["integer", "null"]},
           "confidence": {"type": ["number", "null"]},
@@ -376,6 +404,30 @@
     },
     "transcript_ref": {
       "type": "string"
+    },
+    "core_delivery": {
+      "type": "object",
+      "properties": {
+        "score": {"type": ["integer", "null"]},
+        "confidence": {"type": ["number", "null"]},
+        "categories": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "layout_summary": {
+      "type": "object",
+      "properties": {
+        "kinds": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "camera_visible_ratio": {"type": ["number", "null"]},
+        "screen_visible_ratio": {"type": ["number", "null"]},
+        "version": {"type": "integer"},
+        "status": {"type": "string"}
+      }
     },
     "objectives": {
       "type": "array",

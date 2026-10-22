@@ -4,10 +4,15 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, RootModel
+
+
+class SchemaVersion(Enum):
+    field_1_0_0 = '1.0.0'
+    field_1_1_0 = '1.1.0'
 
 
 class ContextType(Enum):
@@ -31,6 +36,20 @@ class CameraSetup(Enum):
     screen_recording = 'screen_recording'
     audio_only = 'audio_only'
     unknown = 'unknown'
+    composite = 'composite'
+
+
+class DeliveryMode(Enum):
+    stage = 'stage'
+    webinar = 'webinar'
+    online_talk = 'online_talk'
+    recorded_video = 'recorded_video'
+
+
+class SourceKind(Enum):
+    upload = 'upload'
+    two_track = 'two_track'
+    url = 'url'
 
 
 class Session(BaseModel):
@@ -44,6 +63,8 @@ class Session(BaseModel):
     qa_in_slot: bool
     camera_setup: CameraSetup
     talk_plan_id: str | None = None
+    delivery_mode: DeliveryMode | None = None
+    source_kind: SourceKind | None = None
 
 
 class Status(Enum):
@@ -151,6 +172,26 @@ class Id1(Enum):
     production_quality = 'production_quality'
 
 
+class NaCode(Enum):
+    none_type_none = None
+    not_in_phase = 'not_in_phase'
+    consent_video_off = 'consent_video_off'
+    vision_unavailable = 'vision_unavailable'
+    camera_not_visible = 'camera_not_visible'
+    camera_too_small = 'camera_too_small'
+    audio_only_chosen = 'audio_only_chosen'
+    audio_only_media = 'audio_only_media'
+    no_screen = 'no_screen'
+    qa_not_detected = 'qa_not_detected'
+    qa_declared_none = 'qa_declared_none'
+    target_length_missing = 'target_length_missing'
+    insufficient_speech = 'insufficient_speech'
+    hands_not_visible = 'hands_not_visible'
+    stage_mode = 'stage_mode'
+    no_slides = 'no_slides'
+    not_applicable = 'not_applicable'
+
+
 class ConfidenceLabel(Enum):
     high = 'high'
     medium = 'medium'
@@ -170,6 +211,7 @@ class Category(BaseModel):
     pillar: str
     applicable: bool
     na_reason: str | None
+    na_code: NaCode | None = None
     score: int | None
     level: int | None
     confidence: float | None
@@ -256,6 +298,20 @@ class Strength(BaseModel):
     impact_estimate: float | None = None
 
 
+class CoreDelivery(BaseModel):
+    score: int | None = None
+    confidence: float | None = None
+    categories: list[str] | None = None
+
+
+class LayoutSummary(BaseModel):
+    kinds: list[str] | None = None
+    camera_visible_ratio: float | None = None
+    screen_visible_ratio: float | None = None
+    version: int | None = None
+    status: str | None = None
+
+
 class Status1(Enum):
     met = 'met'
     partial = 'partial'
@@ -295,7 +351,7 @@ class AnalysisResult(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    schema_version: Literal['1.0.0']
+    schema_version: SchemaVersion
     session: Session
     provenance: Provenance
     media: Media
@@ -310,6 +366,8 @@ class AnalysisResult(BaseModel):
         dict[str, str], Field(description='URIs of 1-s resolution time series')
     ]
     transcript_ref: str
+    core_delivery: CoreDelivery | None = None
+    layout_summary: LayoutSummary | None = None
     objectives: Annotated[
         list[Objective] | None,
         Field(description='Optional: scores against talk-plan objectives'),
