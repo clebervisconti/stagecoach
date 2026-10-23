@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The stage stops at a wall-clock budget (default 8 minutes, `CONTENT_LLM_BUDGET_S`) after the current model call. Finished prompts are kept. Unfinished prompts stay N/A. The analysis job continues, and the timeline says which prompts finished.
 - The processing timeline still has one Content step. Its message shows chunk progress (`outline 1/2`). The first finished prompt refreshes the report.
 
+### O2 editable layout review
+
+- Adjust camera, screen, other, and ignore boxes on `/sessions/[id]/layout`. Save with `PUT /layout` and analyse again without a new upload. `?edit=1` deep-links. The report menu opens the same editor and reuses the transcript when the analysis window is unchanged.
+- Analysis window trim (minimum 60 seconds), segment split/merge, and stable multi-segment detection. Region crops still use the longest span.
+- O1 polish absorbed here: playback errors render inside the video box, consent-off copy says "Layout check", wizard steps 1–2 navigate, the camera chip sits 4 px inside the box, and online report actions move into the menu at narrow widths.
+
 ### O1 real-stack round 3 (LION)
 
 - English `WAV2VEC2_ASR_BASE_960H` (~360 MiB) is SHA-256 baked under `TORCH_HOME/hub/checkpoints`. Portuguese alignment uses whisperX's default `jonatasgrosman/wav2vec2-large-xlsr-53-portuguese` snapshot under `/models/alignment` (~1.18 GiB). Offline smoke loads both models with networking off and runs `whisperx.align`.

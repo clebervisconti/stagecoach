@@ -10,6 +10,7 @@ import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Optional
 
 import redis
@@ -1188,7 +1189,6 @@ def run_mvp_analysis_task(
     from pipeline.consent import persist_consent_snapshot, run_vision_if_allowed
     from pipeline.partial import scored_category_ids, write_vision_status
     from pipeline.persist import persist_analysis_result
-    from pipeline.stages.asr import transcribe_audio
     from pipeline.stages.audio_features import extract_audio_features
     from pipeline.stages.fusion_scoring import run_fusion_scoring
     from pipeline.stages.ingest import ingest
@@ -1267,13 +1267,41 @@ def run_mvp_analysis_task(
         started = datetime.utcnow()
         emit_progress(job_id, "asr", "running", pct=30, message="Transcribing speech")
         asr_language = "pt" if language == "pt-BR" else (None if language == "auto" else language)
-        transcript = transcribe_audio(
+        from pipeline.asr_reuse import resolve_asr
+
+        window = analysis_window if isinstance(analysis_window, dict) else None
+        if window is None:
+            layout_file = Path(layout_path) if layout_path else destination / "layout.json"
+            if layout_file.is_file():
+                try:
+                    stored = json.loads(layout_file.read_text()).get("analysis_window")
+                    if isinstance(stored, dict):
+                        window = stored
+                except (OSError, json.JSONDecodeError):
+                    window = None
+        resolution = resolve_asr(
+            session_dir=destination.parent,
+            job_dir=destination,
+            language=language,
+            asr_language=asr_language,
+            window=window,
             audio_path=Path(ingest_dict["artifacts"]["audio16k"]),
-            output_dir=destination,
             session_id=session_id,
-            language=asr_language,
+            allow_reuse=bool(skip_ingest),
         )
-        transcript_path = destination / "transcript.json"
+        if resolution.window_offset_s:
+            ingest_dict = dict(ingest_dict)
+            ingest_dict["window_offset_s"] = resolution.window_offset_s
+            ingest_dict["analysis_window"] = window
+            from pipeline.prepare import write_ingest_json
+
+            write_ingest_json(destination, ingest_dict)
+        transcript_path = resolution.transcript_path
+        transcript = SimpleNamespace(
+            language=resolution.language or "en",
+            word_count=resolution.word_count,
+            mean_word_probability=resolution.mean_word_probability,
+        )
         _record_job_step(
             job_id=job_id,
             stage="asr",
@@ -1284,6 +1312,8 @@ def run_mvp_analysis_task(
                 "language": transcript.language,
                 "word_count": transcript.word_count,
                 "mean_word_probability": transcript.mean_word_probability,
+                "reused": resolution.reused,
+                "input_sha": resolution.input_sha,
             },
         )
         emit_progress(job_id, "asr", "succeeded", pct=60, message="Transcript ready")

@@ -11,17 +11,17 @@ export function LayoutLegend({ roles }: { roles: LayoutRole[] }) {
       <p className="cs-eyebrow">{t("legendTitle")}</p>
       <ul className="mt-3 space-y-3">
         {roles.map((role) => {
-          const key = role === "other_participant" ? "ignore" : role;
-          const ignored = key === "ignore";
+          const key = role === "other_participant" ? "other" : role;
+          const hatched = role === "ignore" || role === "other_participant";
           return (
             <li key={role} className="flex items-start gap-3">
               <span
                 aria-hidden="true"
                 className={`mt-1 h-[26px] w-10 shrink-0 border-2 border-current text-[color:var(--text-strong)] ${
-                  key === "screen" ? "border-dashed" : ignored ? "border-dotted" : "border-solid"
+                  key === "screen" ? "border-dashed" : hatched ? "border-dotted" : "border-solid"
                 }`}
                 style={
-                  ignored
+                  hatched
                     ? {
                         background: "repeating-linear-gradient(45deg, currentColor 0 1px, transparent 1px 6px)",
                       }

@@ -212,6 +212,12 @@
     "content_llm": "Writing your coaching notes",
     "report": "Building your report",
     "layout": "Finding camera and screen",
+    "layoutCheck": "Layout check",
+    "moreActions": "More actions",
+    "changeLayout": "Change layout & re-analyse",
+    "changeLayoutHelp": "Opens the same layout editor with your confirmed boxes. Transcript is reused when the analysis window is unchanged.",
+    "reanalyseAudio": "Re-analyse audio only",
+    "deleteSession": "Delete session",
     "layout_review": "Layout confirmed",
     "production_quality": "Checking sound and picture",
     "region_crops": "Separating camera and screen",
@@ -604,6 +610,7 @@
     "chip": {
       "camera": "Camera",
       "screen": "Screen",
+      "other": "Other",
       "ignored": "Ignored",
       "cameraCheck": "Camera · Check"
     },
@@ -620,7 +627,8 @@
     "legend": {
       "camera": "Your camera. Framing, light and where you look are measured only here.",
       "screen": "Your shared screen. Slide changes and demo flow are measured here.",
-      "ignore": "Never analysed. Other people, chat panels and platform bars."
+      "ignore": "Never analysed. Other people, chat panels and platform bars.",
+      "other": "Another participant. Same mark as Ignored — never analysed."
     },
     "layoutOverTime": "Layout over time",
     "segmentCount": "{n, plural, one {# segment} other {# segments}}",
@@ -810,6 +818,103 @@
       "stage_mode": "Not measured for on-stage talks.",
       "no_slides": "No slides were found.",
       "not_applicable": "Not measured for this recording."
+    },
+    "layout": {
+      "eyebrow": {
+        "review": "Check the layout",
+        "edit": "Adjust layout",
+        "f6": "Change layout · re-analyse"
+      },
+      "title": {
+        "review": "Is this your camera and your screen?",
+        "editDirty": "Fix the boxes, then analyse",
+        "empty": "No camera or screen found",
+        "draw": "Draw your first region",
+        "trim": "Trim what we analyse",
+        "split": "Split where the layout changes",
+        "saveFailed": "Couldn't save your layout"
+      },
+      "cta": {
+        "looksRight": "Looks right · analyse",
+        "adjust": "Adjust",
+        "analyseLayout": "Analyse with this layout",
+        "discard": "Discard changes",
+        "doneEditing": "Done editing",
+        "done": "Done",
+        "draw": "Draw regions",
+        "audioOnly": "Analyse audio only",
+        "tryAgain": "Try again",
+        "split": "Split",
+        "merge": "Merge",
+        "add": "Add",
+        "addRegion": "Add region",
+        "remove": "Remove",
+        "backToReport": "Back to report"
+      },
+      "role": {
+        "camera": "Camera",
+        "screen": "Screen",
+        "other": "Other",
+        "ignore": "Ignore"
+      },
+      "roles": "Region role",
+      "status": {
+        "editing": "Editing layout",
+        "unsaved": "Unsaved changes",
+        "saveFailed": "Couldn't save",
+        "noRegions": "No regions",
+        "checkThis": "Check this"
+      },
+      "layoutCheck": "Layout check",
+      "consentTitle": "Which regions should we use?",
+      "consentBody": "Camera analysis is off. Adjust the screen and ignore boxes, then analyse.",
+      "lead": {
+        "edit": "Drag, resize or re-role a box. Split time when the layout changes. Then analyse with this layout.",
+        "draw": "Drag a box around your camera or your screen.",
+        "trim": "Keep the recording whole. Move the window ends so analysis covers only the talk.",
+        "empty": "Draw a box around your camera or your screen, or analyse audio only.",
+        "f6": "Adjust boxes, then analyse again. Transcript is reused when the analysis window is unchanged."
+      },
+      "unsavedBody": "Analyse with this layout to save and re-run. Discard to revert.",
+      "saveFailedBody": "The server rejected the update (version conflict or network). Your edits are kept locally.",
+      "emptyHint": "Draw a box around your camera or screen, or analyse audio only.",
+      "drawing": "Drawing",
+      "selected": "Selected",
+      "nothingSelected": "Nothing selected",
+      "noCamera": "No camera box. Presence will not be measured.",
+      "deleteLastCamera": "Remove the last camera box?",
+      "deleteLastCameraBody": "Presence won't be measured.",
+      "mergeTitle": "These segments use different boxes",
+      "mergeBody": "Keep one layout for the joined time.",
+      "merge": {
+        "keepLeft": "Keep the earlier boxes",
+        "keepRight": "Keep the later boxes"
+      },
+      "windowShort": "The analysis window must be at least 60 seconds.",
+      "keyboardHint": "Keyboard: arrows nudge · Tab cycles · Delete removes · Esc cancels drag.",
+      "nudge": {
+        "hint": "1 px · Shift 10 px",
+        "fine": "Fine step, 1 or 10 pixels",
+        "up": "Nudge up",
+        "down": "Nudge down",
+        "left": "Nudge left",
+        "right": "Nudge right"
+      },
+      "trim": {
+        "label": "Analysis window",
+        "help": "Drag the ends to trim what we analyse. Minimum 60 seconds.",
+        "start": "Analysis window start",
+        "end": "Analysis window end"
+      },
+      "pos": {
+        "top": "top",
+        "middle": "middle",
+        "bottom": "bottom",
+        "left": "left",
+        "centre": "centre",
+        "right": "right"
+      },
+      "regionAria": "{role}, {position}, {w} by {h} percent"
     }
   }
 }

@@ -39,14 +39,14 @@ test("wizard: four mode cards, no tab bar, rights for webinar", async ({ page })
   await expect(page).toHaveURL(new RegExp(`/sessions/${SESSION_ID}`));
 });
 
-test("layout review: looks right and analyse audio only, no adjust", async ({ page }) => {
+test("layout review: looks right, adjust, and analyse audio only", async ({ page }) => {
   await mockOnlineApi(page, { status: "layout_review", layout: layoutFixture("high") });
   await page.goto(`/sessions/${SESSION_ID}/layout`, { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: /camera and your screen/i })).toBeVisible();
   await expect(page.getByTestId("confidence-line")).toContainText(/high confidence/i);
   await expect(page.getByTestId("looks-right")).toBeVisible();
+  await expect(page.getByTestId("adjust")).toBeVisible();
   await expect(page.getByTestId("analyse-audio")).toBeVisible();
-  await expect(page.getByRole("button", { name: /^adjust$/i })).toHaveCount(0);
   await page.getByTestId("looks-right").click();
   await expect(page).toHaveURL(new RegExp(`/sessions/${SESSION_ID}`));
 });
@@ -187,6 +187,7 @@ test("auto-confirmed layout is read-only", async ({ page }) => {
   await expect(page.getByTestId("back-to-session")).toBeVisible();
   await expect(page.getByTestId("looks-right")).toHaveCount(0);
   await expect(page.getByTestId("analyse-audio")).toHaveCount(0);
+  await expect(page.getByTestId("adjust")).toHaveCount(0);
 });
 
 test("consent-off skips camera steps and links to settings", async ({ page }) => {

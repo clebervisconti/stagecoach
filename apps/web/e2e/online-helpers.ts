@@ -428,7 +428,7 @@ export async function mockOnlineApi(
     }
     if (path.includes("/layout/preview") || path.endsWith("/poster")) {
       const png = Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+        "iVBORw0KGgoAAAANSUhEUgAAACAAAAASCAIAAAC1qksFAAAAH0lEQVR42mMQEZGgKWIYtWDUglELRi0YtWDUAnpYAAAql5ABGMClHQAAAABJRU5ErkJggg==",
         "base64",
       );
       return route.fulfill({ status: 200, contentType: "image/png", body: png });

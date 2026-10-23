@@ -43,7 +43,13 @@ function formatElapsed(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-function stageLabel(stage: string, deliveryMode: string, t: (key: StageKey | "visionOnline" | "slidesOnline" | "audioFeaturesOnline") => string): string {
+function stageLabel(
+  stage: string,
+  deliveryMode: string,
+  t: (key: StageKey | "visionOnline" | "slidesOnline" | "audioFeaturesOnline" | "layoutCheck") => string,
+  consentOff = false,
+): string {
+  if (consentOff && stage === "layout") return t("layoutCheck");
   if (deliveryMode !== "stage") {
     if (stage === "vision") return t("visionOnline");
     if (stage === "slides") return t("slidesOnline");
@@ -105,9 +111,7 @@ export function ProcessingTimeline({
         <ul className="mt-2 space-y-2 text-sm">
           {problems.map((stage) => (
             <li key={stage.stage}>
-              <span className="font-medium">
-                {isStageKey(stage.stage) ? t(stage.stage) : stage.stage}
-              </span>
+              <span className="font-medium">{stageLabel(stage.stage, deliveryMode, t, consentOff)}</span>
               {": "}
               {stage.problem ? t(stage.problem) : stage.detail || t("stageSkipped")}
             </li>
@@ -128,7 +132,7 @@ export function ProcessingTimeline({
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
             {current
               ? t("stageRunning", {
-                  stage: stageLabel(current.stage, deliveryMode, t),
+                  stage: stageLabel(current.stage, deliveryMode, t, consentOff),
                 })
               : t("processingHint")}
           </p>
@@ -159,7 +163,7 @@ export function ProcessingTimeline({
 
       <ol className="mt-6 space-y-2">
         {visible.map((stage) => {
-          const label = stageLabel(stage.stage, deliveryMode, t);
+          const label = stageLabel(stage.stage, deliveryMode, t, consentOff);
           const resolvedDetail =
             stage.stage === "layout_review" && stage.status === "succeeded"
               ? stage.detail === "confirmed_automatically" || autoConfirmed
@@ -211,7 +215,7 @@ export function ProcessingTimeline({
             {problems.map((stage) => (
               <li key={stage.stage}>
                 <span className="font-medium">
-                  {isStageKey(stage.stage) ? t(stage.stage) : stage.stage}
+                  {stageLabel(stage.stage, deliveryMode, t, consentOff)}
                 </span>
                 {": "}
                 {stage.problem ? t(stage.problem) : stage.detail || t("stageSkipped")}

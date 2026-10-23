@@ -2,7 +2,7 @@
 
 This document tracks significant technical decisions made during Stage Coach development. Each ADR follows a lightweight format: Context, Decision, Alternatives Considered, Consequences.
 
-Decisions from ADR-032 onward live as one file per decision in [docs/adr/](adr/). Those files are the source for Phase 2 and Phase 3 choices (vision, slides, talk-prep, trends, goals, password and Apple sign-in, Resend, account export, and the local Qwen default) and for online-session foundations (ADR-061 through ADR-080). ADR-038's xAI default is superseded by [ADR-060](adr/060-local-llm-default.md). ADR-001's magic-link auth is superseded by [ADR-057](adr/057-d9-password-apple.md) for the app, while production still uses the Cloudflare Access beta identity in [product/decisions/ADR-0001](../product/decisions/ADR-0001-private-beta-runtime.md).
+Decisions from ADR-032 onward live as one file per decision in [docs/adr/](adr/). Those files are the source for Phase 2 and Phase 3 choices (vision, slides, talk-prep, trends, goals, password and Apple sign-in, Resend, account export, and the local Qwen default) and for online-session foundations (ADR-061 through ADR-082). ADR-038's xAI default is superseded by [ADR-060](adr/060-local-llm-default.md). ADR-001's magic-link auth is superseded by [ADR-057](adr/057-d9-password-apple.md) for the app, while production still uses the Cloudflare Access beta identity in [product/decisions/ADR-0001](../product/decisions/ADR-0001-private-beta-runtime.md).
 
 ---
 
@@ -1648,6 +1648,7 @@ Issue #44 / SPEC §4.4.8, §6.6 step 7, §6.7.3 `slides_v1`. Metric ids must mat
 
 ## Change Log (continued)
 
+- **2026-10-23**: ADR-081 editable layout save, multi-segment runs, and ASR reuse when the analysis window is unchanged. ADR-082 locks the editor defaults (1 px nudge, confirm last camera, merge keep-left/right, discard reloads the server layout).
 - **2026-10-23**: ADR-080 — web `zod` is `^4.6.7` (GHSA-mrhx-c7xc-m3w5). One lockfile copy. No application call sites to migrate. No audit ignore.
 - **2026-10-23**: ADR-079 — chunk `content_llm` (map/reduce, k=1 over 12 minutes or 6k tokens, 8-minute wall clock, partial `content.json`, timeline chunk progress). Closes #160.
 - **2026-10-23**: ADR-078 addendum — bake English and pt-BR wav2vec2 alignment checkpoints (~1.5 GiB); keep camera-crop faces in YuNet's 10–300 px band; quiet the OpenCV 5 YuNet target warning; record `content_llm` 60-minute scale (no code change).

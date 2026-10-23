@@ -19,6 +19,7 @@ type PlayerProps = {
   sessionId: string;
   evidence: ReportEvidence[];
   captionsVtt?: string;
+  captionLang?: string;
   seekRef: MutableRefObject<(tStart: number) => void>;
   timeline?: TimelinePayload | null;
 };
@@ -27,6 +28,7 @@ export function ReportPlayer({
   sessionId,
   evidence,
   captionsVtt,
+  captionLang = "en",
   seekRef,
   timeline = null,
 }: PlayerProps) {
@@ -130,27 +132,37 @@ export function ReportPlayer({
         aria-label={t("playerRegion")}
       >
         <div className="relative aspect-video overflow-hidden rounded-md bg-black">
-          <video
-            ref={mediaRef}
-            controls
-            preload="metadata"
-            className="absolute inset-0 h-full w-full rounded-md bg-black"
-            src={src}
-            onLoadedMetadata={() => {
-              setMediaReady(true);
-              setError("");
-            }}
-            onTimeUpdate={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
-            onSeeked={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
-            onError={() => {
-              setMediaReady(true);
-              setError(t("playbackError"));
-            }}
-          >
-            {captionUrl && (
-              <track kind="captions" srcLang="en" src={captionUrl} label={t("transcript")} default />
-            )}
-          </video>
+          {error ? (
+            <div
+              role="alert"
+              data-testid="player-error"
+              className="absolute inset-0 flex items-center justify-center bg-[color:var(--bg-muted)] px-6 text-center"
+            >
+              <p className="text-sm text-[color:var(--text-secondary)]">{error}</p>
+            </div>
+          ) : (
+            <video
+              ref={mediaRef}
+              controls
+              preload="metadata"
+              className="absolute inset-0 h-full w-full rounded-md bg-black"
+              src={src}
+              onLoadedMetadata={() => {
+                setMediaReady(true);
+                setError("");
+              }}
+              onTimeUpdate={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
+              onSeeked={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
+              onError={() => {
+                setMediaReady(true);
+                setError(t("playbackError"));
+              }}
+            >
+              {captionUrl && (
+                <track kind="captions" srcLang={captionLang} src={captionUrl} label={t("transcript")} default />
+              )}
+            </video>
+          )}
           {!mediaReady && !error && (
             <div
               className="absolute inset-0 flex flex-col items-center justify-center bg-[color:var(--bg-muted)] px-6 text-center"
@@ -170,11 +182,6 @@ export function ReportPlayer({
         onFocusLane={setFocusedLaneId}
         onSeek={(time) => applySeek(time)}
       />
-      {error && (
-        <p role="status" className="mt-2 text-sm text-muted-foreground">
-          {error}
-        </p>
-      )}
       <ul className="mt-4 space-y-2">
         {evidence.map((item) => (
           <li key={item.id}>
