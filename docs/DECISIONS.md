@@ -1648,6 +1648,7 @@ Issue #44 / SPEC §4.4.8, §6.6 step 7, §6.7.3 `slides_v1`. Metric ids must mat
 
 ## Change Log (continued)
 
+- **2026-10-23**: ADR-078 addendum — bake English and pt-BR wav2vec2 alignment checkpoints (~1.5 GiB); keep camera-crop faces in YuNet's 10–300 px band; quiet the OpenCV 5 YuNet target warning; record `content_llm` 60-minute scale (no code change).
 - **2026-10-22**: ADR-078 — bake MediaPipe `.task` files, faster-whisper `small`, and NLTK tokenizers; espeak-ng fixture speech; map camera-crop `face_visible_ratio`. Worker image grows by about 0.5 GiB.
 - **2026-10-22**: ADR-077 — worker arm64 CI on GitHub `ubuntu-24.04-arm` (free for public repos), buildx `type=gha` cache, path filter. QEMU dropped after a 112 min run.
 - **2026-10-22**: ADR-073 arm64 worker torch pin and multi-stage image, ADR-074 offline Silero VAD, ADR-075 bake YuNet, ADR-076 synthetic-face fixture and duration/resolution CLI. LION O1 real-stack fixes.
