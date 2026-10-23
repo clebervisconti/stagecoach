@@ -366,3 +366,455 @@ def test_down_model_writes_unavailable_content(tmp_path: Path):
     assert payload["unavailable"] is True
     assert "language model was unavailable" in payload["unavailable_reason"]
     assert payload["message"] is None
+
+
+class _Clock:
+    """Advances only while a model call is in flight."""
+
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+    def during_call(self, seconds: float) -> None:
+        self.now += seconds
+
+
+def _llm_response(prompt_id: str, data: dict) -> LLMResponse:
+    return LLMResponse(
+        data=data,
+        usage=UsageStats(
+            prompt_tokens=100,
+            completion_tokens=40,
+            total_tokens=140,
+            cost_usd=0.0,
+            model="qwen/qwen3.8-27b",
+            provider="local",
+        ),
+        raw_response={},
+        prompt_id=prompt_id,
+        prompt_version="1.0.0",
+    )
+
+
+def _bind_client(mock_cls, generate):
+    client = mock_cls.return_value
+    client.reset_cost_tracking = MagicMock()
+    client.total_cost = 0.0
+    client.cost_ceiling = 0.50
+    client.generate_structured = generate
+    return client
+
+
+def _minimal_payload(prompt_id: str, quote: str = "hello") -> dict:
+    if prompt_id == "outline_v1":
+        return {
+            "sections": [
+                {
+                    "title": "Opening",
+                    "start_seg": "S0001",
+                    "end_seg": "S0001",
+                    "purpose": "State the point",
+                }
+            ],
+            "main_points": 1,
+            "signposts": [{"seg_id": "S0001", "quote": quote, "type": "preview"}],
+            "recap_seg": "S0001",
+            "outline_clarity_level": 4.0,
+            "rationale": "The slice is easy to follow and the speaker sounded happy.",
+            "insufficient_evidence": False,
+        }
+    if prompt_id == "open_close_v1":
+        return {
+            "opening": {
+                "hook_type": "statement",
+                "hook_level": 3.0,
+                "value_preview_level": 3.0,
+                "throat_clearing_end_seg": None,
+                "rationale": "States the point quickly",
+            },
+            "closing": {
+                "ending_type": "cta",
+                "message_restated": True,
+                "cta_clear": True,
+                "fades_out": False,
+                "closing_level": 3.0,
+                "rationale": "Restates the point",
+            },
+            "insufficient_evidence": False,
+        }
+    return {"insufficient_evidence": False}
+
+
+def _write_transcript(path: Path, segments: list[dict], duration: float) -> None:
+    path.write_text(
+        json.dumps({"language": "en", "duration": duration, "segments": segments}),
+        encoding="utf-8",
+    )
+
+
+def _long_segments() -> tuple[list[dict], str, float]:
+    """Synthetic 60-minute talk. No recording, no personal voice."""
+    sentence = "We remove friction and test the simpler path before the next step."
+    segments = []
+    t = 0.0
+    for i in range(400):
+        segments.append({"text": sentence, "start": t, "end": t + 9.0})
+        t += 9.0
+    return segments, sentence, t
+
+
+def test_chunk_segments_splits_on_formatted_token_budget():
+    from pipeline.stages.content_llm import (
+        Segment,
+        chunk_segments,
+        estimate_tokens,
+        format_transcript_for_prompt,
+    )
+
+    assert chunk_segments([]) == []
+    text = "word " * 30
+    segments = [
+        Segment(seg_id=f"S{i + 1:04d}", text=text, start_time=float(i), end_time=float(i + 1))
+        for i in range(40)
+    ]
+    chunks = chunk_segments(segments, max_tokens=180)
+    assert len(chunks) > 1
+    flat = [seg.seg_id for chunk in chunks for seg in chunk]
+    assert flat == [seg.seg_id for seg in segments]
+    for chunk in chunks:
+        tokens = estimate_tokens(format_transcript_for_prompt(chunk))
+        if len(chunk) > 1:
+            assert tokens <= 180
+
+    huge = Segment(seg_id="S0001", text="x" * 5000, start_time=0.0, end_time=1.0)
+    alone = chunk_segments([huge], max_tokens=10)
+    assert len(alone) == 1
+    assert len(alone[0]) == 1
+
+
+def test_long_session_threshold_is_strict():
+    from pipeline.stages.content_llm import (
+        LONG_SESSION_DURATION_S,
+        LONG_SESSION_TOKEN_THRESHOLD,
+        Segment,
+        consistency_k,
+        is_long_session,
+        resolve_talk_duration_s,
+    )
+
+    assert is_long_session(100, LONG_SESSION_DURATION_S) is False
+    assert is_long_session(100, LONG_SESSION_DURATION_S + 0.1) is True
+    assert is_long_session(LONG_SESSION_TOKEN_THRESHOLD, 60) is False
+    assert is_long_session(LONG_SESSION_TOKEN_THRESHOLD + 1, 60) is True
+    assert consistency_k(False) == 3
+    assert consistency_k(True) == 1
+
+    segments = [Segment("S0001", "Hello", 0.0, 42.0)]
+    assert resolve_talk_duration_s(segments, None, 5400.0) == 42.0
+    assert resolve_talk_duration_s(segments, 90.0, 5400.0) == 90.0
+    assert resolve_talk_duration_s(segments, None, 180.0) == 180.0
+
+
+def test_guard_refuses_multiline_transcript_over_cap():
+    from pipeline.stages.content_llm import _guard_transcript_payload
+
+    huge = "\n".join(["hello world from the talk"] * 2000)
+    with pytest.raises(ValueError, match="whole-transcript"):
+        _guard_transcript_payload({"transcript": huge}, huge)
+
+
+def test_short_session_keeps_k3_and_one_chunk(synthetic_transcript_path, tmp_path):
+    from pipeline.stages.content_llm import estimate_tokens, format_transcript_for_prompt, load_segments_from_transcript, run_content_llm_safe
+
+    segments, _ = load_segments_from_transcript(synthetic_transcript_path)
+    full = format_transcript_for_prompt(segments)
+    assert estimate_tokens(full) <= 6000
+    calls = []
+
+    def generate(prompt_id, inputs, schema, temperature=None):
+        calls.append({"prompt_id": prompt_id, "inputs": inputs, "temperature": temperature})
+        return _llm_response(prompt_id, _minimal_payload(prompt_id, "Good morning, everyone."))
+
+    progress = []
+    ready = []
+    with patch("pipeline.stages.content_llm.LLMClient") as mock_cls:
+        _bind_client(mock_cls, generate)
+        outcome = run_content_llm_safe(
+            transcript_path=synthetic_transcript_path,
+            output_dir=tmp_path,
+            session_id="short",
+            max_duration_s=180.0,
+            duration_s=180.0,
+            budget_s=480,
+            on_progress=lambda message, pct: progress.append((message, pct)),
+            on_partial_ready=ready.append,
+        )
+
+    assert outcome["status"] == "succeeded"
+    assert outcome["partial"] is False
+    assert outcome["k"] == 3
+    assert outcome["chunk_count"] == 1
+    assert outcome["message"] == "Content scores ready"
+    assert len(calls) == 15
+    assert [call["temperature"] for call in calls] == [0.3, 0.4, 0.5] * 5
+    assert all("chunk_analyses" not in call["inputs"] for call in calls)
+    assert all("instruction" not in call["inputs"] for call in calls)
+    assert progress[0][0] == "outline 1/1"
+    assert all(87.0 < pct <= 87.99 for _, pct in progress)
+    assert ready == [["structure"]]
+    saved = json.loads((tmp_path / "content.json").read_text())
+    assert saved["provenance"]["k"] == 3
+    assert saved["provenance"]["chunk_count"] == 1
+    assert saved["provenance"]["long_session"] is False
+    assert "unavailable" not in saved
+
+
+def test_long_synthetic_transcript_map_reduces_under_token_cap(tmp_path):
+    from pipeline.stages.content_llm import (
+        CALL_TOKEN_CAP,
+        estimate_tokens,
+        run_content_llm_safe,
+    )
+
+    segments, sentence, duration = _long_segments()
+    path = tmp_path / "transcript.json"
+    _write_transcript(path, segments, duration)
+    assert duration > 12 * 60
+    calls = []
+
+    def generate(prompt_id, inputs, schema, temperature=None):
+        calls.append(
+            {
+                "prompt_id": prompt_id,
+                "inputs": json.loads(json.dumps(inputs)),
+                "temperature": temperature,
+            }
+        )
+        return _llm_response(prompt_id, _minimal_payload(prompt_id, sentence))
+
+    progress = []
+    ready = []
+    with patch("pipeline.stages.content_llm.LLMClient") as mock_cls:
+        _bind_client(mock_cls, generate)
+        outcome = run_content_llm_safe(
+            transcript_path=path,
+            output_dir=tmp_path,
+            session_id="long",
+            duration_s=duration,
+            max_duration_s=duration,
+            on_progress=lambda message, pct: progress.append(message),
+            on_partial_ready=ready.append,
+        )
+
+    saved = json.loads((tmp_path / "content.json").read_text())
+    chunk_count = saved["provenance"]["chunk_count"]
+    assert chunk_count >= 2
+    assert saved["provenance"]["k"] == 1
+    assert saved["provenance"]["long_session"] is True
+    assert saved["provenance"]["estimated_tokens"] > CALL_TOKEN_CAP
+    assert outcome["status"] == "succeeded"
+    assert outcome["partial"] is False
+    assert saved["provenance"]["elapsed_s"] < saved["provenance"]["budget_s"]
+    assert len(calls) == 4 * (chunk_count + 1) + 1
+    assert {call["temperature"] for call in calls} == {0.3}
+
+    for call in calls:
+        inputs = call["inputs"]
+        for key in ("transcript", "opening_transcript", "closing_transcript"):
+            text = inputs.get(key)
+            if not isinstance(text, str):
+                continue
+            assert estimate_tokens(text) <= CALL_TOKEN_CAP
+            assert text.count("We remove friction") < 400
+        if "chunk_analyses" in inputs:
+            assert "transcript" not in inputs
+            assert inputs["instruction"].startswith("Merge")
+    assert any("chunk_analyses" in call["inputs"] for call in calls)
+    assert f"outline 1/{chunk_count}" in progress
+    assert "outline reduce" in progress
+    assert "message 2/" + str(chunk_count) in progress or f"message {chunk_count}/{chunk_count}" in progress
+    assert ready == [["structure"]]
+    assert "verification_metadata" in saved["outline"]
+    warnings = saved["outline"].get("emotion_warnings") or []
+    assert any("happy" in term for item in warnings for term in item.get("terms") or [])
+    assert saved["outline"]["signposts"][0]["quote"] == sentence
+
+
+def test_budget_finishes_current_call_then_keeps_partial_prompt(synthetic_transcript_path, tmp_path):
+    from pipeline.stages.content_llm import content_progress_view, run_content_llm_safe
+
+    clock = _Clock()
+    calls = []
+
+    def generate(prompt_id, inputs, schema, temperature=None):
+        clock.during_call(90)
+        calls.append(prompt_id)
+        return _llm_response(prompt_id, _minimal_payload(prompt_id, "Good morning, everyone."))
+
+    with patch("pipeline.stages.content_llm.LLMClient") as mock_cls:
+        _bind_client(mock_cls, generate)
+        outcome = run_content_llm_safe(
+            transcript_path=synthetic_transcript_path,
+            output_dir=tmp_path,
+            session_id="budget-one",
+            duration_s=13 * 60,
+            max_duration_s=13 * 60,
+            budget_s=60,
+            clock=clock,
+        )
+
+    saved = json.loads((tmp_path / "content.json").read_text())
+    assert calls == ["outline_v1"]
+    assert saved["outline"] is not None
+    assert saved["message"] is None
+    assert saved["story_impact"] is None
+    assert saved["open_close"] is None
+    assert saved["provenance"]["k"] == 1
+    assert saved["provenance"]["chunk_count"] == 1
+    assert saved["provenance"]["partial"] is True
+    assert saved["provenance"]["stop_reason"] == "budget"
+    assert saved["provenance"]["completed_prompts"] == ["outline_v1"]
+    assert "message_v1" in saved["provenance"]["unfinished_prompts"]
+    assert "unavailable" not in saved
+    assert outcome["status"] == "succeeded"
+    assert outcome["partial"] is True
+    assert "1-minute budget after outline" in outcome["message"]
+    assert "N/A" in outcome["message"]
+    view = content_progress_view(outcome)
+    assert view["step_status"] == "succeeded"
+    assert view["progress_status"] == "succeeded"
+    assert "1-minute budget" in view["message"]
+
+
+def test_budget_stops_between_chunks_and_persists_them(tmp_path):
+    from pipeline.stages.content_llm import CALL_TOKEN_CAP, estimate_tokens, run_content_llm_safe
+
+    segments, sentence, duration = _long_segments()
+    path = tmp_path / "transcript.json"
+    _write_transcript(path, segments, duration)
+    clock = _Clock()
+    calls = []
+
+    def generate(prompt_id, inputs, schema, temperature=None):
+        clock.during_call(100)
+        transcript = inputs.get("transcript")
+        if isinstance(transcript, str):
+            assert estimate_tokens(transcript) <= CALL_TOKEN_CAP
+        calls.append(prompt_id)
+        return _llm_response(prompt_id, _minimal_payload(prompt_id, sentence))
+
+    with patch("pipeline.stages.content_llm.LLMClient") as mock_cls:
+        _bind_client(mock_cls, generate)
+        outcome = run_content_llm_safe(
+            transcript_path=path,
+            output_dir=tmp_path,
+            session_id="budget-chunk",
+            duration_s=duration,
+            max_duration_s=duration,
+            budget_s=50,
+            clock=clock,
+        )
+
+    saved = json.loads((tmp_path / "content.json").read_text())
+    assert calls == ["outline_v1"]
+    assert saved["outline"] is None
+    chunk = saved["provenance"]["chunks"]["outline_v1"]
+    assert chunk["mapped"] == 1
+    assert chunk["reduced"] is False
+    assert chunk["total"] >= 2
+    assert len(chunk["pending"]) == 1
+    assert outcome["status"] == "succeeded"
+    assert outcome["partial"] is True
+    assert saved["provenance"]["completed_prompts"] == []
+
+
+def test_zero_budget_stops_before_any_call(synthetic_transcript_path, tmp_path, monkeypatch):
+    from pipeline.stages.content_llm import run_content_llm_safe
+
+    calls = []
+
+    def generate(prompt_id, inputs, schema, temperature=None):
+        calls.append(prompt_id)
+        return _llm_response(prompt_id, {"insufficient_evidence": True})
+
+    monkeypatch.setenv("CONTENT_LLM_BUDGET_S", "0")
+    with patch("pipeline.stages.content_llm.LLMClient") as mock_cls:
+        _bind_client(mock_cls, generate)
+        outcome = run_content_llm_safe(
+            transcript_path=synthetic_transcript_path,
+            output_dir=tmp_path,
+            session_id="budget-zero",
+            duration_s=30,
+            max_duration_s=30,
+        )
+    assert calls == []
+    saved = json.loads((tmp_path / "content.json").read_text())
+    assert saved["outline"] is None
+    assert saved.get("unavailable") is not True
+    assert outcome["status"] == "succeeded"
+    assert outcome["partial"] is True
+    assert "before any prompt finished" in outcome["message"]
+
+    calls.clear()
+    with patch("pipeline.stages.content_llm.LLMClient") as mock_cls:
+        _bind_client(mock_cls, generate)
+        outcome = run_content_llm_safe(
+            transcript_path=synthetic_transcript_path,
+            output_dir=tmp_path,
+            session_id="budget-override",
+            duration_s=30,
+            max_duration_s=30,
+            budget_s=600,
+        )
+    assert len(calls) == 15
+    assert outcome["partial"] is False
+
+
+def test_model_error_on_first_prompt_stays_unavailable(synthetic_transcript_path, tmp_path):
+    from pipeline.stages.content_llm import run_content_llm_safe
+
+    def generate(prompt_id, inputs, schema, temperature=None):
+        raise ConnectionError("connection refused")
+
+    with patch("pipeline.stages.content_llm.LLMClient") as mock_cls:
+        _bind_client(mock_cls, generate)
+        outcome = run_content_llm_safe(
+            transcript_path=synthetic_transcript_path,
+            output_dir=tmp_path,
+            session_id="down",
+            duration_s=30,
+            max_duration_s=30,
+        )
+    assert outcome["status"] == "failed"
+    saved = json.loads((tmp_path / "content.json").read_text())
+    assert saved["unavailable"] is True
+
+
+def test_model_error_after_a_prompt_keeps_partial_content(synthetic_transcript_path, tmp_path):
+    from pipeline.stages.content_llm import run_content_llm_safe
+
+    def generate(prompt_id, inputs, schema, temperature=None):
+        if prompt_id == "message_v1":
+            raise ConnectionError("connection refused")
+        return _llm_response(prompt_id, _minimal_payload(prompt_id, "Good morning, everyone."))
+
+    with patch("pipeline.stages.content_llm.LLMClient") as mock_cls:
+        _bind_client(mock_cls, generate)
+        outcome = run_content_llm_safe(
+            transcript_path=synthetic_transcript_path,
+            output_dir=tmp_path,
+            session_id="partial-error",
+            duration_s=30,
+            max_duration_s=30,
+            budget_s=600,
+        )
+    saved = json.loads((tmp_path / "content.json").read_text())
+    assert outcome["status"] == "succeeded"
+    assert outcome["partial"] is True
+    assert "language model failed" in outcome["message"]
+    assert saved["outline"] is not None
+    assert saved["message"] is None
+    assert saved.get("unavailable") is not True
+    assert saved["provenance"]["stop_reason"] == "error"

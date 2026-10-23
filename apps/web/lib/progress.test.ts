@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseProgressData, pipelineStages, pipelineTimeline, sessionConsentOff, shouldReloadReport, stageProblem } from "./progress.ts";
+import { PIPELINE_STAGES, parseProgressData, pipelineStages, pipelineTimeline, sessionConsentOff, shouldReloadReport, stageProblem } from "./progress.ts";
 
 test("partial_ready carries scored category ids", () => {
   const event = parseProgressData(
@@ -174,6 +174,55 @@ test("online timeline marks layout_review done and starts the next row", () => {
   assert.equal(view.find((stage) => stage.stage === "layout_review")?.status, "succeeded");
   assert.equal(view.find((stage) => stage.stage === "layout_review")?.detail, "by_you");
   assert.equal(view.find((stage) => stage.stage === "audio_features")?.status, "running");
+});
+
+test("content_llm stays one timeline step and shows chunk progress", () => {
+  assert.equal(PIPELINE_STAGES.filter((stage) => stage === "content_llm").length, 1);
+  assert.equal(pipelineStages("stage").filter((stage) => stage === "content_llm").length, 1);
+  assert.equal(pipelineStages("webinar", "upload").filter((stage) => stage === "content_llm").length, 1);
+
+  const event = parseProgressData(
+    JSON.stringify({
+      type: "stage",
+      stage: "content_llm",
+      status: "running",
+      pct: 87.25,
+      message: "outline 1/2",
+    }),
+  );
+  assert.equal(event?.type, "stage");
+  if (event?.type === "stage") {
+    assert.equal(event.stage, "content_llm");
+    assert.equal(event.pct, 87.25);
+    assert.equal(event.message, "outline 1/2");
+  }
+
+  const running = pipelineTimeline(
+    [{ stage: "content_llm", status: "running", message: "Reading the talk for content scores" }],
+    { type: "stage", stage: "content_llm", status: "running", pct: 87.25, message: "outline 1/2" },
+  );
+  const rows = running.filter((stage) => stage.stage === "content_llm");
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]?.status, "running");
+  assert.equal(rows[0]?.detail, "outline 1/2");
+  assert.equal(running.some((stage) => stage.stage === "outline"), false);
+
+  const done = pipelineTimeline(
+    [
+      {
+        stage: "content_llm",
+        status: "succeeded",
+        message:
+          "Content analysis stopped at the 8-minute budget after outline. Unfinished prompts stay N/A.",
+      },
+    ],
+    null,
+  );
+  const content = done.find((stage) => stage.stage === "content_llm");
+  assert.equal(content?.status, "succeeded");
+  assert.match(content?.detail ?? "", /8-minute budget/);
+  assert.match(content?.detail ?? "", /N\/A/);
+  assert.equal(done.filter((stage) => stage.stage === "content_llm").length, 1);
 });
 
 test("legacy stage payloads without type still parse", () => {

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Long-session content analysis
+
+- `content_llm` maps `outline_v1`, `message_v1`, `story_impact_v1`, and `audience_clarity_v1` over transcript chunks of at most 6k tokens, then reduces each prompt to the stage schema. `open_close_v1` stays the first 60 seconds and the last 90 seconds.
+- Talks longer than 12 minutes, or with more than 6k estimated transcript tokens, use one sample (k=1) for map and reduce. Shorter talks keep k=3. Quote, segment-id, and emotion-term checks still run. `content.json` records `k` and `chunk_count`.
+- The stage stops at a wall-clock budget (default 8 minutes, `CONTENT_LLM_BUDGET_S`) after the current model call. Finished prompts are kept. Unfinished prompts stay N/A. The analysis job continues, and the timeline says which prompts finished.
+- The processing timeline still has one Content step. Its message shows chunk progress (`outline 1/2`). The first finished prompt refreshes the report.
+
 ### O1 real-stack round 3 (LION)
 
 - English `WAV2VEC2_ASR_BASE_960H` (~360 MiB) is SHA-256 baked under `TORCH_HOME/hub/checkpoints`. Portuguese alignment uses whisperX's default `jonatasgrosman/wav2vec2-large-xlsr-53-portuguese` snapshot under `/models/alignment` (~1.18 GiB). Offline smoke loads both models with networking off and runs `whisperx.align`.
