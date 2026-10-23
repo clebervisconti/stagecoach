@@ -30,10 +30,33 @@ GAP_THRESHOLD_MS = 300  # Re-decode speech gaps longer than this
 # Wav2vec2 models for alignment per language.
 # English uses whisperX's torchaudio pipeline (WAV2VEC2_ASR_BASE_960H) so CI
 # and LION do not pull the 1.2 GB facebook/wav2vec2-large checkpoint.
+# Portuguese uses whisperX DEFAULT_ALIGN_MODELS_HF["pt"] (pt-BR / pt share it).
 ALIGNMENT_MODELS = {
     "en": "WAV2VEC2_ASR_BASE_960H",
     "pt": "jonatasgrosman/wav2vec2-large-xlsr-53-portuguese",
 }
+ALIGNMENT_PT_DEFAULT_DIR = Path("/models/alignment/wav2vec2-large-xlsr-53-portuguese")
+
+
+def resolve_align_model_name(lang_code: str) -> str:
+    """Return the torchaudio bundle name or a local / Hugging Face id.
+
+    Prefer the baked Portuguese snapshot so egress-blocked workers do not
+    hit Hugging Face. English still uses the torchaudio bundle name; the
+    weights live at TORCH_HOME/hub/checkpoints.
+    """
+    if lang_code == "pt":
+        candidates = []
+        env = os.environ.get("ALIGNMENT_PT_DIR")
+        if env:
+            candidates.append(Path(env))
+        candidates.append(ALIGNMENT_PT_DEFAULT_DIR)
+        for path in candidates:
+            if (path / "config.json").is_file() and (
+                (path / "pytorch_model.bin").is_file() or (path / "model.safetensors").is_file()
+            ):
+                return str(path)
+    return ALIGNMENT_MODELS.get(lang_code, ALIGNMENT_MODELS["en"])
 
 
 @dataclass
@@ -204,13 +227,13 @@ def align_words_whisperx(
     lang_code = language if language in ["en", "pt"] else "en"
     
     # Load alignment model for language
-    model_name = ALIGNMENT_MODELS.get(lang_code, ALIGNMENT_MODELS["en"])
+    model_name = resolve_align_model_name(lang_code)
     logger.info(f"Using alignment model: {model_name}")
     
     model_a, metadata = whisperx.load_align_model(
         language_code=lang_code,
         device=device,
-        model_name=model_name
+        model_name=model_name,
     )
     
     # Load audio

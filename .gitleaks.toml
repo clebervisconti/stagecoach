@@ -6,7 +6,14 @@ title = "stagecoach"
 useDefault = true
 
 [allowlist]
-description = "Public Systran/faster-whisper-small companion-file SHA-256 from Hugging Face (MIT)"
+description = "Public model SHA-256 pins (faster-whisper, torchaudio wav2vec2, whisperX pt-BR wav2vec2)"
 regexes = [
   '''fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab''',
+  '''488fd4f16de84438ffc945334278c1b9fb9b7159a806c1080b16111a958c945d''',
+  '''c244caf8395a0c333bdc877e7b62ce5efea12ad8cfec0851c0fe6efb844b834e''',
+  '''ea1d581f043b854671b11d6b7db606e1ec5aafbfdd6b964c3f2f5975e335761c''',
+  '''ca5999a45e98bb76ea87a461ba28a23ad32a5bb9f733b8e0f6546ff38b6c612d''',
+  '''66b0813833e1536fb028f675e10ceda8254e6ee400d8cfd48359f39982190696''',
+  '''bb7068de1150661a10b55f9e4b12a0e77af8bf91f5e45e1b58afaf1d0e17f675''',
+  '''a54fe91a7fcf7175afcf4f7131c484a7530897914d5c226dace2ac5ffd07ddb8''',
 ]

@@ -12,6 +12,20 @@ from pipeline.stages.asr import transcribe_audio
 from .online.generate_online_fixtures import SPEECH_ASSET, synthesize_speech
 
 
+def test_resolve_align_model_name_prefers_baked_pt(tmp_path: Path, monkeypatch):
+    from pipeline.stages.alignment import resolve_align_model_name
+
+    assert resolve_align_model_name("en") == "WAV2VEC2_ASR_BASE_960H"
+    baked = tmp_path / "pt-model"
+    baked.mkdir()
+    (baked / "config.json").write_text("{}")
+    (baked / "pytorch_model.bin").write_bytes(b"x")
+    monkeypatch.setenv("ALIGNMENT_PT_DIR", str(baked))
+    assert resolve_align_model_name("pt") == str(baked)
+    monkeypatch.delenv("ALIGNMENT_PT_DIR")
+    assert resolve_align_model_name("pt") == "jonatasgrosman/wav2vec2-large-xlsr-53-portuguese"
+
+
 def test_whisperx_imports_nltk_and_pandas():
     """whisperX is installed --no-deps; these were missing on LION."""
     import nltk

@@ -45,6 +45,8 @@ services:
       SILERO_VAD_DIR: /models/silero-vad
       FASTER_WHISPER_DIR: /models/faster-whisper
       NLTK_DATA: /models/nltk_data
+      TORCH_HOME: /models/torch
+      ALIGNMENT_PT_DIR: /models/alignment/wav2vec2-large-xlsr-53-portuguese
 
   # Beat is not used on the LION lab overlay. Start it with
   # `--profile lion-beat` only when someone explicitly wants the scheduler.
