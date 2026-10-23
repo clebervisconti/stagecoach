@@ -120,6 +120,8 @@ services:
       SILERO_VAD_DIR: /models/silero-vad
       FASTER_WHISPER_DIR: /models/faster-whisper
       NLTK_DATA: /models/nltk_data
+      TORCH_HOME: /models/torch
+      ALIGNMENT_PT_DIR: /models/alignment/wav2vec2-large-xlsr-53-portuguese
       LLM_PROVIDER: ${LLM_PROVIDER:-local}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}

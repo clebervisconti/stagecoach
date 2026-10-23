@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### O1 real-stack round 3 (LION)
+
+- English `WAV2VEC2_ASR_BASE_960H` (~360 MiB) is SHA-256 baked under `TORCH_HOME/hub/checkpoints`. Portuguese alignment uses whisperX's default `jonatasgrosman/wav2vec2-large-xlsr-53-portuguese` snapshot under `/models/alignment` (~1.18 GiB). Offline smoke loads both models with networking off and runs `whisperx.align`.
+- Camera-crop `face_visible_ratio` is measured at native crop width. Stretching a ~320 px 1080p PiP tile to 960 px pushed the synthetic face outside YuNet's 10–300 px band (ratio 0.0). YuNet now upscales only sub-320 crops so the short side is 320, and letterbox-pads the rest. Tests assert ratio > 0.5 on `composite_pip_tr` and ~0 on a faceless crop.
+- The OpenCV 5.0.0 `setPreferableTarget Targets are not supported` warning is the YuNet FaceDetectorYN net (only `cv2.dnn` net in-tree). CPU backend/target stay pinned; the C++ logger is quieted around `create` / `setInputSize`.
+- Measurement: `content_llm` was 244 s on a 2-minute clip (15 whole-transcript local-Qwen calls, no chunking). A 60-minute webinar is ~30× the tokens; expect ~95–120 minutes if the 180 s per-call local timeout does not fire, or a failed/N/A content stage if it does. No job-level wall-clock budget. See ADR-078 addendum.
+
 ### O1 real-stack round 2 (LION)
 
 - WhisperX runtime deps (`nltk`, `pandas`) are pinned in `requirements-alignment.txt`. NLTK `punkt_tab` / `punkt` are baked into `/models/nltk_data`. A worker test imports whisperx and aligns a short speech clip.

@@ -96,6 +96,91 @@ def test_camera_crop_yunet_ratio_on_composite(tmp_path: Path, monkeypatch):
     assert result["quality"]["face_visible_ratio"] == quality["face_visible_ratio"]
 
 
+def test_camera_face_measure_samples_native_width(tmp_path: Path, monkeypatch):
+    from pipeline.layout.face_visibility import measure_face_visible_ratio
+    from pipeline.layout.sampling import SAMPLE_WIDTH
+
+    clip = tmp_path / "tiny.mp4"
+    _write_color_clip(clip, 320, 240)
+    seen: dict[str, int] = {}
+
+    def fake_sample(path, *, fps=1.0, width=SAMPLE_WIDTH, max_frames=8):
+        seen["width"] = width
+        return []
+
+    monkeypatch.setattr("pipeline.layout.face_visibility.sample_frames", fake_sample)
+    measure_face_visible_ratio(clip)
+    assert seen["width"] == 320
+    assert seen["width"] < SAMPLE_WIDTH
+
+
+def test_composite_pip_tr_camera_crop_face_ratio(tmp_path: Path, monkeypatch):
+    """YuNet on the camera crop must see the synthetic face (LION O1 round 3).
+
+    Layout already finds the tile (camera IoU ~0.98). The previous crop path
+    stretched camera.mp4 to 960 px so the face left YuNet's 10–300 px band.
+    """
+    monkeypatch.setenv("MEDIAPIPE_MODELS_DIR", str(tmp_path / "models"))
+    video = generate_one("composite_pip_tr", tmp_path)
+    job = tmp_path / "job"
+    layout = detect_layout(
+        video,
+        job,
+        duration_s=2.0,
+        frame_width=1920,
+        frame_height=1080,
+        delivery_mode="webinar",
+        preview_source=video,
+    )
+    artifacts = write_region_tracks(
+        video,
+        job,
+        layout,
+        frame_width=1920,
+        frame_height=1080,
+    )
+    assert Path(artifacts["camera"]).is_file()
+    quality = json.loads((job / "camera_face_quality.json").read_text())
+    assert quality["frames_sampled"] > 0
+    assert quality["source"] == "yunet_camera_crop"
+    assert quality["face_visible_ratio"] > 0.5
+
+    from pipeline.layout.face_visibility import measure_face_visible_ratio
+    from pipeline.layout.sampling import probe_video_size
+
+    faceless = tmp_path / "faceless.mp4"
+    _write_color_clip(faceless, 320, 240)
+    assert probe_video_size(faceless) == (320, 240)
+    blank = measure_face_visible_ratio(faceless)
+    assert blank["frames_sampled"] > 0
+    assert blank["face_visible_ratio"] < 0.15
+
+
+def _write_color_clip(dest: Path, width: int, height: int) -> None:
+    import subprocess
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            f"color=c=0x1a1a2e:s={width}x{height}:d=1:r=15",
+            "-pix_fmt",
+            "yuv420p",
+            "-y",
+            str(dest),
+        ],
+        check=True,
+        capture_output=True,
+        timeout=30,
+    )
+
+
 def test_build_quality_zero_is_not_none():
     quality = build_quality(
         [{"t": 0.0, "person_visible": 0.0}],

@@ -58,6 +58,8 @@ ENV MEDIAPIPE_MODELS_DIR=/models
 ENV SILERO_VAD_DIR=/models/silero-vad
 ENV FASTER_WHISPER_DIR=/models/faster-whisper
 ENV NLTK_DATA=/models/nltk_data
+ENV TORCH_HOME=/models/torch
+ENV ALIGNMENT_PT_DIR=/models/alignment/wav2vec2-large-xlsr-53-portuguese
 RUN python scripts/prefetch_models.py && \
     python -c "from pathlib import Path; \
 root=Path('/models'); \
@@ -69,6 +71,8 @@ needed=[ \
   root/'face_landmarker.task', \
   root/'faster-whisper'/'small'/'model.bin', \
   root/'nltk_data'/'tokenizers'/'punkt_tab'/'english'/'abbrev_types.txt', \
+  root/'torch'/'hub'/'checkpoints'/'wav2vec2_fairseq_base_ls960_asr_ls960.pth', \
+  root/'alignment'/'wav2vec2-large-xlsr-53-portuguese'/'pytorch_model.bin', \
 ]; \
 missing=[str(p) for p in needed if not p.is_file()]; \
 assert not missing, missing"
@@ -107,6 +111,8 @@ ENV MEDIAPIPE_MODELS_DIR=/models
 ENV SILERO_VAD_DIR=/models/silero-vad
 ENV FASTER_WHISPER_DIR=/models/faster-whisper
 ENV NLTK_DATA=/models/nltk_data
+ENV TORCH_HOME=/models/torch
+ENV ALIGNMENT_PT_DIR=/models/alignment/wav2vec2-large-xlsr-53-portuguese
 ENV PYTHONPATH=/app:/packages
 
 RUN mkdir -p /tmp/stagecoach

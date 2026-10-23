@@ -10,6 +10,9 @@ from pipeline.vision.models import MODEL_REGISTRY
 from scripts.prefetch_models import (
     FASTER_WHISPER_FILES,
     NLTK_PACKAGES,
+    WAV2VEC2_EN_SHA256,
+    WAV2VEC2_PT_FILES,
+    WAV2VEC2_PT_REPO,
     YUNET_SHA256,
     require_sha,
 )
@@ -39,6 +42,17 @@ def test_prefetch_faster_whisper_and_nltk_pins():
     assert {row["name"] for row in NLTK_PACKAGES} == {"punkt", "punkt_tab"}
     for row in NLTK_PACKAGES:
         assert len(row["sha256"]) == 64
+
+
+def test_prefetch_alignment_wav2vec2_pins():
+    assert len(WAV2VEC2_EN_SHA256) == 64
+    names = {name for name, _digest in WAV2VEC2_PT_FILES}
+    assert "pytorch_model.bin" in names
+    assert "config.json" in names
+    assert "vocab.json" in names
+    assert WAV2VEC2_PT_REPO.endswith("portuguese")
+    for _name, digest in WAV2VEC2_PT_FILES:
+        assert len(digest) == 64
 
 
 def test_require_sha_rejects_mismatch(tmp_path: Path):

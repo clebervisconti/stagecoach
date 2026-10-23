@@ -21,7 +21,7 @@ class SampledFrame:
     gray: np.ndarray
 
 
-def _probe_size(video_path: Path) -> tuple[int, int]:
+def probe_video_size(video_path: Path) -> tuple[int, int]:
     cmd = [
         "ffprobe",
         "-v",
@@ -47,7 +47,7 @@ def sample_frames(
     max_frames: int = MAX_SAMPLES,
 ) -> list[SampledFrame]:
     """Decode at `fps`, scaled to `width` px. Never keeps more than `max_frames`."""
-    src_w, src_h = _probe_size(video_path)
+    src_w, src_h = probe_video_size(video_path)
     if src_w <= 0 or src_h <= 0:
         return []
     out_h = max(2, int(round(src_h * (width / src_w) / 2) * 2))

@@ -3,6 +3,10 @@
 
 Downloads are SHA-256 checked. A mismatch fails the process so a Docker build
 cannot ship a swapped model. Runtime still has the same fallbacks.
+
+Alignment weights: English torchaudio WAV2VEC2_ASR_BASE_960H under
+TORCH_HOME/hub/checkpoints, and whisperX's default pt wav2vec2 snapshot
+under /models/alignment (not the HF_HOME volume).
 """
 
 from __future__ import annotations
@@ -42,6 +46,28 @@ FASTER_WHISPER_FILES = (
     ("config.json", "b55496ac7940a7ae47d2c01eab40edfd8701feec1229d9cce3b40014383fb828"),
     ("tokenizer.json", "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab"),
     ("vocabulary.txt", "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913"),
+)
+
+# English alignment: torchaudio WAV2VEC2_ASR_BASE_960H (Apache-2.0).
+# torch.hub.load_state_dict_from_url reads TORCH_HOME/hub/checkpoints/<basename>.
+WAV2VEC2_EN_FILENAME = "wav2vec2_fairseq_base_ls960_asr_ls960.pth"
+WAV2VEC2_EN_URL = (
+    "https://download.pytorch.org/torchaudio/models/"
+    "wav2vec2_fairseq_base_ls960_asr_ls960.pth"
+)
+WAV2VEC2_EN_SHA256 = "488fd4f16de84438ffc945334278c1b9fb9b7159a806c1080b16111a958c945d"
+
+# Portuguese alignment: whisperX DEFAULT_ALIGN_MODELS_HF["pt"] (Apache-2.0).
+# Baked as a local transformers snapshot so /models/huggingface can stay a volume.
+WAV2VEC2_PT_REPO = "jonatasgrosman/wav2vec2-large-xlsr-53-portuguese"
+WAV2VEC2_PT_DIRNAME = "alignment/wav2vec2-large-xlsr-53-portuguese"
+WAV2VEC2_PT_FILES = (
+    ("pytorch_model.bin", "c244caf8395a0c333bdc877e7b62ce5efea12ad8cfec0851c0fe6efb844b834e"),
+    ("config.json", "ea1d581f043b854671b11d6b7db606e1ec5aafbfdd6b964c3f2f5975e335761c"),
+    ("preprocessor_config.json", "ca5999a45e98bb76ea87a461ba28a23ad32a5bb9f733b8e0f6546ff38b6c612d"),
+    ("vocab.json", "66b0813833e1536fb028f675e10ceda8254e6ee400d8cfd48359f39982190696"),
+    ("special_tokens_map.json", "bb7068de1150661a10b55f9e4b12a0e77af8bf91f5e45e1b58afaf1d0e17f675"),
+    ("alphabet.json", "a54fe91a7fcf7175afcf4f7131c484a7530897914d5c226dace2ac5ffd07ddb8"),
 )
 
 # NLTK tokenizers used by whisperX 3.8.6 (punkt_tab; punkt is the fallback).
@@ -168,6 +194,35 @@ def prefetch_faster_whisper(models_dir: Path) -> Path:
     return dest
 
 
+def torch_home(models_dir: Path) -> Path:
+    env = os.environ.get("TORCH_HOME")
+    if env:
+        return Path(env)
+    return models_dir / "torch"
+
+
+def prefetch_wav2vec2_en(models_dir: Path) -> Path:
+    dest = torch_home(models_dir) / "hub" / "checkpoints" / WAV2VEC2_EN_FILENAME
+    if dest.is_file() and sha256_file(dest) == WAV2VEC2_EN_SHA256:
+        return dest
+    download(WAV2VEC2_EN_URL, dest)
+    require_sha(dest, WAV2VEC2_EN_SHA256, WAV2VEC2_EN_FILENAME)
+    return dest
+
+
+def prefetch_wav2vec2_pt(models_dir: Path) -> Path:
+    dest = models_dir / WAV2VEC2_PT_DIRNAME
+    dest.mkdir(parents=True, exist_ok=True)
+    base = f"https://huggingface.co/{WAV2VEC2_PT_REPO}/resolve/main"
+    for filename, digest in WAV2VEC2_PT_FILES:
+        path = dest / filename
+        if path.is_file() and sha256_file(path) == digest:
+            continue
+        download(f"{base}/{filename}", path)
+        require_sha(path, digest, f"{WAV2VEC2_PT_REPO}/{filename}")
+    return dest
+
+
 def prefetch_nltk(models_dir: Path) -> Path:
     dest = models_dir / "nltk_data"
     tokenizers = dest / "tokenizers"
@@ -207,10 +262,13 @@ def main() -> int:
     tasks = prefetch_mediapipe(models_dir)
     whisper = prefetch_faster_whisper(models_dir)
     nltk_dir = prefetch_nltk(models_dir)
+    wav2vec2_en = prefetch_wav2vec2_en(models_dir)
+    wav2vec2_pt = prefetch_wav2vec2_pt(models_dir)
     print(
         f"yunet={yunet} silero={silero} "
         f"mediapipe={[str(path) for path in tasks]} "
-        f"faster_whisper={whisper} nltk={nltk_dir}"
+        f"faster_whisper={whisper} nltk={nltk_dir} "
+        f"wav2vec2_en={wav2vec2_en} wav2vec2_pt={wav2vec2_pt}"
     )
     return 0
 

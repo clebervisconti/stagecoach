@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from pipeline.layout.faces import FaceDetection, FaceDetector, YuNetFaceDetector
-from pipeline.layout.sampling import sample_frames
+from pipeline.layout.sampling import probe_video_size, sample_frames
 
 CAMERA_FACE_QUALITY = "camera_face_quality.json"
 
@@ -32,7 +32,10 @@ def measure_face_visible_ratio(
     fps: float = 1.0,
 ) -> dict[str, Any]:
     """Sample `video_path` and return YuNet face-visible ratio."""
-    frames = sample_frames(video_path, fps=fps, max_frames=max_frames)
+    # Native width: a PiP camera.mp4 is ~320 px. sample_frames also refuses
+    # to upscale, so a default 960 here would be clamped anyway.
+    src_w, _src_h = probe_video_size(video_path)
+    frames = sample_frames(video_path, fps=fps, max_frames=max_frames, width=src_w)
     if detector is None:
         detector = YuNetFaceDetector()
     detections = [detector.detect(frame.bgr) for frame in frames]
