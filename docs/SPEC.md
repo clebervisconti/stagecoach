@@ -895,7 +895,7 @@ Send the transcript as numbered **segments** with timestamps and stable IDs so t
 [S0001 00:00:03.2–00:00:09.8] Good morning, everyone. Um, thanks for having me.
 [S0002 00:00:09.8–00:00:17.5] Last year our team spent 4,000 hours on incidents…
 ```
-Long talks are chunked by section (≤ 6–8k tokens per chunk, H) with a global first pass for the outline. Filler tokens stay in the text.
+Long talks are chunked by section (≤ 6–8k tokens per chunk, H) with a global first pass for the outline. Filler tokens stay in the text. ADR-079: each live prompt except `open_close_v1` is mapped on those chunks and reduced to the stage schema. `open_close_v1` stays the first 60 s and the last 90 s. Sessions longer than 12 minutes, or with more than 6k estimated transcript tokens, use k = 1 for map and reduce. Shorter sessions keep k = 3. A wall-clock budget (default 8 minutes, `CONTENT_LLM_BUDGET_S`) lets the current model call finish, then stops. Finished prompts are saved; unfinished prompts stay N/A, and the analysis job continues.
 
 #### 6.7.3 Calls (MVP)
 
@@ -915,7 +915,7 @@ Every judgment includes `level` (1–5, half-steps allowed), `rationale` (≤ 60
 
 #### 6.7.4 Grounding, verification, and consistency
 - **Quote verification:** every `quote` must fuzzy-match (normalized Levenshtein ratio ≥ 0.9, H) text inside the cited segment(s). Drop evidence that fails and lower the confidence. If a Level ≤ 2 or Level 5 judgment ends up with fewer than 2 valid evidence items, pull it toward 3 by half a level and flag it.
-- **Self-consistency:** run level-producing calls k = 3 times (temperature 0.3–0.7, H) or with three prompt paraphrases. Use the median level. Confidence agreement = 1 − (max − min)/4. Cache by `(prompt_version, model, transcript_hash)`.
+- **Self-consistency:** run level-producing calls k = 3 times (temperature 0.3–0.7, H) or with three prompt paraphrases. Use the median level. Confidence agreement = 1 − (max − min)/4. Cache by `(prompt_version, model, transcript_hash)`. Long sessions (ADR-079: duration > 12 minutes or transcript > 6k tokens) use k = 1, then still verify quotes, segment IDs, and emotion terms on the reduced output.
 - **Hallucination guard:** reject outputs that reference segment IDs that don't exist. Reject timestamps outside the media duration.
 - **No external facts:** the LLM doesn't fact-check the speaker's domain claims. It only classifies whether a claim has support in the talk (data, example, source).
 - **Prompt injection:** the transcript is untrusted. Wrap it in delimiters and tell the model to ignore instructions inside it. Never let LLM output trigger tools or side effects.

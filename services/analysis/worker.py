@@ -1635,11 +1635,64 @@ def run_mvp_analysis_task(
             )
             emit_progress(job_id, "slides", "failed", pct=87, message="Slides failed; scoring continues")
 
-        from pipeline.stages.content_llm import run_content_llm_safe
+        from pipeline.stages.content_llm import content_progress_view, run_content_llm_safe
 
         started = datetime.utcnow()
-        emit_progress(job_id, "content_llm", "running", pct=87, message="Reading the talk for content scores")
-        duration_s = float(((ingest_dict or {}).get("media_info") or {}).get("duration") or 0) or 5400.0
+        emit_progress(
+            job_id,
+            "content_llm",
+            "running",
+            pct=87,
+            message="Reading the talk for content scores",
+            session_id=session_id,
+        )
+
+        def _on_content_progress(message: str, pct: float) -> None:
+            emit_progress(
+                job_id,
+                "content_llm",
+                "running",
+                pct=pct,
+                message=message,
+                session_id=session_id,
+            )
+
+        def _on_content_partial(categories: list[str]) -> None:
+            """Re-score once the first prompt is saved so the report can show it."""
+            try:
+                refreshed = run_fusion_scoring(
+                    session_id=session_id,
+                    output_dir=destination,
+                    context_type=context_type if context_type != "other" else "keynote",
+                    language=resolved_language,
+                    slot_min=slot_min,
+                    qa_in_slot=bool(qa_in_slot),
+                    camera_setup=camera_setup if camera_setup else "unknown",
+                    ingest=ingest_dict,
+                    transcript_path=transcript_path,
+                    audio_metrics_path=Path(audio.artifacts["audio_metrics"]),
+                    metrics_path=Path(audio.artifacts.get("metrics") or destination / "metrics.json"),
+                    content_path=destination / "content.json",
+                    packages_dir=Path("/packages"),
+                    delivery_mode=delivery_mode,
+                )
+                refreshed_report = run_report_stage(
+                    output_dir=destination,
+                    analysis=refreshed,
+                    packages_dir=Path("/packages"),
+                )
+                persist_analysis_result(
+                    job_id=job_id,
+                    analysis=refreshed_report,
+                    transcript=json.loads(transcript_path.read_text()),
+                )
+                ready = scored_category_ids(refreshed) or list(categories)
+            except Exception:
+                logger.exception("content_llm partial refresh failed session=%s", session_id)
+                ready = list(categories)
+            emit_partial_ready(job_id, ready, session_id=session_id)
+
+        media_duration = float(((ingest_dict or {}).get("media_info") or {}).get("duration") or 0)
         content_outcome = run_content_llm_safe(
             transcript_path=transcript_path,
             output_dir=destination,
@@ -1647,29 +1700,35 @@ def run_mvp_analysis_task(
             context_type=context_type if context_type != "other" else "keynote",
             language=resolved_language,
             audience_desc=audience_desc,
-            max_duration_s=duration_s,
+            max_duration_s=media_duration if media_duration > 0 else 5400.0,
+            duration_s=media_duration if media_duration > 0 else None,
+            on_progress=_on_content_progress,
+            on_partial_ready=_on_content_partial,
         )
-        content_status = str(content_outcome.get("status") or "failed")
+        view = content_progress_view(content_outcome)
         _record_job_step(
             job_id=job_id,
             stage="content_llm",
-            status="succeeded" if content_status == "succeeded" else content_status,
+            status=view["step_status"],
             started_at=started,
             outputs={"content": str(destination / "content.json")},
             metrics={
                 "cost_usd": content_outcome.get("cost_usd"),
                 "reason": content_outcome.get("reason"),
                 "error_type": content_outcome.get("error_type"),
+                "message": view["message"],
+                "partial": bool(content_outcome.get("partial")),
+                "k": content_outcome.get("k"),
+                "chunk_count": content_outcome.get("chunk_count"),
             },
         )
         emit_progress(
             job_id,
             "content_llm",
-            "succeeded" if content_status == "succeeded" else "skipped",
+            view["progress_status"],
             pct=88,
-            message="Content scores ready"
-            if content_status == "succeeded"
-            else "Content analysis unavailable; those categories stay N/A",
+            message=view["message"],
+            session_id=session_id,
         )
 
         started = datetime.utcnow()
