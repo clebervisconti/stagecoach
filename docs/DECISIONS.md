@@ -2,7 +2,7 @@
 
 This document tracks significant technical decisions made during Stage Coach development. Each ADR follows a lightweight format: Context, Decision, Alternatives Considered, Consequences.
 
-Decisions from ADR-032 onward live as one file per decision in [docs/adr/](adr/). Those files are the source for Phase 2 and Phase 3 choices (vision, slides, talk-prep, trends, goals, password and Apple sign-in, Resend, account export, and the local Qwen default), for online-session foundations (ADR-061 through ADR-082), and for app-owned authentication (ADR-083 and ADR-084). ADR-038's xAI default is superseded by [ADR-060](adr/060-local-llm-default.md). ADR-001's magic-link auth is superseded by [ADR-057](adr/057-d9-password-apple.md). The Cloudflare Access beta identity in [product/decisions/ADR-0001](../product/decisions/ADR-0001-private-beta-runtime.md) is superseded for app sign-in by [ADR-083](adr/083-app-owned-auth.md). Access may stay in front of the host until the cutover in `deploy/README.md`. The app does not trust Access headers.
+Decisions from ADR-032 onward live as one file per decision in [docs/adr/](adr/). Those files are the source for Phase 2 and Phase 3 choices (vision, slides, talk-prep, trends, goals, password and Apple sign-in, Resend, account export, and the local Qwen default), for online-session foundations (ADR-061 through ADR-082), for app-owned authentication (ADR-083 and ADR-084), and for chunked recording uploads through Cloudflare (ADR-085). ADR-038's xAI default is superseded by [ADR-060](adr/060-local-llm-default.md). ADR-001's magic-link auth is superseded by [ADR-057](adr/057-d9-password-apple.md). The Cloudflare Access beta identity in [product/decisions/ADR-0001](../product/decisions/ADR-0001-private-beta-runtime.md) is superseded for app sign-in by [ADR-083](adr/083-app-owned-auth.md). Access may stay in front of the host until the cutover in `deploy/README.md`. The app does not trust Access headers.
 
 ---
 
@@ -107,7 +107,7 @@ Analysis pipelines have multiple stages (ingest, ASR, audio features, vision, LL
 ## ADR-003: S3-Compatible Storage + tus Resumable Uploads
 
 **Date:** 2026-10-09  
-**Status:** Accepted  
+**Status:** Accepted for object storage. The tus server was not built. Production stores originals on the media volume and uploads them in chunks ([ADR-085](adr/085-chunked-resumable-uploads.md)).  
 **Phase:** 0
 
 ### Context

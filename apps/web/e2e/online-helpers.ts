@@ -355,6 +355,68 @@ export async function mockOnlineApi(
         }),
       });
     }
+    if (method === "POST" && /^\/sessions\/[^/]+\/uploads$/.test(path)) {
+      if (options.hangUpload) {
+        await new Promise(() => undefined);
+        return;
+      }
+      if (options.uploadStatus && options.uploadStatus >= 400) {
+        const proxyRejection = options.uploadStatus === 413;
+        return route.fulfill({
+          status: options.uploadStatus,
+          contentType: "application/json",
+          body: JSON.stringify(
+            proxyRejection
+              ? { detail: "Payload Too Large" }
+              : { detail: options.uploadDetail ?? "Upload failed" },
+          ),
+        });
+      }
+      return route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({
+          upload_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          chunk_bytes: 8 * 1024 * 1024,
+          size: 1,
+          received: [],
+          missing: [0],
+          complete: false,
+        }),
+      });
+    }
+    if (method === "PUT" && /^\/sessions\/[^/]+\/uploads\/[^/]+\/chunks\/\d+$/.test(path)) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          upload_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          received: [0],
+          missing: [],
+          complete: true,
+        }),
+      });
+    }
+    if (method === "GET" && /^\/sessions\/[^/]+\/uploads\/[^/]+$/.test(path)) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          upload_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          chunk_bytes: 8 * 1024 * 1024,
+          received: [],
+          missing: [0],
+          complete: false,
+        }),
+      });
+    }
+    if (method === "POST" && /^\/sessions\/[^/]+\/uploads\/[^/]+\/complete$/.test(path)) {
+      return route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({ session_id: SESSION_ID, status: "preparing" }),
+      });
+    }
     if (method === "POST" && path === `/sessions/${SESSION_ID}/upload`) {
       if (options.hangUpload) {
         await new Promise(() => undefined);
@@ -365,7 +427,7 @@ export async function mockOnlineApi(
         contentType: "application/json",
         body: JSON.stringify(
           options.uploadStatus && options.uploadStatus >= 400
-            ? { detail: options.uploadDetail ?? "This file is 2.4 GB. The limit is 2 GB. Trim it or export at 720p." }
+            ? { detail: options.uploadDetail ?? "Upload failed" }
             : { id: SESSION_ID, status: "preparing" },
         ),
       });

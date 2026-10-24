@@ -3,6 +3,7 @@
 import hashlib
 import hmac
 import json
+import logging
 import os
 import uuid
 from datetime import datetime, timezone
@@ -10,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 from celery import Celery
@@ -56,17 +57,26 @@ from app.models.metric_value import MetricValue
 from app.models.talk_plan import ObjectiveScore, TalkPlan
 from app.models.overall_score import OverallScore
 from app.models.transcript import Transcript
+from app.chunk_upload import CHUNK_BYTES, UploadRejected, resolve_max_upload_bytes
 from app.retention import (
     UNTIL_DELETE,
     retention_until_for,
     normalize_retention_policy,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 # Configuration
 MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", "/data/stagecoach")).resolve()
-MAX_FILE_SIZE = int(os.getenv("MAX_UPLOAD_BYTES", str(2 * 1024 * 1024 * 1024)))
+MAX_FILE_SIZE, _IGNORED_LOW_UPLOAD_LIMIT = resolve_max_upload_bytes(os.getenv("MAX_UPLOAD_BYTES"))
+if _IGNORED_LOW_UPLOAD_LIMIT is not None:
+    logger.warning(
+        "MAX_UPLOAD_BYTES=%s is below the 2 GiB product limit; using %s",
+        _IGNORED_LOW_UPLOAD_LIMIT,
+        MAX_FILE_SIZE,
+    )
 MAX_DURATION_SECONDS = int(os.getenv("MAX_DURATION_SECONDS", str(120 * 60)))
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 ALLOWED_EXTENSIONS = {".mp4", ".mov", ".webm", ".mkv", ".m4a", ".mp3", ".wav", ".ogg", ".flac"}
@@ -369,9 +379,11 @@ async def create_session(
         title=session.title,
         status=session.status,
         upload={
-            "url": f"/api/v1/sessions/{session.id}/upload",
+            "url": f"/api/v1/sessions/{session.id}/uploads",
+            "legacy_url": f"/api/v1/sessions/{session.id}/upload",
             "max_size_bytes": MAX_FILE_SIZE,
-            "resumable": False,
+            "chunk_bytes": CHUNK_BYTES,
+            "resumable": True,
         }
     )
 
@@ -540,20 +552,13 @@ def _probe_duration_seconds(path: Path) -> Optional[float]:
         return None
 
 
-@router.post("/{session_id}/upload", status_code=status.HTTP_202_ACCEPTED)
-async def upload_and_analyze(
-    session_id: str,
-    file: UploadFile = File(...),
-    rights_attested: bool = Form(False),
-    role: str = Form("primary"),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Stream a bounded upload to a generated private path and enqueue analysis."""
-    session = _owned_session(session_id, current_user, db)
-    if session.status not in {"created", "failed"}:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Session already uploaded")
-    _ = role
+def enqueue_analysis(task_name: str, kwargs: dict) -> None:
+    celery = Celery("stagecoach-api", broker=REDIS_URL, backend=REDIS_URL)
+    celery.send_task(task_name, kwargs=kwargs, queue="cpu")
+
+
+def attest_rights(session: SessionModel, current_user: User, db: Session, rights_attested: bool) -> None:
+    """Record webinar / online-talk consent. Does not commit."""
     delivery_mode = getattr(session, "delivery_mode", "stage") or "stage"
     if delivery_mode != "stage" and not user_online_modes_enabled(current_user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Online modes are not enabled")
@@ -572,6 +577,104 @@ async def upload_and_analyze(
                 details={"attested": True},
             )
         )
+        db.add(session)
+
+
+def finalize_stored_upload(
+    *,
+    session: SessionModel,
+    current_user: User,
+    db: Session,
+    stored_path: Path,
+    total: int,
+    digest_hex: str,
+    content_type: str | None,
+    extension: str,
+) -> dict:
+    """Validate a stored original, enqueue analysis, and return the job body."""
+    if total == 0:
+        stored_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty")
+    duration = _probe_duration_seconds(stored_path)
+    if duration is not None and duration > MAX_DURATION_SECONDS:
+        stored_path.unlink(missing_ok=True)
+        limit_min = int(MAX_DURATION_SECONDS / 60)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"This recording is longer than {limit_min} minutes.",
+        )
+
+    policy = normalize_retention_policy(getattr(current_user, "retention_policy", None))
+    retention_until = retention_until_for(policy, datetime.utcnow(), event="upload")
+    asset = MediaAsset(
+        session_id=session.id,
+        kind="original",
+        storage_uri=str(stored_path),
+        bytes=total,
+        sha256=digest_hex,
+        retention_until=retention_until,
+        codec_info={"content_type": content_type, "extension": extension, "retention_policy": policy},
+    )
+    job = AnalysisJob(
+        session_id=session.id,
+        scoring_config_version="1.1.0",
+        pipeline_version="0.2.0",
+        status="pending",
+    )
+    session.status = "uploaded"
+    db.add(asset)
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    output_dir = stored_path.resolve().parent.parent / str(job.id)
+    delivery_mode = getattr(session, "delivery_mode", "stage") or "stage"
+    online = delivery_mode != "stage"
+    task_name = "tasks.prepare_session" if online else "tasks.run_mvp_analysis"
+    kwargs = {
+        "job_id": str(job.id),
+        "session_id": str(session.id),
+        "input_path": str(stored_path),
+        "output_dir": str(output_dir),
+        "context_type": session.context_type,
+        "language": session.language,
+        "slot_min": session.slot_min,
+        "consents": snapshot_for_user(db, current_user.id),
+        "camera_setup": session.camera_setup,
+        "accessibility_profile": current_user.accessibility_profile or {},
+        "retention_policy": policy,
+        "llm_settings": getattr(current_user, "llm_settings", None) or {},
+        "qa_in_slot": bool(session.qa_in_slot),
+        "audience_desc": session.audience_desc,
+    }
+    if online:
+        kwargs["delivery_mode"] = delivery_mode
+        kwargs["source_kind"] = getattr(session, "source_kind", "upload") or "upload"
+    enqueue_analysis(task_name, kwargs)
+    session.status = "preparing" if online else "processing"
+    db.commit()
+    return {"session_id": str(session.id), "job_id": str(job.id), "status": session.status}
+
+
+@router.post("/{session_id}/upload", status_code=status.HTTP_202_ACCEPTED)
+async def upload_and_analyze(
+    session_id: str,
+    file: UploadFile = File(...),
+    rights_attested: bool = Form(False),
+    role: str = Form("primary"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Stream one request onto disk. Browsers use the chunked routes instead.
+
+    A single body cannot cross Cloudflare's ~100 MB proxy cap. This route remains
+    for a direct client on a private network.
+    """
+    session = _owned_session(session_id, current_user, db)
+    if session.status not in {"created", "failed"}:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Session already uploaded")
+    _ = role
+    attest_rights(session, current_user, db, rights_attested)
 
     original_name = file.filename or ""
     extension = Path(original_name).suffix.casefold()
@@ -594,83 +697,37 @@ async def upload_and_analyze(
             while chunk := await file.read(1024 * 1024):
                 total += len(chunk)
                 if total > MAX_FILE_SIZE:
-                    limit_gb = MAX_FILE_SIZE / (1024 ** 3)
-                    raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail=f"This file is larger than {limit_gb:g} GB. Trim it or export at 720p.",
+                    raise UploadRejected(
+                        status.HTTP_413_CONTENT_TOO_LARGE,
+                        "file_too_large",
+                        "This file is larger than the upload limit. Trim it or export at 720p.",
+                        limit_bytes=MAX_FILE_SIZE,
+                        size_bytes=total,
                     )
                 digest.update(chunk)
                 destination.write(chunk)
         stored_path.chmod(0o600)
+    except UploadRejected as exc:
+        stored_path.unlink(missing_ok=True)
+        payload: dict = {"detail": exc.detail, "code": exc.code}
+        payload.update(exc.extra)
+        return JSONResponse(status_code=exc.status_code, content=payload)
     except Exception:
         stored_path.unlink(missing_ok=True)
         raise
     finally:
         await file.close()
 
-    if total == 0:
-        stored_path.unlink(missing_ok=True)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty")
-
-    duration = _probe_duration_seconds(stored_path)
-    if duration is not None and duration > MAX_DURATION_SECONDS:
-        stored_path.unlink(missing_ok=True)
-        limit_min = int(MAX_DURATION_SECONDS / 60)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"This recording is longer than {limit_min} minutes.",
-        )
-
-    policy = normalize_retention_policy(getattr(current_user, "retention_policy", None))
-    retention_until = retention_until_for(policy, datetime.utcnow(), event="upload")
-    asset = MediaAsset(
-        session_id=session.id,
-        kind="original",
-        storage_uri=str(stored_path),
-        bytes=total,
-        sha256=digest.hexdigest(),
-        retention_until=retention_until,
-        codec_info={"content_type": file.content_type, "extension": extension, "retention_policy": policy},
+    return finalize_stored_upload(
+        session=session,
+        current_user=current_user,
+        db=db,
+        stored_path=stored_path,
+        total=total,
+        digest_hex=digest.hexdigest(),
+        content_type=file.content_type,
+        extension=extension,
     )
-    job = AnalysisJob(
-        session_id=session.id,
-        scoring_config_version="1.1.0",
-        pipeline_version="0.2.0",
-        status="pending",
-    )
-    session.status = "uploaded"
-    db.add(asset)
-    db.add(job)
-    db.commit()
-    db.refresh(job)
-
-    output_dir = session_dir / str(job.id)
-    celery = Celery("stagecoach-api", broker=REDIS_URL, backend=REDIS_URL)
-    online = delivery_mode != "stage"
-    task_name = "tasks.prepare_session" if online else "tasks.run_mvp_analysis"
-    kwargs = {
-        "job_id": str(job.id),
-        "session_id": str(session.id),
-        "input_path": str(stored_path),
-        "output_dir": str(output_dir),
-        "context_type": session.context_type,
-        "language": session.language,
-        "slot_min": session.slot_min,
-        "consents": snapshot_for_user(db, current_user.id),
-        "camera_setup": session.camera_setup,
-        "accessibility_profile": current_user.accessibility_profile or {},
-        "retention_policy": policy,
-        "llm_settings": getattr(current_user, "llm_settings", None) or {},
-        "qa_in_slot": bool(session.qa_in_slot),
-        "audience_desc": session.audience_desc,
-    }
-    if online:
-        kwargs["delivery_mode"] = delivery_mode
-        kwargs["source_kind"] = getattr(session, "source_kind", "upload") or "upload"
-    celery.send_task(task_name, kwargs=kwargs, queue="cpu")
-    session.status = "preparing" if online else "processing"
-    db.commit()
-    return {"session_id": str(session.id), "job_id": str(job.id), "status": session.status}
 
 
 @router.post("/{session_id}/deck", status_code=status.HTTP_201_CREATED)

@@ -45,7 +45,7 @@ services:
       JWT_ISSUER: stagecoach-web
       JWT_AUDIENCE: stagecoach-api
       MEDIA_ROOT: /data/stagecoach
-      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-83886080}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-2147483648}
       OTEL_SERVICE_NAME: stagecoach
       OTEL_EXPORTER_OTLP_ENDPOINT: http://host.docker.internal:4318
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf

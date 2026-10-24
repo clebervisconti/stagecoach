@@ -240,7 +240,7 @@ The live path is **one Celery task**: `tasks.run_mvp_analysis` (`services/analys
 
 ### 5.3 API and storage
 - Sessions: `SessionCreate` has `context_type ∈ {keynote, breakout, exec_briefing, sales_pitch, virtual_meeting, class_academic, other}`, `camera_setup ∈ {stage, to_camera, screen_recording, audio_only}`, `language ∈ {en, pt-BR, auto}`.
-- Storage is the **local filesystem** under `MEDIA_ROOT` (`/data/stagecoach/<session_id>/upload/…` and `/<session_id>/<job_id>/…` for artifacts), not S3/MinIO as the README says. `MAX_UPLOAD_BYTES` defaults to 500 MB, and the upload is a single multipart request (no tus).
+- Storage is the **local filesystem** under `MEDIA_ROOT` (`/data/stagecoach/<session_id>/upload/…` and `/<session_id>/<job_id>/…` for artifacts), not S3/MinIO as the README says. Recordings upload as 8 MiB chunks (ADR-085) up to 2 GiB. The single-request route remains for a private network.
 - Report endpoints: `/sessions/{id}/report|analysis|transcript|series/{name}|timeline|body|slides|keyframe|sprite|media/playback|media`, plus `/export/pdf` and `DELETE /sessions/{id}` (hard prefix wipe, ADR-021).
 - Session status values: `created, uploaded, processing, ready, partial, failed`. Note that the worker sets `partial` at the end of every successful run (Appendix C, C4).
 
@@ -500,7 +500,7 @@ All routes sit under the existing router prefix used by `routers/sessions.py` an
 - `role` defaults to `primary`. For `two_track`, both `camera` and `screen` are required; the API enqueues `tasks.prepare_session` only after the second one arrives, and the first returns `202 {"status":"uploaded","waiting_for":"screen"}`.
 - Stage mode is **unchanged**: it enqueues `tasks.run_mvp_analysis` directly. Online modes enqueue `tasks.prepare_session` and set `status=preparing`.
 - Online modes need the rights attestation: a form field `rights_attested=true` stamps `sessions.rights_attested_at` and writes a content-free `audit_log` row (`action="rights_attested"`). It is required when `delivery_mode in {webinar, online_talk}` or `source_kind=url`.
-- Limits: `MAX_UPLOAD_BYTES` (env). See OD-6 for 2 GB.
+- Limits: 2 GiB (`MAX_UPLOAD_BYTES`, values below that are ignored). The browser uses `POST /sessions/{id}/uploads` plus chunk `PUT`s (ADR-085) because a single body cannot cross Cloudflare's ~100 MB proxy cap. The legacy `POST /sessions/{id}/upload` route is still there.
 
 ### 8.3 Link source (new, O6, behind flag)
 `POST /sessions/{id}/source-url`
@@ -1419,7 +1419,7 @@ Each item says what to do about it in this feature.
 - **C2. Screen-recording detection is a placeholder.** `ingest.py::detect_person_presence` returns 0.8 whenever ≥ 10 samples decode ("Placeholder: real implementation would analyze frames"), so `is_screen_recording` is almost never true unless the user declares it. *Action:* layout detection replaces it for online modes. For stage mode, leave it (parity) and file a follow-up.
 - **C3. MediaPipe has no arm64 wheel at the pinned version.** `mediapipe==0.10.31` has no linux/aarch64 wheel, so vision is skipped on LION (PR #151 made the skip clean). The 1.x line has aarch64 wheels [S77]. *Action:* ADR-067 / OD-8. Without it, half of this feature is N/A in production.
 - **C4. Jobs always end `partial`.** `worker.py` sets `partial` after every successful run (line ≈1356) and never `succeeded` → session `ready`. *Action:* in O1, set `succeeded` when coverage ≥ `partial_if_coverage_below` and no stage failed; otherwise `partial`. Update the web badge. This is a small behaviour change, and stage e2e tests must be updated knowingly.
-- **C5. Upload limits don't fit webinars.** `MAX_UPLOAD_BYTES` defaults to 500 MB, the upload is a single request (no tus despite ADR-003), and ingest caps at 90 min. A 60-min 1080p webinar export often exceeds 500 MB. *Action:* OD-6.
+- **C5. Upload limits don't fit webinars.** Resolved by ADR-085: 8 MiB chunks, a 2 GiB product limit, and resume. Ingest still caps duration at 120 minutes. Object storage (ADR-003) is not the live path.
 - **C6. Storage is the local filesystem.** Artifacts live under `MEDIA_ROOT`, while the README and SPEC say S3/MinIO with object lifecycle. *Action:* none for this feature. All new artifacts stay under the session prefix so ADR-021 deletion keeps working.
 - **C7. The deck has no UI and can race the analysis.** `POST /sessions/{id}/deck` exists but the web app never calls it, and the upload enqueues analysis immediately, so a deck sent afterwards may be missed. *Action:* the wizard uploads the deck **before** the media (F1 step 3).
 - **C8. The analysis proxy is too small for webcam tiles.** It is ≤ 1280 px wide at 15 fps, so a composite's camera tile is about 320×180 and the face about 40–60 px, below `FACE_PX_FULL = 60`. *Action:* crop from the original (§9.3).

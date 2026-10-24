@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Webinar uploads through Cloudflare no longer die on the proxy body cap and then claim the file is over 2 GB. An 819 MB recording is sent as 8 MiB chunks, a dropped chunk is retried, and Try again resumes the same upload. "File too large" is shown only when the file is over 2 GiB. A 413 or a dropped connection says the proxy or the connection rejected it. See ADR-085.
+
 ### Deploy
+
+- LION: redeploy the web and API images. `alembic upgrade head` widens `media_assets.bytes` to bigint (migration 013) before uvicorn. `MAX_UPLOAD_BYTES` now defaults to `2147483648` in `docker-compose.prod.yml`, `.env.example`, and `deploy/stagecoach-run.sh`. A smaller value is ignored, so the old 80 MiB default cannot reject a webinar. No Cloudflare plan change and no new secret. The media volume needs room for the file twice while the chunks are assembled.
 
 - The LION overlay sets `AUTH_URL` from `STAGECOACH_PUBLIC_URL` (default `http://127.0.0.1:8870`) and `AUTH_TRUST_HOST=true`, so Auth.js does not return UntrustedHost on `/api/auth/*`.
 - The LION API runs `alembic upgrade head` before uvicorn. A restart at the current head does nothing.

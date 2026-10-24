@@ -741,6 +741,7 @@
     "cancelUpload": "Cancelar envio",
     "uploadCancelled": "Envio cancelado",
     "uploadFailed": "O envio falhou · A conexão caiu.",
+    "proxyRejected": "O proxy recusou o envio antes de terminar. Este arquivo está abaixo do limite de 2 GB.",
     "tryAgain": "Tentar de novo",
     "chooseAnother": "Escolher outro arquivo",
     "uploadAnother": "Enviar outro arquivo",

@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/;
-const ALLOWED_METHODS = new Set(["GET", "POST", "PATCH", "DELETE"]);
+const ALLOWED_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 const ANONYMOUS_AUTH = new Set(["login", "register", "forgot", "verify-email", "reset", "session-ticket"]);
 
 function isAnonymous(parts: string[]): boolean {
@@ -84,7 +84,7 @@ async function proxy(
     method: request.method,
     headers,
   };
-  if (request.method === "POST" || request.method === "PATCH") {
+  if (request.method === "POST" || request.method === "PUT" || request.method === "PATCH") {
     init.body = request.body;
     init.duplex = "half";
   }
@@ -117,5 +117,6 @@ async function proxy(
 
 export const GET = proxy;
 export const POST = proxy;
+export const PUT = proxy;
 export const PATCH = proxy;
 export const DELETE = proxy;

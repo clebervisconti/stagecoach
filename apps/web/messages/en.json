@@ -741,6 +741,7 @@
     "cancelUpload": "Cancel upload",
     "uploadCancelled": "Upload cancelled",
     "uploadFailed": "Upload failed · Your connection dropped.",
+    "proxyRejected": "The proxy rejected the upload before it finished. This file is under the 2 GB limit.",
     "tryAgain": "Try again",
     "chooseAnother": "Choose another file",
     "uploadAnother": "Upload another file",

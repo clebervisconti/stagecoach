@@ -15,6 +15,29 @@ test("GET is allowed without an Origin", () => {
   );
 });
 
+test("PUT is a mutation and needs the same origin", () => {
+  assert.equal(
+    mutationAllowed({
+      method: "PUT",
+      origin: "https://stagecoach.example",
+      host: "stagecoach.example",
+      forwardedHost: null,
+      secFetchSite: "same-origin",
+    }),
+    true,
+  );
+  assert.equal(
+    mutationAllowed({
+      method: "PUT",
+      origin: null,
+      host: "stagecoach.example",
+      forwardedHost: null,
+      secFetchSite: null,
+    }),
+    false,
+  );
+});
+
 test("same-origin mutations are allowed", () => {
   assert.equal(
     mutationAllowed({

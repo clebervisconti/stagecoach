@@ -292,6 +292,40 @@ export async function mockStagecoachApi(page: Page, options: MockOptions): Promi
       created = true;
       return json(route, session());
     }
+    if (method === "POST" && /^\/sessions\/[^/]+\/uploads$/.test(path)) {
+      return json(
+        route,
+        {
+          upload_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          chunk_bytes: 8 * 1024 * 1024,
+          size: 1,
+          received: [],
+          missing: [0],
+          complete: false,
+        },
+        201,
+      );
+    }
+    if (method === "PUT" && /^\/sessions\/[^/]+\/uploads\/[^/]+\/chunks\/\d+$/.test(path)) {
+      return json(route, {
+        upload_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        received: [0],
+        missing: [],
+        complete: true,
+      });
+    }
+    if (method === "GET" && /^\/sessions\/[^/]+\/uploads\/[^/]+$/.test(path)) {
+      return json(route, {
+        upload_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        chunk_bytes: 8 * 1024 * 1024,
+        received: [],
+        missing: [0],
+        complete: false,
+      });
+    }
+    if (method === "POST" && /^\/sessions\/[^/]+\/uploads\/[^/]+\/complete$/.test(path)) {
+      return json(route, { session_id: SESSION_ID, status: "processing" }, 202);
+    }
     if (method === "POST" && path === `/sessions/${SESSION_ID}/upload`) {
       return json(route, { id: SESSION_ID, status: "processing" });
     }
