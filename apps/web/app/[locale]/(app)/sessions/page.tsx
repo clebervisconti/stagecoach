@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Upload } from "lucide-react";
 import { ConsentPanel } from "@/components/consents/consent-panel";
+import { uploadRecordingChunked } from "@/lib/chunked-upload";
+import { formatBytes, MAX_UPLOAD_BYTES } from "@/lib/online";
+import { uploadErrorCopy } from "@/lib/upload-errors";
 
 type Session = {
   id: string;
@@ -30,6 +33,8 @@ export default function SessionsPage() {
   const [uploadName, setUploadName] = useState("");
   const [error, setError] = useState("");
   const [onlineModes, setOnlineModes] = useState<"unknown" | "on" | "off">("unknown");
+  const online = useTranslations("online");
+  const pendingRef = useRef<{ key: string; sessionId: string; uploadId: string | null } | null>(null);
 
   const loadSessions = useCallback(async () => {
     const response = await fetch("/api/stagecoach/sessions", { cache: "no-store" });
@@ -67,28 +72,61 @@ export default function SessionsPage() {
     const file = form.get("file");
     try {
       if (!(file instanceof File) || !file.size) throw new Error(t("fileRequired"));
-      const create = await fetch("/api/stagecoach/sessions", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          title: form.get("title"),
-          context_type: form.get("context_type"),
-          language: form.get("language"),
-          slot_min: form.get("slot_min") ? Number(form.get("slot_min")) : null,
-          qa_in_slot: false,
-          camera_setup: form.get("camera_setup"),
-        }),
-      });
-      const created = await create.json();
-      if (!create.ok) throw new Error(created.detail || t("createError"));
+      if (file.size > MAX_UPLOAD_BYTES) {
+        throw new Error(online("fileTooLarge", { size: formatBytes(file.size), limit: "2 GB" }));
+      }
+      const key = `${file.name}\0${file.size}\0${file.lastModified}`;
+      let sessionId = pendingRef.current?.key === key ? pendingRef.current.sessionId : null;
+      if (!sessionId) {
+        const create = await fetch("/api/stagecoach/sessions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: form.get("title"),
+            context_type: form.get("context_type"),
+            language: form.get("language"),
+            slot_min: form.get("slot_min") ? Number(form.get("slot_min")) : null,
+            qa_in_slot: false,
+            camera_setup: form.get("camera_setup"),
+          }),
+        });
+        const created = (await create.json().catch(() => ({}))) as { id?: unknown; detail?: unknown };
+        if (!create.ok || typeof created.id !== "string") {
+          const detail = typeof created.detail === "string" ? created.detail : "";
+          throw new Error(detail || t("createError"));
+        }
+        sessionId = created.id;
+        pendingRef.current = { key, sessionId, uploadId: null };
+      }
 
-      const uploadBody = new FormData();
-      uploadBody.set("file", file);
       setUploadName(file.name);
       setUploadPct(0);
-      const uploaded = await uploadRecording(`/api/stagecoach/sessions/${created.id}/upload`, uploadBody, setUploadPct);
-      if (!uploaded.ok) throw new Error(uploaded.detail || t("uploadError"));
-      router.push(`${prefix}/sessions/${created.id}`);
+      const uploaded = await uploadRecordingChunked({
+        sessionId,
+        file,
+        uploadId: pendingRef.current?.uploadId ?? null,
+        onUploadId: (uploadId) => {
+          if (pendingRef.current?.sessionId === sessionId) pendingRef.current.uploadId = uploadId;
+        },
+        onProgress: (next) => setUploadPct(next.pct),
+      });
+      if (!uploaded.ok) {
+        if (pendingRef.current?.sessionId === sessionId) pendingRef.current.uploadId = uploaded.uploadId;
+        const copy = uploadErrorCopy({
+          fileSize: file.size,
+          maxBytes: MAX_UPLOAD_BYTES,
+          status: uploaded.status,
+          code: uploaded.code,
+          detail: uploaded.detail,
+          tooLarge: (size) => online("fileTooLarge", { size: formatBytes(size), limit: "2 GB" }),
+          proxy: () => online("proxyRejected"),
+          network: () => online("uploadFailed"),
+          other: (detail) => detail || t("uploadError"),
+        });
+        throw new Error(copy.message);
+      }
+      pendingRef.current = null;
+      router.push(`${prefix}/sessions/${sessionId}`);
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "";
       setError(message && message !== "upload failed" ? message : t("uploadError"));
@@ -250,33 +288,6 @@ export default function SessionsPage() {
       )}
     </div>
   );
-}
-
-function uploadRecording(
-  url: string,
-  body: FormData,
-  onProgress: (pct: number) => void,
-): Promise<{ ok: boolean; detail?: string }> {
-  return new Promise((resolve, reject) => {
-    const request = new XMLHttpRequest();
-    request.open("POST", url);
-    request.upload.onprogress = (event) => {
-      if (!event.lengthComputable) return;
-      onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
-    };
-    request.onerror = () => reject(new Error("upload failed"));
-    request.onload = () => {
-      let detail = "";
-      try {
-        const payload = JSON.parse(request.responseText) as { detail?: string };
-        detail = payload.detail || "";
-      } catch {
-        detail = "";
-      }
-      resolve({ ok: request.status >= 200 && request.status < 300, detail });
-    };
-    request.send(body);
-  });
 }
 
 function nextAction(

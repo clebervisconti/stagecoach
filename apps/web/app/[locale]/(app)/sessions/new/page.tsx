@@ -5,16 +5,19 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ModeStep } from "@/components/sessions/new/mode-step";
 import { RecordingStep, type RecordingDraft, type UploadFailure, type UploadTelemetry } from "@/components/sessions/new/recording-step";
-import { formatBytes } from "@/lib/online";
+import { isAbortError, uploadRecordingChunked } from "@/lib/chunked-upload";
 import { WizardStepper } from "@/components/sessions/new/wizard-stepper";
 import {
+  formatBytes,
   isDeliveryMode,
+  MAX_UPLOAD_BYTES,
   readLastContext,
   readLastMode,
   writeLastContext,
   writeLastMode,
   type DeliveryMode,
 } from "@/lib/online";
+import { uploadErrorCopy } from "@/lib/upload-errors";
 
 export default function NewSessionPage() {
   return (
@@ -48,8 +51,14 @@ function NewSessionWizard() {
     deck: File | null;
     duration: number | null;
   } | null>(null);
-  const xhrRef = useRef<XMLHttpRequest | null>(null);
-  const createdId = useRef<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const cancelRequested = useRef(false);
+  const pendingRef = useRef<{
+    fileKey: string;
+    sessionId: string;
+    uploadId: string | null;
+    deckSent: boolean;
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -102,75 +111,107 @@ function NewSessionWizard() {
     deck: File | null;
     duration: number | null;
   }) {
+    cancelRequested.current = false;
     lastSubmit.current = payload;
     setUploadError(null);
     setUploading(true);
     setTelemetry({ loaded: 0, total: payload.file.size, pct: 0, speed: 0, eta: null });
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const key = `${payload.file.name}\0${payload.file.size}\0${payload.file.lastModified}`;
     try {
-      const create = await fetch("/api/stagecoach/sessions", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          title: payload.draft.title,
-          context_type: payload.draft.context_type,
-          language: payload.draft.language,
-          slot_min: payload.draft.slot_min ? Number(payload.draft.slot_min) : null,
-          qa_in_slot: payload.draft.qa_in_slot,
-          camera_setup: payload.draft.camera_setup,
-          delivery_mode: mode,
-          source_kind: "upload",
-          rights_attested: payload.draft.rights,
-          other_people_appear: payload.draft.other_people_appear,
-          target_length_min: mode === "recorded_video" && payload.draft.slot_min ? Number(payload.draft.slot_min) : null,
-        }),
-      });
-      const created = await create.json();
-      if (!create.ok) throw new Error(created.detail || t("createError"));
-      createdId.current = created.id;
-      writeLastContext(payload.draft.context_type);
-      if (mode) writeLastMode(mode);
-
-      if (payload.deck) {
-        const deckBody = new FormData();
-        deckBody.set("file", payload.deck);
-        const decked = await fetch(`/api/stagecoach/sessions/${created.id}/deck`, {
-          method: "POST",
-          body: deckBody,
-        });
-        if (!decked.ok) {
-          const body = await decked.json().catch(() => ({}));
-          throw new Error(body.detail || t("deckError"));
-        }
+      if (pendingRef.current && pendingRef.current.fileKey !== key) {
+        const stale = pendingRef.current.sessionId;
+        pendingRef.current = null;
+        await fetch(`/api/stagecoach/sessions/${stale}`, { method: "DELETE", signal: controller.signal }).catch(
+          () => undefined,
+        );
       }
 
-      const uploadBody = new FormData();
-      uploadBody.set("file", payload.file);
-      if (payload.draft.rights) uploadBody.set("rights_attested", "true");
-      const uploaded = await sendUpload(
-        `/api/stagecoach/sessions/${created.id}/upload`,
-        uploadBody,
-        (next) => setTelemetry(next),
-        (request) => {
-          xhrRef.current = request;
-        },
-      );
-      if (!uploaded.ok) {
-        if (uploaded.status === 413) {
-          setUploadError({
-            kind: "too_large",
-            message: t("fileTooLarge", { size: formatBytes(payload.file.size), limit: "2 GB" }),
-          });
-        } else if (uploaded.status >= 500 || uploaded.status === 0) {
-          setUploadError({ kind: "network", message: t("uploadFailed") });
-        } else {
-          setUploadError({ kind: "other", message: uploaded.detail || t("uploadError") });
+      let sessionId = pendingRef.current?.sessionId ?? null;
+      if (!sessionId) {
+        const create = await fetch("/api/stagecoach/sessions", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: payload.draft.title,
+            context_type: payload.draft.context_type,
+            language: payload.draft.language,
+            slot_min: payload.draft.slot_min ? Number(payload.draft.slot_min) : null,
+            qa_in_slot: payload.draft.qa_in_slot,
+            camera_setup: payload.draft.camera_setup,
+            delivery_mode: mode,
+            source_kind: "upload",
+            rights_attested: payload.draft.rights,
+            other_people_appear: payload.draft.other_people_appear,
+            target_length_min: mode === "recorded_video" && payload.draft.slot_min ? Number(payload.draft.slot_min) : null,
+          }),
+          signal: controller.signal,
+        });
+        const created = (await create.json().catch(() => ({}))) as { id?: unknown; detail?: unknown };
+        if (!create.ok || typeof created.id !== "string") {
+          const detail = typeof created.detail === "string" ? created.detail : "";
+          throw new Error(detail || t("createError"));
         }
+        sessionId = created.id;
+        pendingRef.current = { fileKey: key, sessionId, uploadId: null, deckSent: false };
+        writeLastContext(payload.draft.context_type);
+        if (mode) writeLastMode(mode);
+      }
+
+      const pending = pendingRef.current;
+      if (payload.deck && pending && !pending.deckSent) {
+        const deckBody = new FormData();
+        deckBody.set("file", payload.deck);
+        const decked = await fetch(`/api/stagecoach/sessions/${sessionId}/deck`, {
+          method: "POST",
+          body: deckBody,
+          signal: controller.signal,
+        });
+        if (!decked.ok) {
+          const body = (await decked.json().catch(() => ({}))) as { detail?: unknown };
+          const detail = typeof body.detail === "string" ? body.detail : "";
+          throw new Error(detail || t("deckError"));
+        }
+        pending.deckSent = true;
+      }
+
+      const uploaded = await uploadRecordingChunked({
+        sessionId,
+        file: payload.file,
+        rightsAttested: payload.draft.rights,
+        uploadId: pendingRef.current?.uploadId ?? null,
+        signal: controller.signal,
+        onUploadId: (uploadId) => {
+          if (pendingRef.current?.sessionId === sessionId) pendingRef.current.uploadId = uploadId;
+        },
+        onProgress: (next) => setTelemetry(next),
+      });
+      if (!uploaded.ok) {
+        if (pendingRef.current?.sessionId === sessionId) pendingRef.current.uploadId = uploaded.uploadId;
+        const copy = uploadErrorCopy({
+          fileSize: payload.file.size,
+          maxBytes: MAX_UPLOAD_BYTES,
+          status: uploaded.status,
+          code: uploaded.code,
+          detail: uploaded.detail,
+          tooLarge: (size) => t("fileTooLarge", { size: formatBytes(size), limit: "2 GB" }),
+          proxy: () => t("proxyRejected"),
+          network: () => t("uploadFailed"),
+          other: (detail) => detail || t("uploadError"),
+        });
+        setUploadError({ kind: copy.kind, message: copy.message });
         setUploading(false);
         return;
       }
-      router.push(`${prefix}/sessions/${created.id}`);
+      pendingRef.current = null;
+      router.push(`${prefix}/sessions/${sessionId}`);
     } catch (reason) {
-      const network = reason instanceof TypeError || (reason instanceof Error && /abort|failed|network/i.test(reason.message));
+      if (cancelRequested.current || isAbortError(reason)) {
+        setUploading(false);
+        return;
+      }
+      const network = reason instanceof TypeError;
       setUploadError({
         kind: network ? "network" : "other",
         message: reason instanceof Error ? reason.message : t("uploadError"),
@@ -180,10 +221,12 @@ function NewSessionWizard() {
   }
 
   async function cancelUpload() {
-    xhrRef.current?.abort();
-    if (createdId.current) {
-      await fetch(`/api/stagecoach/sessions/${createdId.current}`, { method: "DELETE" }).catch(() => undefined);
-      createdId.current = null;
+    cancelRequested.current = true;
+    abortRef.current?.abort();
+    const id = pendingRef.current?.sessionId;
+    pendingRef.current = null;
+    if (id) {
+      await fetch(`/api/stagecoach/sessions/${id}`, { method: "DELETE" }).catch(() => undefined);
     }
     setUploading(false);
     setTelemetry(null);
@@ -239,44 +282,4 @@ function NewSessionWizard() {
       )}
     </div>
   );
-}
-
-function sendUpload(
-  url: string,
-  body: FormData,
-  onProgress: (value: UploadTelemetry) => void,
-  capture: (request: XMLHttpRequest) => void,
-): Promise<{ ok: boolean; status: number; detail?: string }> {
-  return new Promise((resolve, reject) => {
-    const request = new XMLHttpRequest();
-    capture(request);
-    const started = Date.now();
-    request.open("POST", url);
-    request.upload.onprogress = (event) => {
-      if (!event.lengthComputable) return;
-      const elapsed = Math.max(0.2, (Date.now() - started) / 1000);
-      const speed = event.loaded / elapsed;
-      const remaining = event.total - event.loaded;
-      onProgress({
-        loaded: event.loaded,
-        total: event.total,
-        pct: Math.min(100, Math.round((event.loaded / event.total) * 100)),
-        speed,
-        eta: speed > 0 ? remaining / speed : null,
-      });
-    };
-    request.onerror = () => reject(new TypeError("upload failed"));
-    request.onabort = () => reject(new TypeError("upload cancelled"));
-    request.onload = () => {
-      let detail = "";
-      try {
-        const payload = JSON.parse(request.responseText) as { detail?: string };
-        detail = typeof payload.detail === "string" ? payload.detail : JSON.stringify(payload.detail ?? "");
-      } catch {
-        detail = "";
-      }
-      resolve({ ok: request.status >= 200 && request.status < 300, status: request.status, detail });
-    };
-    request.send(body);
-  });
 }

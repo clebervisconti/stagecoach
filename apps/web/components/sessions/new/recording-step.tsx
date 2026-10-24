@@ -45,7 +45,7 @@ export type UploadTelemetry = {
 };
 
 export type UploadFailure = {
-  kind: "too_large" | "network" | "other";
+  kind: "too_large" | "proxy" | "network" | "other";
   message: string;
 };
 
@@ -208,7 +208,7 @@ export function RecordingStep({
 
   const readOnly = uploading;
   const tooLarge = uploadError?.kind === "too_large";
-  const networkFail = uploadError?.kind === "network";
+  const canRetry = uploadError?.kind === "network" || uploadError?.kind === "proxy";
 
   return (
     <div className="mx-auto grid w-full min-w-0 max-w-[1100px] gap-12 lg:grid-cols-[minmax(0,680px)_340px]">
@@ -525,7 +525,7 @@ export function RecordingStep({
               </span>
             </p>
             <div className="mt-3 flex flex-wrap gap-3">
-              {networkFail && (
+              {canRetry && (
                 <button type="button" onClick={onRetry} className="text-xs uppercase tracking-[0.08em]">
                   {t("tryAgain")}
                 </button>

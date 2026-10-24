@@ -209,6 +209,17 @@ unset BOOTSTRAP_ADMIN_TEMP_PASSWORD
 
 Forgot password does not send email. An admin uses Force password reset on Users and reads the temporary password once.
 
+## Recording uploads (ADR-085)
+
+Cloudflare rejects a proxied body over 100 MB on Free and Pro (200 MB on Business) with HTTP 413. The browser sends 8 MiB chunks to `PUT /api/stagecoach/sessions/{id}/uploads/{upload_id}/chunks/{n}` and resumes after a drop. Do not raise the zone plan for this. Do not turn the hostname DNS-only to make a single POST fit.
+
+On deploy:
+
+- Redeploy web and API. The API command already runs `alembic upgrade head`. Migration 013 changes `media_assets.bytes` from integer to bigint so a file at the 2 GiB limit can be stored.
+- `MAX_UPLOAD_BYTES` defaults to `2147483648`. If the host environment still exports `83886080`, the API ignores that lower value and logs it. Unset it when convenient so the warning goes away.
+- The media volume holds the chunks and the assembled file at the same time. A 2 GiB upload needs about 4 GiB free until the parts are deleted.
+- No new secret.
+
 ## Constraints recorded here
 
 - This product currently lives in a **public** GitHub repo. Do not commit emails, passwords, or personal data. Cloudflare Access can come off only after the app-auth cutover above.

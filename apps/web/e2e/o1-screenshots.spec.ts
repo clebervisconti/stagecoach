@@ -135,8 +135,9 @@ test.describe("O1 design screenshots", () => {
           });
           await page.getByLabel(/I recorded this session/i).check();
           await page.getByTestId("upload-continue").click();
-          await expect(page.getByText(/file too large/i)).toBeVisible({ timeout: 10_000 });
-          await expect(page.getByRole("button", { name: /try again/i })).toHaveCount(0);
+          await expect(page.getByText(/proxy rejected the upload/i)).toBeVisible({ timeout: 10_000 });
+          await expect(page.getByText(/file too large/i)).toHaveCount(0);
+          await expect(page.getByRole("button", { name: /try again/i })).toBeVisible();
           await snap(page, "s1b_error", width, theme);
         });
 

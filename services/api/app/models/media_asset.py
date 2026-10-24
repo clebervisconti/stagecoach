@@ -1,7 +1,7 @@
 """Media asset model."""
 
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Integer, Float, ForeignKey
+from sqlalchemy import BigInteger, Column, String, DateTime, Float, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.models import Base
@@ -23,7 +23,7 @@ class MediaAsset(Base):
         comment="original, analysis_proxy, playback, audio16k, deck, keyframe, sprite"
     )
     storage_uri = Column(String(512), nullable=False, comment="S3/MinIO URI")
-    bytes = Column(Integer, nullable=False)
+    bytes = Column(BigInteger, nullable=False)
     duration_s = Column(Float, nullable=True, comment="For video/audio")
     codec_info = Column(JSONB, nullable=True)
     sha256 = Column(String(64), nullable=False)

@@ -8,7 +8,22 @@ from sqlalchemy import text
 
 from app.rate_limit import TokenBucketMiddleware
 from app.observability import MetricsMiddleware, error_tracking_status, init_api_otel, render_metrics
-from app.routers import users, sessions, progress, evidence, exports, transparency, admin, plans, clarify, trends, goals, identity, layout
+from app.routers import (
+    users,
+    sessions,
+    progress,
+    evidence,
+    exports,
+    transparency,
+    admin,
+    plans,
+    clarify,
+    trends,
+    goals,
+    identity,
+    layout,
+    chunk_uploads,
+)
 from app.database import engine
 
 init_api_otel()
@@ -25,6 +40,7 @@ app.add_middleware(MetricsMiddleware)
 # Include routers
 app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(sessions.router, prefix="/api/v1", tags=["sessions"])
+app.include_router(chunk_uploads.router, prefix="/api/v1", tags=["sessions"])
 app.include_router(layout.router, prefix="/api/v1", tags=["layout"])
 app.include_router(progress.router, prefix="/api/v1", tags=["progress"])
 app.include_router(evidence.router, prefix="/api/v1", tags=["evidence"])

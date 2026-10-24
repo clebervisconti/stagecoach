@@ -6,6 +6,8 @@ An evidence-based presentation coaching platform that analyzes recorded presenta
 
 In-tree product `0.4.0`: upload → analysis (audio, consented video, slides, content coach) → report, plus talk-prep (`/prep`), trends, and account export. Sign-in is the app's own email and password or Sign in with Apple (ADR-083). Cloudflare Access may still sit in front of `https://stagecoach.cybersphere.com.br` until the cutover in `deploy/README.md`. The app does not trust Access headers. LION still runs `ASR_MODEL=tiny` until the owner cuts a release.
 
+Recordings upload in 8 MiB chunks (ADR-085), so a file up to 2 GiB can pass Cloudflare's proxied body cap on the LION hostname. A dropped chunk retries, and Try again resumes. "File too large" is only for a file over 2 GiB.
+
 Production: LION loopback `:3107`, LaunchAgent `com.cyberlabs.stagecoach`. See `deploy/README.md`.
 
 LION is Apple silicon / OrbStack / **linux/arm64**. The worker image builds from this tree with no local override: torch 2.4.1 from the CPU index on amd64 and from PyPI on arm64; YuNet, Silero VAD, MediaPipe `.task` files, and faster-whisper `small` are baked into `/models`. Lab ports are `infra/compose.lion.yaml` (`make lion-build` / `make lion-up`, with `COMPOSE_PROJECT_NAME` / `ENV_FILE` / `LION_OVERRIDE`) — only loopback 8870 / 6380 / 9010. Do not bind host `:8000` or `:5432`. `worker-beat` is off by default on LION.
@@ -100,7 +102,7 @@ The application will be available at:
 - 📅 **Phase 4** (v2): Practice loop - in-browser recording, live feedback, drills
 - 📅 **Phase 5** (v3): Teams - organizations, coaches, cohort analytics, benchmarks
 
-Still open before a 1.0 cut: licensed-speech validation, WhisperX alignment and diarization on the live job, resumable uploads, ASR off the `tiny` model, and the owner gates in `deploy/README.md` (Resend DNS, Apple secrets, counsel review of `docs/PRIVACY.md`).
+Still open before a 1.0 cut: licensed-speech validation, WhisperX alignment and diarization on the live job, moving originals to object storage (ADR-003; chunked upload to the media volume is ADR-085), ASR off the `tiny` model, and the owner gates in `deploy/README.md` (Resend DNS, Apple secrets, counsel review of `docs/PRIVACY.md`).
 
 ## Research Foundation
 

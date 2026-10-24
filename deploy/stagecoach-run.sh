@@ -22,7 +22,7 @@ POSTGRES_PASSWORD="$(secret POSTGRES_PASSWORD)"
 AUTH_SECRET="$(secret AUTH_SECRET)"
 export STAGECOACH_PORT=3107
 export ASR_MODEL="${ASR_MODEL:-tiny}"
-export MAX_UPLOAD_BYTES="${MAX_UPLOAD_BYTES:-83886080}"
+export MAX_UPLOAD_BYTES="${MAX_UPLOAD_BYTES:-2147483648}"
 export AUTH_TRUST_HOST=true
 
 # Public RUM token. Missing item disables browser telemetry; it must not block startup.
