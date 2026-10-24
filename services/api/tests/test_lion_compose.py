@@ -103,6 +103,9 @@ def test_lion_overlay_uses_reset_or_override():
     assert "!reset" in text
     assert "!override" in text
     assert "${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}" in text
+    assert "AUTH_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}" in text
+    assert 'AUTH_TRUST_HOST: "true"' in text
+    assert "alembic upgrade head" in text
     assert "NEXTAUTH_URL: http://127.0.0.1:8870" not in text
     assert "command: npm run dev" not in text
     assert 'command: ["node", "server.js"]' in text
@@ -147,6 +150,12 @@ def test_lion_merged_compose_publishes_only_loopback_safe_ports():
     assert api_env.get("STAGECOACH_PUBLIC_URL") == DEFAULT_PUBLIC_URL
     assert web_env.get("STAGECOACH_PUBLIC_URL") == DEFAULT_PUBLIC_URL
     assert web_env.get("NEXTAUTH_URL") == DEFAULT_PUBLIC_URL
+    assert web_env.get("AUTH_URL") == DEFAULT_PUBLIC_URL
+    assert str(web_env.get("AUTH_TRUST_HOST")).lower() == "true"
+    api_command = data["services"]["api"].get("command")
+    api_command_s = " ".join(api_command) if isinstance(api_command, list) else str(api_command or "")
+    assert "alembic upgrade head" in api_command_s
+    assert "uvicorn" in api_command_s
     web = data["services"]["web"]
     command = web.get("command")
     command_s = " ".join(command) if isinstance(command, list) else str(command or "")
@@ -162,6 +171,7 @@ def test_lion_public_url_reads_from_env():
     web_env = _service_env(data["services"]["web"])
     assert api_env.get("STAGECOACH_PUBLIC_URL") == public
     assert web_env.get("NEXTAUTH_URL") == public
+    assert web_env.get("AUTH_URL") == public
 
 
 def test_makefile_lion_targets_pass_project_env_and_override():
