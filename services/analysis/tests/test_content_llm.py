@@ -610,14 +610,17 @@ def test_long_synthetic_transcript_map_reduces_under_token_cap(tmp_path):
 
     saved = json.loads((tmp_path / "content.json").read_text())
     chunk_count = saved["provenance"]["chunk_count"]
+    outline_count = saved["provenance"]["outline_chunk_count"]
     assert chunk_count >= 2
+    assert outline_count > chunk_count
+    assert saved["provenance"]["outline_chunk_tokens"] == 2500
     assert saved["provenance"]["k"] == 1
     assert saved["provenance"]["long_session"] is True
     assert saved["provenance"]["estimated_tokens"] > CALL_TOKEN_CAP
     assert outcome["status"] == "succeeded"
     assert outcome["partial"] is False
     assert saved["provenance"]["elapsed_s"] < saved["provenance"]["budget_s"]
-    assert len(calls) == 4 * (chunk_count + 1) + 1
+    assert len(calls) == (outline_count + 1) + 3 * (chunk_count + 1) + 1
     assert {call["temperature"] for call in calls} == {0.3}
 
     for call in calls:
@@ -632,7 +635,7 @@ def test_long_synthetic_transcript_map_reduces_under_token_cap(tmp_path):
             assert "transcript" not in inputs
             assert inputs["instruction"].startswith("Merge")
     assert any("chunk_analyses" in call["inputs"] for call in calls)
-    assert f"outline 1/{chunk_count}" in progress
+    assert f"outline 1/{outline_count}" in progress
     assert "outline reduce" in progress
     assert "message 2/" + str(chunk_count) in progress or f"message {chunk_count}/{chunk_count}" in progress
     assert ready == [["structure"]]
@@ -818,3 +821,82 @@ def test_model_error_after_a_prompt_keeps_partial_content(synthetic_transcript_p
     assert saved["message"] is None
     assert saved.get("unavailable") is not True
     assert saved["provenance"]["stop_reason"] == "error"
+
+
+def test_timeout_retries_once_then_finishes(synthetic_transcript_path, tmp_path):
+    from llm.exceptions import LLMTimeoutError
+    from pipeline.stages.content_llm import run_content_llm_safe
+
+    calls = []
+
+    def generate(prompt_id, inputs, schema, temperature=None):
+        calls.append(prompt_id)
+        if prompt_id == "outline_v1" and calls.count("outline_v1") == 1:
+            raise LLMTimeoutError("slow chunk")
+        return _llm_response(prompt_id, _minimal_payload(prompt_id, "Good morning, everyone."))
+
+    with patch("pipeline.stages.content_llm.LLMClient") as mock_cls:
+        _bind_client(mock_cls, generate)
+        outcome = run_content_llm_safe(
+            transcript_path=synthetic_transcript_path,
+            output_dir=tmp_path,
+            session_id="retry-once",
+            duration_s=13 * 60,
+            max_duration_s=13 * 60,
+            budget_s=480,
+        )
+
+    saved = json.loads((tmp_path / "content.json").read_text())
+    assert calls.count("outline_v1") == 2
+    assert outcome["status"] == "succeeded"
+    assert outcome["partial"] is False
+    assert saved["outline"] is not None
+    assert saved.get("unavailable") is not True
+
+
+def test_one_prompt_timeout_does_not_drop_the_model(synthetic_transcript_path, tmp_path):
+    from llm.exceptions import LLMTimeoutError
+    from pipeline.stages.content_llm import run_content_llm_safe
+
+    def generate(prompt_id, inputs, schema, temperature=None):
+        if prompt_id == "outline_v1":
+            raise LLMTimeoutError("slow chunk")
+        return _llm_response(prompt_id, _minimal_payload(prompt_id, "Good morning, everyone."))
+
+    with patch("pipeline.stages.content_llm.LLMClient") as mock_cls:
+        _bind_client(mock_cls, generate)
+        outcome = run_content_llm_safe(
+            transcript_path=synthetic_transcript_path,
+            output_dir=tmp_path,
+            session_id="degrade-one",
+            duration_s=13 * 60,
+            max_duration_s=13 * 60,
+            budget_s=480,
+        )
+
+    saved = json.loads((tmp_path / "content.json").read_text())
+    assert outcome["status"] == "succeeded"
+    assert outcome["partial"] is True
+    assert "didn't finish" in outcome["message"]
+    assert saved.get("unavailable") is not True
+    assert saved["outline"] is None
+    assert saved["message"] is not None
+    assert "outline_v1" in saved["provenance"]["degraded_prompts"]
+    assert saved["provenance"]["stop_reason"] == "timeout"
+
+
+def test_budget_and_read_timeout_scale(monkeypatch):
+    from pipeline.stages.content_llm import resolve_content_budget_s, resolve_read_timeout_s
+
+    monkeypatch.delenv("CONTENT_LLM_BUDGET_S", raising=False)
+    monkeypatch.delenv("CONTENT_LLM_TIMEOUT_S", raising=False)
+    assert resolve_content_budget_s(60, 20000) == 60
+    assert resolve_content_budget_s(None, 6000) == 480
+    assert resolve_content_budget_s(None, 14000) == 660
+    assert resolve_read_timeout_s(2500) == 180
+    assert resolve_read_timeout_s(5000) == 360
+    assert resolve_read_timeout_s(20000) == 600
+    monkeypatch.setenv("CONTENT_LLM_TIMEOUT_S", "90")
+    assert resolve_read_timeout_s(2500) == 90
+    monkeypatch.setenv("CONTENT_LLM_BUDGET_S", "0")
+    assert resolve_content_budget_s(None, 20000) == 0

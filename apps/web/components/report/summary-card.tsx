@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { AlertTriangle, Info } from "lucide-react";
 import type { AnalysisReport } from "@/lib/report-types";
-import { formatOverallLine, overallHeadline } from "@/lib/report-view";
+import { formatOverallLine, overallHeadline, overallLevelWord } from "@/lib/report-view";
 
 type SummaryCardProps = {
   report: AnalysisReport;
@@ -13,7 +13,8 @@ export function SummaryCard({ report }: SummaryCardProps) {
   const t = useTranslations("report");
   const headline = overallHeadline(report);
   const levelName = headline.levelKey ? t(headline.levelKey) : null;
-  const line = formatOverallLine(headline.score, headline.band, levelName);
+  const levelWord = overallLevelWord(headline.partial, levelName, t("partialBadge"));
+  const line = formatOverallLine(headline.score, headline.band, levelWord);
   const warnings = report.quality?.warnings ?? [];
   const core = report.core_delivery?.score ?? null;
   const coreReady = typeof core === "number";

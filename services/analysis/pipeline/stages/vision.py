@@ -100,6 +100,28 @@ def _match_face_hand(instances, pose_bbox):
     return best_i
 
 
+def _camera_time_origin(dest: Path) -> float:
+    """Vision time 0 on camera.mp4 is this offset into the original recording."""
+    path = dest / "camera_spans.json"
+    if not path.is_file():
+        return 0.0
+    try:
+        spans = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return 0.0
+    if not isinstance(spans, list) or not spans:
+        return 0.0
+
+    def span_s(row: dict[str, Any]) -> float:
+        return float(row.get("src_t1") or row.get("t1") or 0.0) - float(row.get("src_t0") or row.get("t0") or 0.0)
+
+    rows = [row for row in spans if isinstance(row, dict)]
+    if not rows:
+        return 0.0
+    dominant = max(rows, key=span_s)
+    return float(dominant.get("src_t0") or dominant.get("t0") or 0.0)
+
+
 def run_vision_stage(
     *,
     output_dir: Path,
@@ -110,6 +132,7 @@ def run_vision_stage(
     encryption_key: Optional[bytes] = None,
     models_dir: Optional[Path] = None,
     camera_setup: str = "unknown",
+    delivery_mode: str = "stage",
 ) -> VisionOutput:
     """Run pose every frame and face/hands at 10 fps when video_analysis is granted."""
     _assert_no_openface()
@@ -295,6 +318,22 @@ def run_vision_stage(
         detected = (quality.get("camera_setup") or {}).get("detected") or camera_setup
         declared = (quality.get("camera_setup") or {}).get("declared") or camera_setup
         gaze_setup = declared if declared in {"stage", "to_camera"} else detected
+        layout_payload = {}
+        layout_path = dest / "layout.json"
+        if layout_path.is_file():
+            try:
+                layout_payload = json.loads(layout_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                layout_payload = {}
+        talk_s = None
+        if isinstance(layout_payload, dict):
+            ends = [
+                float(segment.get("t_end") or 0.0)
+                for segment in layout_payload.get("segments") or []
+                if isinstance(segment, dict)
+            ]
+            if ends:
+                talk_s = max(ends)
         gaze = compute_gaze_metrics(
             face_rows,
             duration_s=max(duration, 1.0),
@@ -302,6 +341,10 @@ def run_vision_stage(
             accessibility=load_accessibility(dest),
             audio_only=False,
             mean_face_height_px=quality.get("mean_face_height_px"),
+            delivery_mode=delivery_mode,
+            layout=layout_payload if isinstance(layout_payload, dict) else None,
+            time_origin_s=_camera_time_origin(dest),
+            session_duration_s=talk_s,
         )
         if gaze is not None:
             gaze_path.write_text(json.dumps(gaze, indent=2) + "\n", encoding="utf-8")

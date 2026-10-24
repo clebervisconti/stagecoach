@@ -299,6 +299,21 @@ function stepsFor(
   ];
 }
 
+function withLiveIngest<T extends { stage: string; status: string; message?: string }>(
+  steps: T[],
+  liveIngest: string | undefined,
+): T[] {
+  if (!liveIngest) return steps;
+  let seen = false;
+  const next = steps.map((step) => {
+    if (step.stage !== "ingest") return step;
+    seen = true;
+    return { ...step, status: "running", message: liveIngest };
+  });
+  if (seen) return next;
+  return [{ stage: "ingest", status: "running", message: liveIngest } as T, ...next];
+}
+
 export async function mockOnlineApi(
   page: Page,
   options: {
@@ -310,6 +325,8 @@ export async function mockOnlineApi(
     uploadDetail?: string;
     coreNa?: boolean;
     startedAgo?: number;
+    posterReady?: boolean;
+    liveIngest?: string;
     autoConfirmed?: boolean;
     consentOff?: boolean;
     visionUnavailable?: boolean;
@@ -445,18 +462,24 @@ export async function mockOnlineApi(
           source_kind: "upload",
           language: locale === "pt-BR" ? "pt-BR" : "en",
           slot_min: 60,
-          media: { duration_s: options.status === "failed" ? null : 540 },
+          media: {
+            duration_s: options.status === "failed" ? null : 540,
+            poster_ready: options.posterReady ?? true,
+          },
           consent: { video_analysis: !options.consentOff },
           created_at: pastIso(startedAgo + 20),
           job: {
             status: options.status === "failed" ? "failed" : "running",
             error: options.status === "failed" ? { message: "unreadable" } : null,
             created_at: pastIso(startedAgo),
-            steps: stepsFor(
-              options.status,
-              Boolean(options.autoConfirmed),
-              Boolean(options.consentOff),
-              Boolean(options.visionUnavailable),
+            steps: withLiveIngest(
+              stepsFor(
+                options.status,
+                Boolean(options.autoConfirmed),
+                Boolean(options.consentOff),
+                Boolean(options.visionUnavailable),
+              ),
+              options.liveIngest,
             ),
           },
         }),

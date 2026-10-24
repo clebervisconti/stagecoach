@@ -56,6 +56,22 @@ def test_stage_and_partial_ready_match_spec_shapes() -> None:
     assert stage["session_id"] == "sess-1"
     assert stage["stage"] == "audio_features"
     assert stage["status"] == "succeeded"
+    assert "artifact" not in stage
+    assert "duration_s" not in stage
+    assert stage["eta_s"] is None
+    rich = stage_event(
+        "job-1",
+        "ingest",
+        "running",
+        pct=10,
+        eta_s=240,
+        message="ingest_poster",
+        artifact="poster",
+        duration_s=2149.2,
+    )
+    assert rich["artifact"] == "poster"
+    assert rich["duration_s"] == 2149.2
+    assert rich["eta_s"] == 240
     ready = partial_ready_event(
         "job-1",
         ["pace_pausing", "fluency", "vocal_variety"],

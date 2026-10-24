@@ -13,6 +13,7 @@ import {
   SKIP_S,
 } from "@/lib/player";
 import { laneMarkers, type TimelinePayload } from "@/lib/timeline";
+import { isSessionWideEvidence } from "@/lib/report-view";
 import { ReportTimeline } from "@/components/report/timeline";
 
 type PlayerProps = {
@@ -187,10 +188,16 @@ export function ReportPlayer({
           <li key={item.id}>
             <button
               type="button"
-              onClick={() => seekEvidence(item.t_start)}
+              onClick={() => {
+                if (!isSessionWideEvidence(item)) seekEvidence(item.t_start);
+              }}
               className="block w-full rounded-md border p-3 text-left text-sm hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <span className="font-mono text-xs text-primary">▶ {formatTimestamp(item.t_start)}</span>{" "}
+              {isSessionWideEvidence(item) ? (
+                <span className="font-mono text-xs text-muted-foreground">{t("wholeSession")}</span>
+              ) : (
+                <span className="font-mono text-xs text-primary">▶ {formatTimestamp(item.t_start)}</span>
+              )}{" "}
               {item.quote || item.text}
             </button>
           </li>

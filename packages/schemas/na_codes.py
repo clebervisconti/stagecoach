@@ -24,6 +24,8 @@ NA_CODES = (
     "hands_not_visible",
     "stage_mode",
     "no_slides",
+    "model_unavailable",
+    "camera_coverage_low",
     "not_applicable",
 )
 
@@ -75,6 +77,11 @@ _REASON_HINTS: tuple[tuple[str, str], ...] = (
     ("hands", "hands_not_visible"),
     ("no slides", "no_slides"),
     ("no deck", "no_slides"),
+    ("language model", "model_unavailable"),
+    ("didn't finish", "model_unavailable"),
+    ("did not finish", "model_unavailable"),
+    ("fills the frame", "camera_coverage_low"),
+    ("camera coverage", "camera_coverage_low"),
 )
 
 

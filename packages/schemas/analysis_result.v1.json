@@ -250,6 +250,8 @@
               "hands_not_visible",
               "stage_mode",
               "no_slides",
+              "model_unavailable",
+              "camera_coverage_low",
               "not_applicable"
             ]
           },

@@ -38,8 +38,9 @@ import { useLocale } from "next-intl";
 import Link from "next/link";
 import { formatTimestamp } from "@/lib/player";
 import { referencesHref } from "@/lib/research-sources";
-import { isNaCode } from "@/lib/online";
-import { categoriesByPillar, evidenceById, metricsById } from "@/lib/report-view";
+import { categoryNaCopy } from "@/lib/na-copy";
+import { formatMeasured, metricLabel, metricUnusable } from "@/lib/metric-labels";
+import { categoriesByPillar, evidenceById, isSessionWideEvidence, metricsById } from "@/lib/report-view";
 import { MetricInfo } from "./metric-info";
 
 type CategoryCardsProps = {
@@ -112,11 +113,7 @@ function CategoryCard({
       )}
       {unavailable && (
         <div className="mt-3 space-y-2 text-sm">
-          <p>
-            {isNaCode(category.na_code)
-              ? onlineT(`na.${category.na_code}`)
-              : t("unavailable")}
-          </p>
+          <p>{categoryNaCopy(category, onlineT)}</p>
           {enable && <p>{enable}</p>}
         </div>
       )}
@@ -128,14 +125,18 @@ function CategoryCard({
               <ul className="mt-2 space-y-2">
                 {category.top_contributors.slice(0, 2).map((metricId) => {
                   const metric = metrics.get(metricId);
-                  const label = KEY_METRIC_SET.has(metricId) || metricId === "fl_filler_words_per_min"
+                  const namedKey = KEY_METRIC_SET.has(metricId) || metricId === "fl_filler_words_per_min";
+                  const label = namedKey
                     ? t(`keyMetrics.${metricId as (typeof KEY_METRIC_IDS)[number] | "fl_filler_words_per_min"}`)
-                    : metricId.replaceAll("_", " ");
+                    : metricLabel(metricId, locale);
                   const definition = KEY_METRIC_SET.has(metricId)
                     ? t(`keyMetricDefinitions.${metricId as (typeof KEY_METRIC_IDS)[number]}`)
                     : label;
+                  const rawNumber = metric && typeof metric.raw_value === "number" ? metric.raw_value : null;
                   const raw =
-                    metric && typeof metric.raw_value === "number" ? String(metric.raw_value) : t("unavailable");
+                    rawNumber === null || metricUnusable(metricId, rawNumber)
+                      ? t("unavailable")
+                      : formatMeasured(rawNumber, metric?.unit);
                   return (
                     <li key={metricId} className="flex items-start justify-between gap-2 rounded-md bg-muted/50 p-2">
                       <div>
@@ -151,7 +152,11 @@ function CategoryCard({
                         source={metric?.basis.source ?? null}
                         basisKind={metric?.basis.kind ?? null}
                         confidence={metric?.confidence ?? null}
-                        value={typeof metric?.raw_value === "number" ? String(metric.raw_value) : null}
+                        value={
+                          rawNumber === null || metricUnusable(metricId, rawNumber)
+                            ? null
+                            : formatMeasured(rawNumber, metric?.unit)
+                        }
                         targetBand={metric?.target_band}
                       />
                     </li>
@@ -183,10 +188,13 @@ function CategoryCard({
                     <li key={id}>
                       <button
                         type="button"
-                        onClick={() => onSeek?.(item.t_start)}
+                        onClick={() => {
+                          if (!isSessionWideEvidence(item)) onSeek?.(item.t_start);
+                        }}
                         className="rounded-md border px-2 py-1 font-mono text-xs hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
-                        ▶ {formatTimestamp(item.t_start)} {item.quote || item.text}
+                        {isSessionWideEvidence(item) ? t("wholeSession") : `▶ ${formatTimestamp(item.t_start)}`}{" "}
+                        {item.quote || item.text}
                       </button>
                     </li>
                   );

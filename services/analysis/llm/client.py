@@ -102,6 +102,17 @@ class LLMClient:
         self.total_cost = 0.0
         self.cost_ceiling = self.config["cost_ceiling_per_analysis"]
 
+    def set_read_timeout(self, seconds: float) -> None:
+        """Per-chunk read timeout for the active provider, clamped to 1–600 seconds."""
+        try:
+            value = int(round(float(seconds)))
+        except (TypeError, ValueError):
+            return
+        value = max(1, min(600, value))
+        provider = getattr(self, "provider", None)
+        if provider is not None and hasattr(provider, "timeout"):
+            provider.timeout = value
+
     def _create_provider(
         self,
         provider_name: str,

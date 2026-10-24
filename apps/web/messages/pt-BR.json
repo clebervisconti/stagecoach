@@ -251,6 +251,10 @@
     "noWeaknesses": "Nenhuma categoria atendeu à regra de ponto fraco (nível 2 ou abaixo com confiança média).",
     "opportunities": "Principais oportunidades",
     "noOpportunities": "Ainda não há oportunidades ranqueadas.",
+    "strengthTitle": "{name} é um ponto forte",
+    "weaknessTitle": "{name} precisa de prática",
+    "opportunityTitle": "Praticar {name}",
+    "wholeSession": "Sessão inteira",
     "fix": "Como corrigir",
     "drill": "Exercício",
     "pitchGraph": "Variação de tom ao longo do tempo",
@@ -622,6 +626,15 @@
     "foundBoth": "Encontramos a sua câmera e a sua tela.",
     "foundCamera": "Encontramos a sua câmera. Não há tela compartilhada.",
     "foundScreen": "Encontramos a sua tela. A sua câmera não aparece.",
+    "foundDominant": "A maior parte desta gravação é {layout}.",
+    "cameraAppears": "{n, plural, one {A sua câmera aparece em # segmento.} other {A sua câmera aparece em # segmentos.}}",
+    "cameraAppearsNone": "A sua câmera não aparece em nenhum segmento.",
+    "dominantLayout": {
+      "camera_screen": "câmera e tela",
+      "camera": "só câmera",
+      "screen": "só tela",
+      "audio": "sem vídeo"
+    },
     "unsureCamera": "Não tivemos certeza de onde está a sua câmera.",
     "unsureScreen": "Não tivemos certeza de onde está a sua tela.",
     "unsureLayout": "Não temos certeza deste layout. Se parecer errado, analise só o áudio.",
@@ -771,7 +784,17 @@
     "done": "Concluído",
     "inProgress": "Em andamento",
     "notStarted": "Não iniciado",
-    "stillWorkingPrep": "Ainda trabalhando. Gravações longas podem levar até dois minutos.",
+    "stillWorkingPrep": "Ainda trabalhando. Gravações longas levam mais de um minuto.",
+    "prepSteps": {
+      "check": "Conferindo o arquivo",
+      "poster": "Gerando a imagem de prévia",
+      "audio": "Extraindo o áudio",
+      "analysis": "Preparando o vídeo de análise",
+      "playback": "Preparando a reprodução",
+      "sprites": "Gerando as prévias da linha do tempo",
+      "modality": "Conferindo a gravação"
+    },
+    "aboutLeft": "Cerca de {n, plural, one {# minuto} other {# minutos}}",
     "leavePage": "Você pode sair desta página. A sessão espera por você em Sessões.",
     "couldntRead": "Não conseguimos ler este vídeo",
     "couldntReadHelp": "Pode estar danificado ou num formato que não suportamos. MP4 e MOV funcionam melhor.",
@@ -820,8 +843,11 @@
       "hands_not_visible": "As mãos não ficaram visíveis o bastante para medir gestos.",
       "stage_mode": "Não medido para palestras no palco.",
       "no_slides": "Nenhum slide foi encontrado.",
+      "model_unavailable": "A etapa do modelo de linguagem não terminou.",
+      "camera_coverage_low": "A câmera não ficou na tela o bastante para pontuar para onde você olha.",
       "not_applicable": "Não medido nesta gravação."
     },
+    "rerunContent": "Mudar o layout e reanalisar",
     "layout": {
       "eyebrow": {
         "review": "Conferir o layout",

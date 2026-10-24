@@ -101,6 +101,8 @@ def emit_progress(
     eta_s: Optional[int] = None,
     message: Optional[str] = None,
     session_id: Optional[str] = None,
+    artifact: Optional[str] = None,
+    duration_s: Optional[float] = None,
 ):
     """Emit a `type: stage` progress event for SSE streaming (issues #19, #46)."""
     from pipeline.partial import stage_event
@@ -115,6 +117,8 @@ def emit_progress(
             pct=pct,
             eta_s=eta_s,
             message=message,
+            artifact=artifact,
+            duration_s=duration_s,
         ),
     )
     if status == "running":
@@ -278,6 +282,40 @@ def _persist_session_layout(
 
 def _enqueue_mvp_analysis(kwargs: dict) -> None:
     run_mvp_analysis_task.apply_async(kwargs=kwargs, queue="cpu")
+
+
+def _persist_original_duration(session_id: str, duration_s: Optional[float]) -> None:
+    from pipeline.media_duration import persist_original_duration
+
+    persist_original_duration(session_id, duration_s)
+
+
+def _ingest_callbacks(job_id: str, session_id: str):
+    """Progress and duration hooks for one ingest. Duration is known after ffprobe."""
+    holder: dict[str, Optional[float]] = {"duration": None}
+
+    def on_media(info) -> None:
+        try:
+            duration = float(info.duration or 0)
+        except (TypeError, ValueError):
+            duration = 0.0
+        holder["duration"] = duration if duration > 0 else None
+        _persist_original_duration(session_id, holder["duration"])
+
+    def on_progress(step: str, pct: float, artifact: Optional[str] = None, eta_s: Optional[int] = None) -> None:
+        emit_progress(
+            job_id,
+            "ingest",
+            "running",
+            pct=pct,
+            eta_s=eta_s,
+            message=step,
+            session_id=session_id,
+            artifact=artifact,
+            duration_s=holder["duration"],
+        )
+
+    return on_media, on_progress
 
 
 def _note_running_stage(job_id: str, stage: str, message: Optional[str]) -> None:
@@ -493,14 +531,19 @@ def ingest_task(self, input_path: str, output_dir: str, session_id: str, job_id:
     logger = logging.getLogger(__name__)
     logger.info(f"Starting ingest task for session {session_id}")
     
+    on_media = None
+    on_progress = None
     if job_id:
-        emit_progress(job_id, "ingest", "running", pct=0, message="Validating and transcoding media")
+        emit_progress(job_id, "ingest", "running", pct=5, message="ingest_check", session_id=session_id)
+        on_media, on_progress = _ingest_callbacks(job_id, session_id)
     
     try:
         result = ingest(
             input_path=Path(input_path),
             output_dir=Path(output_dir),
             session_id=session_id,
+            on_progress=on_progress,
+            on_media=on_media,
         )
         
         output_dict = result.to_dict()
@@ -1040,10 +1083,11 @@ def prepare_session_task(
     logger = logging.getLogger(__name__)
     _set_job_state(job_id, session_id, "preparing")
     started = datetime.utcnow()
-    emit_progress(job_id, "ingest", "running", pct=5, message="Validating media", session_id=session_id)
+    emit_progress(job_id, "ingest", "running", pct=5, message="ingest_check", session_id=session_id)
     try:
         snapshot = consents or {}
         video_ok = bool(decide_vision(snapshot).run_pose)
+        on_media, on_progress = _ingest_callbacks(job_id, session_id)
         result = prepare_session(
             input_path=Path(input_path),
             output_dir=destination,
@@ -1052,6 +1096,8 @@ def prepare_session_task(
             video_analysis_consent=video_ok,
             layout_review_pref=_layout_review_pref(session_id),
             confirmed_layout_count=_confirmed_online_layouts(session_id),
+            on_progress=on_progress,
+            on_media=on_media,
         )
         ingest_dict = result["ingest"]
         _record_job_step(
@@ -1244,8 +1290,15 @@ def run_mvp_analysis_task(
 
             ingest_dict = load_ingest_json(destination)
         else:
-            emit_progress(job_id, "ingest", "running", pct=5, message="Validating media")
-            ingest_result = ingest(source, destination, session_id)
+            emit_progress(job_id, "ingest", "running", pct=5, message="ingest_check", session_id=session_id)
+            on_media, on_progress = _ingest_callbacks(job_id, session_id)
+            ingest_result = ingest(
+                source,
+                destination,
+                session_id,
+                on_progress=on_progress,
+                on_media=on_media,
+            )
             ingest_dict = ingest_result.to_dict()
             from pipeline.prepare import write_ingest_json
 
@@ -1554,6 +1607,7 @@ def run_mvp_analysis_task(
                         decision=decision,
                         video_path=vision_path,
                         camera_setup=setup,
+                        delivery_mode=delivery_mode,
                     ).to_dict()
 
                 vision_gate = run_vision_if_allowed(snapshot, _vision_runner)
@@ -1821,7 +1875,10 @@ def run_mvp_analysis_task(
         )
         from pipeline.job_outcome import job_status_after_success
 
-        terminal = job_status_after_success()
+        content_incomplete = str(content_outcome.get("status") or "") == "failed" or bool(
+            content_outcome.get("partial")
+        )
+        terminal = job_status_after_success(report, stage_failed=content_incomplete)
         _set_job_state(job_id, session_id, terminal)
         emit_progress(job_id, "report", "succeeded", pct=100, message="Report ready")
         emit_done(job_id, terminal, session_id=session_id)

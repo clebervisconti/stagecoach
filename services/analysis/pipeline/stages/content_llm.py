@@ -21,6 +21,7 @@ from typing import Any, Callable, Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from llm import LLMClient
+from llm.exceptions import LLMTimeoutError
 from llm.verification import (
     check_for_emotion_inference,
     check_self_consistency,
@@ -33,10 +34,17 @@ logger = logging.getLogger(__name__)
 
 # SPEC §6.7.2: ≤6–8k tokens per chunk. 4 characters ≈ 1 token.
 CHUNK_MAX_TOKENS = 6000
+# Long talks send a smaller outline slice so a ~27B local model can finish it.
+OUTLINE_LONG_CHUNK_TOKENS = 2500
 CALL_TOKEN_CAP = 8000
 LONG_SESSION_DURATION_S = 12 * 60
 LONG_SESSION_TOKEN_THRESHOLD = 6000
 DEFAULT_CONTENT_BUDGET_S = 8 * 60
+READ_TIMEOUT_BASE_S = 180
+READ_TIMEOUT_CAP_S = 600
+BUDGET_SCALE_STEP_TOKENS = 4000
+BUDGET_SCALE_STEP_S = 90
+BUDGET_CAP_S = 1800
 SHORT_CONSISTENCY_K = 3
 LONG_CONSISTENCY_K = 1
 _PLACEHOLDER_DURATION_S = 5400.0
@@ -157,6 +165,14 @@ class ContentLLMOutput:
             "verification_summary": self.verification_summary,
             "provenance": self.provenance,
         }
+
+
+class PromptDegraded(Exception):
+    """One prompt timed out. Other prompts still run."""
+
+    def __init__(self, prompt_id: str):
+        self.prompt_id = prompt_id
+        super().__init__(prompt_id)
 
 
 class ContentBudgetExceeded(Exception):
@@ -317,14 +333,7 @@ def chunk_segments(
     return chunks
 
 
-def resolve_content_budget_s(budget_s: Optional[float] = None) -> float:
-    """Explicit argument, then ``CONTENT_LLM_BUDGET_S``, then 8 minutes."""
-    if budget_s is not None:
-        try:
-            return max(0.0, float(budget_s))
-        except (TypeError, ValueError):
-            logger.warning("Invalid content_llm budget %r; using default", budget_s)
-            return float(DEFAULT_CONTENT_BUDGET_S)
+def _base_content_budget_s() -> float:
     raw = os.getenv("CONTENT_LLM_BUDGET_S", "").strip()
     if raw:
         try:
@@ -332,6 +341,49 @@ def resolve_content_budget_s(budget_s: Optional[float] = None) -> float:
         except ValueError:
             logger.warning("Ignoring invalid CONTENT_LLM_BUDGET_S=%s", raw)
     return float(DEFAULT_CONTENT_BUDGET_S)
+
+
+def resolve_content_budget_s(
+    budget_s: Optional[float] = None,
+    estimated_tokens: Optional[float] = None,
+) -> float:
+    """Explicit argument stays exact. Otherwise scale the base with transcript length.
+
+    ``CONTENT_LLM_BUDGET_S`` (or 8 minutes) is the base. Each 4k tokens above 6k
+    adds 90 seconds, capped at 30 minutes. A base of 0 stays 0.
+    """
+    if budget_s is not None:
+        try:
+            return max(0.0, float(budget_s))
+        except (TypeError, ValueError):
+            logger.warning("Invalid content_llm budget %r; using default", budget_s)
+            return float(DEFAULT_CONTENT_BUDGET_S)
+    base = _base_content_budget_s()
+    if base <= 0 or estimated_tokens is None:
+        return base
+    try:
+        tokens = float(estimated_tokens)
+    except (TypeError, ValueError):
+        return base
+    extra_blocks = max(0.0, (tokens - LONG_SESSION_TOKEN_THRESHOLD) / BUDGET_SCALE_STEP_TOKENS)
+    return min(float(BUDGET_CAP_S), base + extra_blocks * BUDGET_SCALE_STEP_S)
+
+
+def resolve_read_timeout_s(estimated_tokens: float = 0) -> int:
+    """Per-read timeout. ``CONTENT_LLM_TIMEOUT_S`` or 180s, scaled by chunk size, cap 600."""
+    raw = os.getenv("CONTENT_LLM_TIMEOUT_S", "").strip()
+    base = float(READ_TIMEOUT_BASE_S)
+    if raw:
+        try:
+            base = max(1.0, float(raw))
+        except ValueError:
+            logger.warning("Ignoring invalid CONTENT_LLM_TIMEOUT_S=%s", raw)
+    try:
+        tokens = max(0.0, float(estimated_tokens))
+    except (TypeError, ValueError):
+        tokens = 0.0
+    scale = max(1.0, tokens / float(OUTLINE_LONG_CHUNK_TOKENS))
+    return int(max(1, min(READ_TIMEOUT_CAP_S, round(base * scale))))
 
 
 def resolve_talk_duration_s(
@@ -922,19 +974,25 @@ def content_llm_stage(
     talk_s = resolve_talk_duration_s(segments, duration_s, max_duration_s)
     long_session = is_long_session(estimated, talk_s)
     k = consistency_k(long_session)
+    outline_limit = OUTLINE_LONG_CHUNK_TOKENS if long_session else CHUNK_MAX_TOKENS
+    outline_chunks = chunk_segments(segments, outline_limit)
     chunks = chunk_segments(segments, CHUNK_MAX_TOKENS)
     chunk_count = len(chunks)
-    budget = ContentBudget(resolve_content_budget_s(budget_s), clock=clock)
+    outline_chunk_count = len(outline_chunks)
+    budget = ContentBudget(resolve_content_budget_s(budget_s, estimated), clock=clock)
+    read_timeout_holder = {"s": resolve_read_timeout_s(estimated)}
 
     logger.info(
-        "content_llm session=%s segments=%s tokens=%.0f duration=%.0fs k=%s chunks=%s budget=%.0fs",
+        "content_llm session=%s segments=%s tokens=%.0f duration=%.0fs k=%s chunks=%s outline_chunks=%s budget=%.0fs timeout=%ss",
         session_id,
         len(segments),
         estimated,
         talk_s,
         k,
         chunk_count,
+        outline_chunk_count,
         budget.seconds,
+        read_timeout_holder["s"],
     )
 
     output = ContentLLMOutput()
@@ -943,11 +1001,17 @@ def content_llm_stage(
     output.prompt_versions["fluency_disambig_v1"] = "1.0.0"
     output.prompt_versions["qa_v1"] = "1.0.0"
 
-    direct_steps = chunk_count if chunk_count <= 1 else chunk_count + 1
-    planned_steps = max(1, direct_steps * 4 + 1)
+    def _prompt_steps(count: int) -> int:
+        return count if count <= 1 else count + 1
+
+    planned_steps = max(
+        1,
+        _prompt_steps(outline_chunk_count) + 3 * _prompt_steps(chunk_count) + 1,
+    )
     progress_state = {"done": 0}
     completed: List[str] = []
     completed_labels: List[str] = []
+    degraded: List[str] = []
     chunk_log: Dict[str, Any] = {}
     stop_reason: Optional[str] = None
     error_type: Optional[str] = None
@@ -971,6 +1035,16 @@ def content_llm_stage(
             notice = _budget_notice(budget.seconds, completed_labels) if sealed else None
         elif stop_reason == "error":
             notice = _error_notice(completed_labels) if sealed else None
+        elif stop_reason == "timeout":
+            if not sealed:
+                notice = None
+            elif completed_labels:
+                notice = (
+                    "The language model step didn't finish for every prompt after "
+                    f"{_human_join(completed_labels)}. Unfinished prompts stay N/A."
+                )
+            else:
+                notice = "The language model step didn't finish, so these categories stay N/A."
         elif sealed and not unfinished:
             notice = "Content scores ready"
         else:
@@ -978,17 +1052,21 @@ def content_llm_stage(
         provenance: Dict[str, Any] = {
             "k": k,
             "chunk_count": chunk_count,
+            "outline_chunk_count": outline_chunk_count,
+            "outline_chunk_tokens": outline_limit,
             "long_session": long_session,
             "estimated_tokens": round(estimated, 1),
             "duration_s": round(talk_s, 3),
             "budget_s": budget.seconds,
             "elapsed_s": round(budget.elapsed(), 3),
             "chunk_max_tokens": CHUNK_MAX_TOKENS,
+            "read_timeout_s": read_timeout_holder["s"],
             "partial": partial,
             "partial_samples": budget.short_samples,
             "stop_reason": stop_reason if partial else None,
             "completed_prompts": list(completed),
             "unfinished_prompts": unfinished,
+            "degraded_prompts": list(degraded),
             "chunks": chunk_log,
         }
         if notice:
@@ -1010,11 +1088,26 @@ def content_llm_stage(
         }
         _write_content(output_dir, output)
 
+    def arm_timeout(inputs: Dict[str, Any]) -> None:
+        text = ""
+        for key in ("transcript", "opening_transcript", "closing_transcript", "chunk_analyses"):
+            value = inputs.get(key)
+            if isinstance(value, str):
+                text += value
+            elif value is not None:
+                text += json.dumps(value)
+        seconds = resolve_read_timeout_s(estimate_tokens(text) or estimated)
+        read_timeout_holder["s"] = seconds
+        setter = getattr(client, "set_read_timeout", None)
+        if callable(setter):
+            setter(seconds)
+
     def verified_call(
         spec: Dict[str, Any],
         inputs: Dict[str, Any],
         local_map: Dict[str, Dict[str, Any]],
     ) -> Dict[str, Any]:
+        arm_timeout(inputs)
         return call_prompt_with_verification(
             client=client,
             prompt_id=spec["id"],
@@ -1061,9 +1154,22 @@ def content_llm_stage(
             return reduce_parts(spec, [left, right], depth + 1)
         return call_reduce(spec, _fit_reduce_parts(fitted, hard=True))
 
+    def call_with_one_retry(thunk: Callable[[], Dict[str, Any]]) -> Dict[str, Any]:
+        try:
+            return thunk()
+        except LLMTimeoutError:
+            if budget.expired():
+                raise
+            logger.warning(
+                "content_llm read timed out; retrying once session=%s", session_id
+            )
+            return thunk()
+
     def execute_chunked(spec: Dict[str, Any]) -> Dict[str, Any]:
-        total = chunk_count
+        spec_chunks = outline_chunks if spec["id"] == "outline_v1" else chunks
+        total = len(spec_chunks)
         maps: List[Dict[str, Any]] = []
+        timed_out = 0
         try:
             if total <= 1:
                 budget.before_call()
@@ -1075,7 +1181,17 @@ def content_llm_stage(
                     include_audience=bool(spec["audience"]),
                 )
                 inputs["transcript"] = full_transcript
-                result = verified_call(spec, inputs, segment_map)
+                try:
+                    result = call_with_one_retry(lambda: verified_call(spec, inputs, segment_map))
+                except LLMTimeoutError as exc:
+                    chunk_log[spec["id"]] = {
+                        "mapped": 0,
+                        "total": 1,
+                        "reduced": False,
+                        "mode": "direct",
+                        "timed_out_chunks": 1,
+                    }
+                    raise PromptDegraded(spec["id"]) from exc
                 chunk_log[spec["id"]] = {
                     "mapped": 1,
                     "total": 1,
@@ -1084,7 +1200,7 @@ def content_llm_stage(
                 }
                 return result
 
-            for index, chunk in enumerate(chunks, start=1):
+            for index, chunk in enumerate(spec_chunks, start=1):
                 budget.before_call()
                 announce(f"{spec['label']} {index}/{total}")
                 inputs = _base_inputs(
@@ -1097,7 +1213,22 @@ def content_llm_stage(
                 inputs["chunk_index"] = index
                 inputs["chunk_count"] = total
                 inputs["instruction"] = MAP_INSTRUCTION
-                mapped = verified_call(spec, inputs, _segment_map_for(chunk, segment_map))
+                try:
+                    mapped = call_with_one_retry(
+                        lambda chunk=chunk, inputs=inputs: verified_call(
+                            spec, inputs, _segment_map_for(chunk, segment_map)
+                        )
+                    )
+                except LLMTimeoutError:
+                    timed_out += 1
+                    logger.warning(
+                        "content_llm dropped %s chunk %s/%s after timeout session=%s",
+                        spec["id"],
+                        index,
+                        total,
+                        session_id,
+                    )
+                    continue
                 maps.append(_strip_meta(mapped))
                 if budget.expired():
                     budget.exhausted = True
@@ -1105,26 +1236,48 @@ def content_llm_stage(
                         raise ContentBudgetExceeded(
                             budget.elapsed(),
                             budget.seconds,
-                            mapped=index,
+                            mapped=len(maps),
                             total=total,
                             pending=maps,
                         )
                     break
-            if len(maps) < total:
-                raise ContentBudgetExceeded(
-                    budget.elapsed(),
-                    budget.seconds,
-                    mapped=len(maps),
-                    total=total,
-                    pending=maps,
-                )
-            reduced = reduce_parts(spec, maps)
+            if not maps:
+                chunk_log[spec["id"]] = {
+                    "mapped": 0,
+                    "total": total,
+                    "reduced": False,
+                    "mode": "map_reduce",
+                    "timed_out_chunks": timed_out,
+                }
+                raise PromptDegraded(spec["id"])
+            if timed_out or len(maps) < total:
+                if not budget.expired() and timed_out and len(maps) < total:
+                    # Dropped chunks are a timeout, not a spent budget.
+                    pass
+                elif len(maps) < total and budget.expired():
+                    raise ContentBudgetExceeded(
+                        budget.elapsed(),
+                        budget.seconds,
+                        mapped=len(maps),
+                        total=total,
+                        pending=maps,
+                    )
+            try:
+                reduced = reduce_parts(spec, maps) if len(maps) > 1 else maps[0]
+                reduced_ok = len(maps) > 1
+            except LLMTimeoutError:
+                reduced = maps[0]
+                reduced_ok = False
+                timed_out += 1
             chunk_log[spec["id"]] = {
-                "mapped": total,
+                "mapped": len(maps),
                 "total": total,
-                "reduced": True,
+                "reduced": reduced_ok,
                 "mode": "map_reduce",
+                "timed_out_chunks": timed_out,
             }
+            if timed_out and spec["id"] not in degraded:
+                degraded.append(spec["id"])
             return reduced
         except ContentBudgetExceeded as exc:
             if not exc.pending:
@@ -1144,7 +1297,17 @@ def content_llm_stage(
             "context_type": context_type,
             "language": language,
         }
-        result = verified_call(spec, inputs, segment_map)
+        try:
+            result = call_with_one_retry(lambda: verified_call(spec, inputs, segment_map))
+        except LLMTimeoutError as exc:
+            chunk_log[spec["id"]] = {
+                "mapped": 0,
+                "total": 1,
+                "reduced": False,
+                "mode": "window",
+                "timed_out_chunks": 1,
+            }
+            raise PromptDegraded(spec["id"]) from exc
         chunk_log[spec["id"]] = {
             "mapped": 1,
             "total": 1,
@@ -1160,6 +1323,23 @@ def content_llm_stage(
                     result = execute_window(spec)
                 else:
                     result = execute_chunked(spec)
+            except PromptDegraded:
+                if spec["id"] not in degraded:
+                    degraded.append(spec["id"])
+                stop_reason = "timeout"
+                chunk_log.setdefault(
+                    spec["id"],
+                    {
+                        "mapped": 0,
+                        "total": 1 if spec["kind"] == "window" else (
+                            outline_chunk_count if spec["id"] == "outline_v1" else chunk_count
+                        ),
+                        "reduced": False,
+                        "mode": "degraded",
+                        "timed_out_chunks": 1,
+                    },
+                )
+                continue
             except ContentBudgetExceeded as exc:
                 pending = exc.pending or []
                 chunk_log[spec["id"]] = {
@@ -1176,7 +1356,7 @@ def content_llm_stage(
                 break
             except Exception as exc:
                 logger.exception("content_llm prompt %s failed session=%s", spec["id"], session_id)
-                if not completed:
+                if not completed and not degraded:
                     raise
                 stop_reason = "error"
                 error_type = type(exc).__name__
@@ -1206,7 +1386,7 @@ def content_llm_stage(
         sealed = True
         # A failure before any prompt must not leave an all-null content.json
         # that fusion would treat as a finished, empty analysis.
-        if completed or stop_reason is not None:
+        if completed or degraded or stop_reason is not None:
             persist()
 
     if output.provenance.get("partial"):

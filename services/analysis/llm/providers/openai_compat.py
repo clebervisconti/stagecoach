@@ -165,6 +165,11 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             "stream": False,
             "store": False,
         }
+        stream = getattr(self.transport, "post_stream", None)
+        if callable(stream):
+            body["stream"] = True
+            lines = stream(self._native_chat_url(), self._headers(), body, self.timeout)
+            return _openai_shape_from_stream(lines)
         raw = self.transport.post(self._native_chat_url(), self._headers(), body, self.timeout)
         return _openai_shape_from_native(raw)
 
@@ -196,6 +201,69 @@ def _openai_shape_from_native(raw: dict[str, Any]) -> dict[str, Any]:
             "completion_tokens": completion_tokens,
             "total_tokens": prompt_tokens + completion_tokens,
         },
+    }
+
+
+def _openai_shape_from_stream(lines: Any) -> dict[str, Any]:
+    """Assemble LM Studio native SSE and OpenAI chat deltas into one completion."""
+    content_parts: list[str] = []
+    reasoning_parts: list[str] = []
+    usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    for line in lines:
+        text = str(line).strip()
+        if text.startswith("data:"):
+            text = text[5:].strip()
+        if not text or text == "[DONE]":
+            continue
+        try:
+            event = json.loads(text)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        kind = event.get("type")
+        if kind == "message.delta":
+            content_parts.append(str(event.get("content") or ""))
+            continue
+        if kind == "reasoning.delta":
+            reasoning_parts.append(str(event.get("content") or ""))
+            continue
+        if kind in {"chat.end", "done"}:
+            stats = event.get("stats") or {}
+            if stats:
+                prompt_tokens = int(stats.get("input_tokens") or 0)
+                completion_tokens = int(stats.get("total_output_tokens") or 0)
+                usage = {
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": prompt_tokens + completion_tokens,
+                }
+            result = event.get("result")
+            if isinstance(result, dict) and not content_parts:
+                return _openai_shape_from_native(result)
+            continue
+        if "output" in event and "choices" not in event and not content_parts:
+            return _openai_shape_from_native(event)
+        if "choices" in event and kind is None and "delta" not in ((event.get("choices") or [{}])[0]):
+            message = (event.get("choices") or [{}])[0].get("message")
+            if isinstance(message, dict) and message.get("content"):
+                return event
+        delta = ((event.get("choices") or [{}])[0].get("delta") or {})
+        if isinstance(delta, dict):
+            if delta.get("content"):
+                content_parts.append(str(delta.get("content")))
+            if delta.get("reasoning_content"):
+                reasoning_parts.append(str(delta.get("reasoning_content")))
+    return {
+        "choices": [
+            {
+                "message": {
+                    "content": "".join(content_parts),
+                    "reasoning_content": "".join(reasoning_parts),
+                }
+            }
+        ],
+        "usage": usage,
     }
 
 

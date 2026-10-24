@@ -218,7 +218,8 @@ def test_unavailable_content_keeps_text_categories_na(tmp_path: Path):
     ):
         assert by_id[cid]["applicable"] is False
         assert by_id[cid]["score"] is None
-        assert "language model was unavailable" in (by_id[cid]["na_reason"] or "")
+        assert "didn't finish" in (by_id[cid]["na_reason"] or "")
+        assert by_id[cid]["na_code"] == "model_unavailable"
     assert by_id["qa"]["applicable"] is False
     assert "question/answer" in (by_id["qa"]["na_reason"] or "")
 
@@ -264,7 +265,8 @@ def test_partial_content_scores_finished_prompts_only(tmp_path: Path):
     for cid in ("storytelling", "audience_adaptation", "opening_close"):
         assert by_id[cid]["applicable"] is False
         assert by_id[cid]["score"] is None
-        assert "language model was unavailable" not in (by_id[cid]["na_reason"] or "")
+        assert "didn't finish" in (by_id[cid]["na_reason"] or "")
+        assert by_id[cid]["na_code"] == "model_unavailable"
     assert "language model was unavailable" not in json.dumps(result["categories"])
 
 

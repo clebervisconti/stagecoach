@@ -140,8 +140,40 @@ def _insight(
     }
 
 
+CATEGORY_DISPLAY = {
+    "core_message": "Core message",
+    "structure": "Structure",
+    "storytelling": "Storytelling",
+    "audience_adaptation": "Audience adaptation",
+    "opening_close": "Opening and close",
+    "clarity": "Clarity",
+    "impact": "Impact",
+    "visual_aids": "Visual aids",
+    "pace_pausing": "Pace and pausing",
+    "vocal_variety": "Vocal variety",
+    "fluency": "Fluency",
+    "gestures_body": "Gestures and body",
+    "eye_contact": "Eye contact",
+    "facial_affect": "Facial expressiveness",
+    "energy_presence": "Energy and presence",
+    "time_management": "Time management",
+    "qa": "Q&A",
+    "screen_flow": "Screen and flow",
+    "on_camera_presence": "On-camera presence",
+    "online_engagement": "Online viewer hold",
+    "production_quality": "Production quality",
+}
+
+
 def _label(category_id: str) -> str:
-    return category_id.replace("_", " ")
+    return CATEGORY_DISPLAY.get(category_id, category_id.replace("_", " "))
+
+
+def _practice_title(category_id: str) -> str:
+    label = _label(category_id)
+    if not label:
+        return "Practice this"
+    return f"Practice {label[:1].lower() + label[1:]}"
 
 
 def build_report(
@@ -169,6 +201,13 @@ def build_report(
         evidence_by_cat.setdefault(item["category_id"], []).append(item["id"])
     fallback_evidence = [item["id"] for item in evidence[:1]]
 
+    ranked = engine_opportunities or []
+    opportunity_ids = {
+        item.get("category_id")
+        for item in ranked[:3]
+        if item.get("category_id")
+    }
+
     strengths: list[dict[str, Any]] = []
     weaknesses: list[dict[str, Any]] = []
     for category in analysis.get("categories") or []:
@@ -180,7 +219,13 @@ def build_report(
         score = int(category["score"])
         level = category.get("level")
         conf = category.get("confidence") or 0
-        if level is not None and level >= 4 and conf >= 0.5 and len(strengths) < 3:
+        if (
+            level is not None
+            and level >= 4
+            and conf >= 0.5
+            and len(strengths) < 3
+            and category["id"] not in opportunity_ids
+        ):
             body = (
                 f"{_label(category['id'])} scored {score} at level {level}. "
                 f"This uses scoring-config {facts['scoring_config_version']}."
@@ -189,7 +234,7 @@ def build_report(
             strengths.append(
                 _insight(
                     category_id=category["id"],
-                    title=f"{_label(category['id'])} is a measured strength",
+                    title=f"{_label(category['id'])} is a strength",
                     body=body,
                     fix=None,
                     drill_ids=[],
@@ -220,7 +265,6 @@ def build_report(
             )
 
     opportunities: list[dict[str, Any]] = []
-    ranked = engine_opportunities or []
     for item in ranked[:3]:
         cid = item["category_id"]
         eids = evidence_by_cat.get(cid) or fallback_evidence
@@ -241,7 +285,7 @@ def build_report(
         opportunities.append(
             _insight(
                 category_id=cid,
-                title=f"Practice {_label(cid)}",
+                title=_practice_title(cid),
                 body=body,
                 fix="Use the attached drill, then re-analyze the same talk.",
                 drill_ids=list(dict.fromkeys(attached))[:2],

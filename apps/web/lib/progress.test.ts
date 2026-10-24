@@ -24,6 +24,28 @@ test("stage events do not force a report reload", () => {
   assert.equal(shouldReloadReport(event), false);
 });
 
+test("an ingest stage event keeps the sub-step, the poster, and the duration", () => {
+  const event = parseProgressData(
+    JSON.stringify({
+      type: "stage",
+      stage: "ingest",
+      status: "running",
+      pct: 10,
+      message: "ingest_poster",
+      eta_s: 240,
+      artifact: "poster",
+      duration_s: 2149.2,
+    }),
+  );
+  assert.equal(event?.type, "stage");
+  if (event?.type === "stage") {
+    assert.equal(event.message, "ingest_poster");
+    assert.equal(event.eta_s, 240);
+    assert.equal(event.artifact, "poster");
+    assert.equal(event.duration_s, 2149.2);
+  }
+});
+
 test("done reloads the final report", () => {
   const event = parseProgressData(JSON.stringify({ type: "done", status: "partial" }));
   assert.equal(event?.type, "done");

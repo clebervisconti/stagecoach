@@ -2,7 +2,7 @@
 
 This document tracks significant technical decisions made during Stage Coach development. Each ADR follows a lightweight format: Context, Decision, Alternatives Considered, Consequences.
 
-Decisions from ADR-032 onward live as one file per decision in [docs/adr/](adr/). Those files are the source for Phase 2 and Phase 3 choices (vision, slides, talk-prep, trends, goals, password and Apple sign-in, Resend, account export, and the local Qwen default), for online-session foundations (ADR-061 through ADR-082), for app-owned authentication (ADR-083 and ADR-084), and for chunked recording uploads through Cloudflare (ADR-085). ADR-038's xAI default is superseded by [ADR-060](adr/060-local-llm-default.md). ADR-001's magic-link auth is superseded by [ADR-057](adr/057-d9-password-apple.md). The Cloudflare Access beta identity in [product/decisions/ADR-0001](../product/decisions/ADR-0001-private-beta-runtime.md) is superseded for app sign-in by [ADR-083](adr/083-app-owned-auth.md). Access may stay in front of the host until the cutover in `deploy/README.md`. The app does not trust Access headers.
+Decisions from ADR-032 onward live as one file per decision in [docs/adr/](adr/). Those files are the source for Phase 2 and Phase 3 choices (vision, slides, talk-prep, trends, goals, password and Apple sign-in, Resend, account export, and the local Qwen default), for online-session foundations (ADR-061 through ADR-082), for app-owned authentication (ADR-083 and ADR-084), for chunked recording uploads through Cloudflare (ADR-085), for the session-page load fixes (ADR-086), for long-talk content timeouts (ADR-087), and for report measurement honesty (ADR-088). ADR-038's xAI default is superseded by [ADR-060](adr/060-local-llm-default.md). ADR-001's magic-link auth is superseded by [ADR-057](adr/057-d9-password-apple.md). The Cloudflare Access beta identity in [product/decisions/ADR-0001](../product/decisions/ADR-0001-private-beta-runtime.md) is superseded for app sign-in by [ADR-083](adr/083-app-owned-auth.md). Access may stay in front of the host until the cutover in `deploy/README.md`. The app does not trust Access headers.
 
 ---
 
@@ -1648,6 +1648,8 @@ Issue #44 / SPEC §4.4.8, §6.6 step 7, §6.7.3 `slides_v1`. Metric ids must mat
 
 ## Change Log (continued)
 
+- **2026-10-24**: ADR-087 long-talk content analysis retries one timed-out chunk, streams the local model, and leaves the session `partial` when the report is partial. ADR-088 stops scoring the −70 LUFS silence floor, limits online gaze to camera-full time, and makes the report copy match what was measured.
+- **2026-10-24**: ADR-086 session-page load. Rate limits key on the verified user id, the open session follows `/events`, prepare reports each ingest sub-step, and the layout headline follows the segment timeline. No migration.
 - **2026-10-24**: ADR-083 app-owned sessions (argon2id, session version, forced password change, admin bootstrap, no Cloudflare Access bypass). ADR-084 roles `admin` / `member` / `viewer` and a per-user online-modes flag. Supersedes the Access identity in ADR-0001, the email admin gate in ADR-040, and the online-mode allowlist in ADR-072.
 - **2026-10-23**: ADR-081 editable layout save, multi-segment runs, and ASR reuse when the analysis window is unchanged. ADR-082 locks the editor defaults (1 px nudge, confirm last camera, merge keep-left/right, discard reloads the server layout).
 - **2026-10-23**: ADR-080 — web `zod` is `^4.6.7` (GHSA-mrhx-c7xc-m3w5). One lockfile copy. No application call sites to migrate. No audit ignore.

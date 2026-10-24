@@ -1,5 +1,6 @@
 import { stagecoachApi } from "@/lib/api";
 import { mutationAllowed } from "@/lib/csrf";
+import { upstreamResponseHeaders } from "@/lib/upstream-headers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -90,28 +91,9 @@ async function proxy(
   }
 
   const upstream = await stagecoachApi(path, init, { anonymous: isAnonymous(parts) });
-  const responseHeaders = new Headers();
-  for (const name of [
-    "content-type",
-    "content-length",
-    "content-disposition",
-    "accept-ranges",
-    "content-range",
-    "x-accel-buffering",
-    "connection",
-  ]) {
-    const value = upstream.headers.get(name);
-    if (value) responseHeaders.set(name, value);
-  }
-  responseHeaders.set("cache-control", "no-store");
-  if ((upstream.headers.get("content-type") || "").includes("text/event-stream")) {
-    responseHeaders.set("cache-control", "no-cache");
-    responseHeaders.set("connection", "keep-alive");
-    responseHeaders.set("x-accel-buffering", "no");
-  }
   return new Response(upstream.body, {
     status: upstream.status,
-    headers: responseHeaders,
+    headers: upstreamResponseHeaders(upstream.headers),
   });
 }
 

@@ -251,6 +251,10 @@
     "noWeaknesses": "No category met the weakness rule (level 2 or below with medium confidence).",
     "opportunities": "Top opportunities",
     "noOpportunities": "No ranked opportunities yet.",
+    "strengthTitle": "{name} is a strength",
+    "weaknessTitle": "{name} needs practice",
+    "opportunityTitle": "Practice {name}",
+    "wholeSession": "Whole session",
     "fix": "Fix",
     "drill": "Drill",
     "pitchGraph": "Pitch variation over time",
@@ -622,6 +626,15 @@
     "foundBoth": "We found your camera and your screen.",
     "foundCamera": "We found your camera. There's no shared screen.",
     "foundScreen": "We found your screen. Your camera isn't visible.",
+    "foundDominant": "Most of this recording is {layout}.",
+    "cameraAppears": "{n, plural, one {Your camera appears in # segment.} other {Your camera appears in # segments.}}",
+    "cameraAppearsNone": "Your camera isn't in any segment.",
+    "dominantLayout": {
+      "camera_screen": "camera and screen",
+      "camera": "camera only",
+      "screen": "screen only",
+      "audio": "no video"
+    },
     "unsureCamera": "We weren't sure where your camera is.",
     "unsureScreen": "We weren't sure where your screen is.",
     "unsureLayout": "We're not confident about this layout. If it looks wrong, analyse audio only.",
@@ -771,7 +784,17 @@
     "done": "Done",
     "inProgress": "In progress",
     "notStarted": "Not started",
-    "stillWorkingPrep": "Still working. Long recordings can take up to two minutes.",
+    "stillWorkingPrep": "Still working. Long recordings take more than a minute.",
+    "prepSteps": {
+      "check": "Checking the file",
+      "poster": "Making the preview image",
+      "audio": "Extracting audio",
+      "analysis": "Preparing the analysis video",
+      "playback": "Preparing playback",
+      "sprites": "Making timeline previews",
+      "modality": "Checking the recording"
+    },
+    "aboutLeft": "About {n, plural, one {# minute} other {# minutes}} left",
     "leavePage": "You can leave this page. Your session will wait for you in Sessions.",
     "couldntRead": "We couldn't read this video",
     "couldntReadHelp": "It may be damaged or in a format we don't support. MP4 and MOV work best.",
@@ -820,8 +843,11 @@
       "hands_not_visible": "Your hands weren't visible enough to measure gestures.",
       "stage_mode": "Not measured for on-stage talks.",
       "no_slides": "No slides were found.",
+      "model_unavailable": "The language model step didn't finish.",
+      "camera_coverage_low": "The camera wasn't on screen long enough to score where you look.",
       "not_applicable": "Not measured for this recording."
     },
+    "rerunContent": "Change layout and re-analyse",
     "layout": {
       "eyebrow": {
         "review": "Check the layout",

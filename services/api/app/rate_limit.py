@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
+import re
 import time
 from typing import Optional, Protocol
 
@@ -15,10 +17,20 @@ from starlette.responses import JSONResponse
 logger = logging.getLogger(__name__)
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-USER_RATE_PER_SEC = float(os.getenv("RATE_LIMIT_USER_PER_SEC", "2"))
-USER_BURST = float(os.getenv("RATE_LIMIT_USER_BURST", "60"))
-IP_RATE_PER_SEC = float(os.getenv("RATE_LIMIT_IP_PER_SEC", "4"))
-IP_BURST = float(os.getenv("RATE_LIMIT_IP_BURST", "120"))
+# An open session page is one SSE stream, a session GET about every 12s, and a
+# single burst of artifact reads when a step finishes. 8/s with a burst of 120
+# covers two tabs landing a report together. The old 2/s burst of 60 was one
+# shared bucket (see user_rate_key) and a busy tab emptied it for everyone.
+USER_RATE_PER_SEC = float(os.getenv("RATE_LIMIT_USER_PER_SEC", "8"))
+USER_BURST = float(os.getenv("RATE_LIMIT_USER_BURST", "120"))
+# The IP bucket is the one a NAT still shares. 16/s and a burst of 240 lets a
+# small office open reports at the same time without one address locking the rest.
+IP_RATE_PER_SEC = float(os.getenv("RATE_LIMIT_IP_PER_SEC", "16"))
+IP_BURST = float(os.getenv("RATE_LIMIT_IP_BURST", "240"))
+
+_SESSION_ID = r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+_SESSION_DOCUMENT = re.compile(rf"^/api/v1/sessions/{_SESSION_ID}$")
+_SESSION_EVENTS = re.compile(rf"^/api/v1/sessions/{_SESSION_ID}/events$")
 
 
 class TokenStore(Protocol):
@@ -85,6 +97,72 @@ def _client_ip(request: Request) -> str:
     return "unknown"
 
 
+def verified_user_id(token: str) -> Optional[str]:
+    """Subject of a verified API JWT. None when the token does not verify.
+
+    The route still checks the session version and the user row. This only
+    separates rate-limit buckets. A bad signature falls through to a hash of
+    the whole token so unverified callers do not share one bucket either.
+    """
+    import jwt
+    from jwt.exceptions import InvalidTokenError
+
+    from app.auth.jwt import ALGORITHM, AUTH_SECRET, JWT_AUDIENCE, JWT_ISSUER
+
+    if len(AUTH_SECRET) < 32 or not token:
+        return None
+    try:
+        payload = jwt.decode(
+            token,
+            AUTH_SECRET,
+            algorithms=[ALGORITHM],
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+            options={"require": ["exp", "iat", "sub"]},
+        )
+    except InvalidTokenError:
+        return None
+    subject = payload.get("sub")
+    if not isinstance(subject, str):
+        return None
+    subject = subject.strip()
+    return subject or None
+
+
+def user_rate_key(authorization: Optional[str]) -> Optional[str]:
+    """Per-user bucket key. None when the request is unauthenticated.
+
+    The first 32 characters of an HS256 JWT are the fixed header. Keying on
+    that prefix put every signed-in user in one Redis bucket.
+    """
+    if not authorization:
+        return None
+    scheme, _, rest = authorization.partition(" ")
+    if scheme.lower() != "bearer":
+        return None
+    token = rest.strip()
+    if not token:
+        return None
+    user_id = verified_user_id(token)
+    if user_id:
+        return f"rl:user:{user_id}"
+    digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    return f"rl:user:token:{digest}"
+
+
+def user_bucket_exempt(method: str, path: str) -> bool:
+    """Reads an open session page makes that must not spend the user burst.
+
+    The per-IP bucket still applies. Artifact reads, writes, and every other
+    route stay on the user bucket.
+    """
+    if method.upper() not in {"GET", "HEAD"}:
+        return False
+    if path == "/api/v1/me":
+        return True
+    return bool(_SESSION_DOCUMENT.match(path) or _SESSION_EVENTS.match(path))
+
+
 class TokenBucketMiddleware(BaseHTTPMiddleware):
     """Per-user and per-IP token buckets on /api/v1."""
 
@@ -111,17 +189,19 @@ class TokenBucketMiddleware(BaseHTTPMiddleware):
         )
         if not allowed:
             return _too_many(retry)
-        auth = request.headers.get("authorization") or ""
-        if auth.lower().startswith("bearer "):
-            token = auth.split(" ", 1)[1][:32]
-            allowed, retry = consume(
-                store,
-                f"rl:user:{token}",
-                rate_per_sec=USER_RATE_PER_SEC,
-                burst=USER_BURST,
-            )
-            if not allowed:
-                return _too_many(retry)
+        if user_bucket_exempt(request.method, path):
+            return await call_next(request)
+        key = user_rate_key(request.headers.get("authorization"))
+        if key is None:
+            return await call_next(request)
+        allowed, retry = consume(
+            store,
+            key,
+            rate_per_sec=USER_RATE_PER_SEC,
+            burst=USER_BURST,
+        )
+        if not allowed:
+            return _too_many(retry)
         return await call_next(request)
 
 

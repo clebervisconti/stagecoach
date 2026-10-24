@@ -40,10 +40,18 @@ def prepare_session(
     video_analysis_consent: bool = True,
     layout_review_pref: str = "when_unsure",
     confirmed_layout_count: int = 0,
+    on_progress: Optional[Callable[..., Any]] = None,
+    on_media: Optional[Callable[..., Any]] = None,
 ) -> dict[str, Any]:
     """Run ingest then layout. Pure enough for tests (no DB, no enqueue)."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    ingest_result = ingest(input_path, output_dir, session_id)
+    ingest_result = ingest(
+        input_path,
+        output_dir,
+        session_id,
+        on_progress=on_progress,
+        on_media=on_media,
+    )
     ingest_dict = ingest_result.to_dict()
     write_ingest_json(output_dir, ingest_dict)
     modality = ingest_dict.get("modality") or {}

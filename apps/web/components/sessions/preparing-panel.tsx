@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, X } from "lucide-react";
-import { formatClock } from "@/lib/online";
+import { elapsedClock, formatClock, parseServerInstant } from "@/lib/online";
 import type { StepSnapshot } from "@/lib/progress";
 
 export function PreparingPanel({
@@ -13,6 +13,9 @@ export function PreparingPanel({
   durationS,
   steps,
   startedAt,
+  activity,
+  etaMinutes,
+  onPosterError,
   failed,
   skipReview,
 }: {
@@ -22,6 +25,9 @@ export function PreparingPanel({
   durationS?: number | null;
   steps: StepSnapshot[];
   startedAt: string | null;
+  activity?: string | null;
+  etaMinutes?: number | null;
+  onPosterError?: () => void;
   failed?: string | null;
   skipReview?: boolean;
 }) {
@@ -41,8 +47,9 @@ export function PreparingPanel({
   const layoutRunning = layout?.status === "running" || (ingest?.status === "succeeded" && !layout);
   const scan = layoutRunning;
 
-  const elapsed = startedAt ? formatClock((now - new Date(startedAt).getTime()) / 1000) : "0:00";
-  const slow = Boolean(startedAt && now - new Date(startedAt).getTime() > 60_000);
+  const startedMs = parseServerInstant(startedAt);
+  const elapsed = startedAt ? elapsedClock(startedAt, now) : "0:00";
+  const slow = Boolean(startedMs != null && now - startedMs > 60_000);
 
   const rows = [
     {
@@ -50,11 +57,11 @@ export function PreparingPanel({
       status: ingest?.status === "succeeded" ? "done" : ingest?.status === "failed" ? "failed" : ingest ? "running" : "pending",
       title: t("prepMedia"),
       detail:
-        ingest?.status === "succeeded"
+          ingest?.status === "succeeded"
           ? durationS
             ? t("prepMediaDone", { duration: formatClock(durationS) })
             : t("prepMediaReady")
-          : t("prepMediaHint"),
+          : activity || t("prepMediaHint"),
       time: ingest?.status === "succeeded" ? "—" : null,
     },
     {
@@ -77,9 +84,18 @@ export function PreparingPanel({
         <div className="relative aspect-video">
           {posterUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={posterUrl} alt="" className="h-full w-full object-cover" />
+            <img
+              src={posterUrl}
+              alt=""
+              data-testid="session-poster"
+              className="h-full w-full object-cover"
+              onError={onPosterError}
+            />
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-[color:var(--text-tertiary)]">
+            <div
+              data-testid="poster-placeholder"
+              className="flex h-full items-center justify-center text-sm text-[color:var(--text-tertiary)]"
+            >
               {title}
             </div>
           )}
@@ -102,7 +118,18 @@ export function PreparingPanel({
             <h2 className="cs-eyebrow">{failed ? t("couldntPrepare") : t("preparingTitle")}</h2>
             {!failed && <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{t("usuallyMinute")}</p>}
           </div>
-          {!failed && <p className="font-mono text-sm tabular-nums">{elapsed}</p>}
+          {!failed && (
+            <div className="text-right">
+              <p data-testid="elapsed" className="font-mono text-sm tabular-nums">
+                {elapsed}
+              </p>
+              {etaMinutes != null && (
+                <p data-testid="prep-eta" className="mt-1 text-xs text-[color:var(--text-secondary)]">
+                  {t("aboutLeft", { n: etaMinutes })}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {failed ? (
@@ -145,7 +172,12 @@ export function PreparingPanel({
                           {row.status === "done" ? t("done") : row.status === "running" ? t("inProgress") : t("notStarted")}
                         </span>
                       </p>
-                      <p className="mt-1 text-sm text-[color:var(--text-secondary)]">{row.detail}</p>
+                      <p
+                        className="mt-1 text-sm text-[color:var(--text-secondary)]"
+                        data-testid={row.id === "media" && activity ? "prep-activity" : undefined}
+                      >
+                        {row.detail}
+                      </p>
                     </div>
                   </div>
                   {"time" in row && row.time ? <p className="font-mono text-xs tabular-nums">{row.time}</p> : null}
