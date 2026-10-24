@@ -29,6 +29,14 @@ FACE_PX_FULL = 60.0
 FACE_VISIBLE_FULL = 0.60
 WIDE_SHOT_CONF = 0.6
 GAZE_SCALE_DEG = 30.0  # blendshape score 1.0 ≈ 30° (H)
+# Online modes score gaze only while the camera fills the frame (SPEC §9.5).
+# Below this share of the talk, the category stays N/A instead of a low score.
+LOW_CAMERA_COVERAGE = 0.20
+MID_CAMERA_COVERAGE = 0.50
+ONLINE_GAZE_MODES = frozenset({"webinar", "online_talk", "recorded_video"})
+CAMERA_COVERAGE_REASON = (
+    "The camera fills the frame for too little of this recording to score where you look."
+)
 
 UNITS = {
     "ec_audience_facing_ratio": "ratio",
@@ -174,6 +182,60 @@ def yaw_histogram_bins(
     return out
 
 
+def camera_lens_windows(layout: Optional[dict[str, Any]]) -> Optional[list[tuple[float, float]]]:
+    """Times when gaze toward the lens is the right measurement.
+
+    SPEC §9.5: while a screen is shared, only camera-full segments count,
+    because looking at the shared screen is expected. Returns None when the
+    layout has no segments, so stage and unreviewed files keep the old path.
+    """
+    if not layout or not layout.get("segments"):
+        return None
+    windows: list[tuple[float, float]] = []
+    for segment in layout.get("segments") or []:
+        regions = segment.get("regions") or []
+        has_camera = any(region.get("role") == "camera" for region in regions)
+        has_screen = any(region.get("role") == "screen" for region in regions)
+        kind = str(segment.get("kind") or "")
+        if kind != "camera_full" and not (has_camera and not has_screen):
+            continue
+        start = float(segment.get("t_start") or 0.0)
+        end = segment.get("t_end")
+        if end is None:
+            continue
+        stop = float(end)
+        if stop > start:
+            windows.append((start, stop))
+    return windows
+
+
+def _covers(t: float, windows: Sequence[tuple[float, float]]) -> bool:
+    return any(start <= t <= stop for start, stop in windows)
+
+
+def _gaze_not_applicable(reason: str, coverage: float) -> dict[str, Any]:
+    metrics = {
+        metric_id: _metric(metric_id, None, applicable=False, confidence=0.0, failure_mode="camera_coverage_low")
+        for metric_id in UNITS
+    }
+    return {
+        "proxy_label": "audience-facing time (head orientation)",
+        "eye_contact": False,
+        "l2cs_net": False,
+        "applicable": False,
+        "na_reason": reason,
+        "camera_coverage_ratio": round(coverage, 4),
+        "setup": "to_camera",
+        "use_eye_gaze": False,
+        "wide_shot": False,
+        "face_visible_ratio": 0.0,
+        "face_px_median": 0.0,
+        "hold_count": 0,
+        "yaw_histogram": [],
+        "metrics": metrics,
+    }
+
+
 def compute_gaze_metrics(
     face_rows: list[dict[str, Any]],
     *,
@@ -182,6 +244,10 @@ def compute_gaze_metrics(
     accessibility: Optional[dict[str, Any]] = None,
     audio_only: bool = False,
     mean_face_height_px: Optional[float] = None,
+    delivery_mode: str = "stage",
+    layout: Optional[dict[str, Any]] = None,
+    time_origin_s: float = 0.0,
+    session_duration_s: Optional[float] = None,
 ) -> Optional[dict[str, Any]]:
     """Return scoring-config v1.0.0 eye_contact values, or None if N/A."""
     profile = normalize_profile(accessibility)
@@ -189,6 +255,26 @@ def compute_gaze_metrics(
         return None
     if not face_rows:
         return None
+    coverage_cap: Optional[float] = None
+    if delivery_mode in ONLINE_GAZE_MODES:
+        windows = camera_lens_windows(layout)
+        if windows is not None:
+            covered = sum(stop - start for start, stop in windows)
+            talk_s = session_duration_s
+            if talk_s is None:
+                ends = [stop for _, stop in windows]
+                talk_s = max(duration_s + max(0.0, time_origin_s), max(ends, default=0.0), 1.0)
+            coverage = covered / max(float(talk_s), 1.0)
+            if coverage < LOW_CAMERA_COVERAGE or not windows:
+                return _gaze_not_applicable(CAMERA_COVERAGE_REASON, coverage)
+            origin = float(time_origin_s or 0.0)
+            face_rows = [
+                row for row in face_rows if _covers(float(row.get("t") or 0.0) + origin, windows)
+            ]
+            if not face_rows:
+                return _gaze_not_applicable(CAMERA_COVERAGE_REASON, coverage)
+            if coverage < MID_CAMERA_COVERAGE:
+                coverage_cap = 0.55
     visible = [row for row in face_rows if row.get("face_visible")]
     face_ratio = len(visible) / max(len(face_rows), 1)
     heights = [float(row.get("face_height_px") or 0.0) for row in visible]
@@ -207,6 +293,8 @@ def compute_gaze_metrics(
     conf = 0.75
     if wide_shot or face_ratio < FACE_VISIBLE_FULL:
         conf = min(conf, WIDE_SHOT_CONF)
+    if coverage_cap is not None:
+        conf = min(conf, coverage_cap)
 
     facing = audience_facing_mask(visible if visible else face_rows, setup=setup_norm, use_eye_gaze=use_eye_gaze)
     # Ratio over speaking/visible face frames (gate), not invented zeros for missing faces.

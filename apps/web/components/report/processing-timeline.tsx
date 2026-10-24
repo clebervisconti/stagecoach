@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, CircleX, Info } from "lucide-react";
+import { elapsedClock, parseServerInstant } from "@/lib/online";
 import {
   pipelineTimeline,
   type StageProgressEvent,
   type StepSnapshot,
 } from "@/lib/progress";
+import { ingestStepText } from "@/lib/session-refresh";
 
 const STAGE_KEYS = [
   "ingest",
@@ -34,13 +36,6 @@ type StageKey = (typeof STAGE_KEYS)[number];
 
 function isStageKey(stage: string): stage is StageKey {
   return (STAGE_KEYS as readonly string[]).includes(stage);
-}
-
-function formatElapsed(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
 function stageLabel(
@@ -80,6 +75,7 @@ export function ProcessingTimeline({
   consentOff?: boolean;
 }) {
   const t = useTranslations("report");
+  const tOnline = useTranslations("online");
   const locale = useLocale();
   const settingsHref = `${locale === "en" ? "" : `/${locale}`}/settings#video-analysis`;
   const [now, setNow] = useState(() => Date.now());
@@ -96,8 +92,9 @@ export function ProcessingTimeline({
     layoutConfirmed: autoConfirmed ? "auto" : "user",
   });
   const current = stages.find((stage) => stage.status === "running" || stage.status === "waiting");
-  const elapsed = startedAt ? formatElapsed(now - new Date(startedAt).getTime()) : null;
-  const slow = Boolean(current && startedAt && now - new Date(startedAt).getTime() > 90_000);
+  const startedMs = parseServerInstant(startedAt);
+  const elapsed = startedMs != null ? elapsedClock(startedAt, now) : null;
+  const slow = Boolean(current && startedMs != null && now - startedMs > 90_000);
   const problems = stages.filter(
     (stage) => stage.status === "failed" || (stage.status === "skipped" && stage.problem !== "consent_video_off"),
   );
@@ -141,7 +138,7 @@ export function ProcessingTimeline({
           )}
         </div>
         {elapsed && (
-          <p className="font-mono text-sm tabular-nums">
+          <p data-testid="elapsed" className="font-mono text-sm tabular-nums">
             {t("elapsed", { time: elapsed })}
           </p>
         )}
@@ -170,6 +167,9 @@ export function ProcessingTimeline({
                 ? t("layoutAuto")
                 : t("layoutByYou")
               : stage.detail;
+          const plainDetail = stage.problem
+            ? t(stage.problem)
+            : ingestStepText(resolvedDetail, (key) => tOnline(key)) ?? resolvedDetail;
           const detail =
             stage.status === "skipped"
               ? t("skippedReason", {
@@ -180,9 +180,7 @@ export function ProcessingTimeline({
                         ? t(stage.problem)
                         : resolvedDetail || t("stageSkipped"),
                 })
-              : stage.problem
-                ? t(stage.problem)
-                : resolvedDetail;
+              : plainDetail;
           return (
             <li
               key={stage.stage}

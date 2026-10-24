@@ -189,6 +189,8 @@ class NaCode(Enum):
     hands_not_visible = 'hands_not_visible'
     stage_mode = 'stage_mode'
     no_slides = 'no_slides'
+    model_unavailable = 'model_unavailable'
+    camera_coverage_low = 'camera_coverage_low'
     not_applicable = 'not_applicable'
 
 

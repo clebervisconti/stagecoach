@@ -89,12 +89,14 @@ export type ReportInsight = {
 export type ReportEvidence = {
   id: string;
   category_id: string;
+  metric_id?: string | null;
   t_start: number;
   t_end: number;
   modality: string;
   kind: string;
   text: string;
   quote?: string | null;
+  span?: "moment" | "session" | null;
   confidence: number;
   user_disputed?: boolean;
 };

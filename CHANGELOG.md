@@ -21,11 +21,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- API rate limits key the per-user bucket on the verified user id. A token that does not verify is keyed by a hash of the whole token, not the JWT header prefix, which is the same for every HS256 session. `GET /api/v1/me`, the session document, and the session event stream do not spend the user bucket. The per-IP limit remains. Defaults are 8 requests/s per user (burst 120) and 16/s per IP (burst 240). 429 responses include `Retry-After`, and the web proxy forwards it. See ADR-086.
+
 - App sign-in no longer depends on Cloudflare Access. Email and password sit beside Sign in with Apple. Sessions are httpOnly SameSite=Lax cookies, argon2id hashes, login lockout that does not reveal whether an account exists, Origin checks on BFF mutations, and a session version that dies on password, role, and disable changes. See ADR-083 and ADR-084.
 - Roles are `admin`, `member`, and `viewer`. Admin user management is enforced on the API. The first admin is created on the server with `python -m app.bootstrap_admin` and must change the temporary password. No account is committed.
 - Online modes and admin access are no longer email allowlists. `PRIVATE_BETA_MODE` does not sign anyone in.
 - Password reset email is not sent. An admin sets a temporary password.
 - Web production dependency `zod` is `^4.6.7` (resolved 4.6.7), the patched release for GHSA-mrhx-c7xc-m3w5. `eslint-plugin-react-hooks` and `zod-validation-error` resolve to that same copy. The app has no zod call sites. See ADR-080.
+
+### Session page and prepare
+
+- The open session page follows `/events`. It polls the session document every 12 seconds without overlapping refreshes, and it fetches artifacts when the session is ready or partial, or when an event says a step finished or the report should reload. 409 is not ready. 429 backs off using `Retry-After`. "Could not load this session." clears on the next successful refresh.
+- Ingest emits a progress event per sub-step (check, poster, audio, analysis video, playback, sprites, modality). The poster is taken from the original before the playback transcode, and the page shows a placeholder until that image exists. Playback uses libx264 `veryfast` at CRF 23. Transcode timeouts scale with duration (floor 180 seconds, cap 7200). The worker stores `media_assets.duration_s` after ffprobe. The elapsed clock treats a timezone-less timestamp as UTC.
+- The layout-review headline follows the per-segment timeline: the dominant layout by duration, and how many segments include the camera. A single composition keeps the previous sentence. The detector is unchanged.
 
 ### Long-session content analysis
 
@@ -33,6 +41,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Talks longer than 12 minutes, or with more than 6k estimated transcript tokens, use one sample (k=1) for map and reduce. Shorter talks keep k=3. Quote, segment-id, and emotion-term checks still run. `content.json` records `k` and `chunk_count`.
 - The stage stops at a wall-clock budget (default 8 minutes, `CONTENT_LLM_BUDGET_S`) after the current model call. Finished prompts are kept. Unfinished prompts stay N/A. The analysis job continues, and the timeline says which prompts finished.
 - The processing timeline still has one Content step. Its message shows chunk progress (`outline 1/2`). The first finished prompt refreshes the report.
+- Long talks chunk the outline at 2,500 tokens. Local model calls stream, so the read timeout is the gap between bytes. `CONTENT_LLM_TIMEOUT_S` (default 180, cap 600) and `CONTENT_LLM_BUDGET_S` (default 8 minutes, cap 30) scale with the transcript. A timed-out chunk is retried once. One timeout drops that chunk and leaves the other prompts running. See ADR-087.
+- A finished job is `partial` when the report is partial, coverage is under 60%, or the content step did not finish. The session status follows. No migration.
+
+### Report measurements
+
+- Integrated loudness is the ebur128 summary. −70 LUFS is the silence floor and is not scored. A silent default audio stream is not used when another stream has speech. The loudness-normalised analysis WAV is not the production measurement. See ADR-088.
+- The report shows metric names and units. Session-wide evidence says "Whole session" instead of 00:00. Strengths use category names, and a top opportunity is not also listed as a strength.
+- Categories the language model did not finish say so, including reports already stored. Online sessions can open the layout and re-analyse. There is no content-only retry.
+- Online gaze is scored on camera-full time. Coverage under 20% is N/A. Coverage under 50% caps confidence. Stage gaze is unchanged.
+- A partial report's headline says "Partial score" instead of a level name such as "Strong".
 
 ### O2 editable layout review
 

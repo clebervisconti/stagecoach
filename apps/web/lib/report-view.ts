@@ -91,6 +91,54 @@ export function formatOverallLine(
   return levelName ? `${core} · ${levelName}` : core;
 }
 
+/** A partial report names itself partial. The level word stays for a full score. */
+export function overallLevelWord(
+  partial: boolean,
+  levelName: string | null,
+  partialLabel: string,
+): string | null {
+  if (partial) return partialLabel;
+  return levelName;
+}
+
+const SESSION_WIDE_METRICS = new Set([
+  "pp_wpm",
+  "pp_articulation_rate_sps",
+  "pp_pace_cv",
+  "pp_rush_index",
+  "pp_mean_length_of_run",
+  "fl_filler_sounds_per_min",
+  "fl_filler_words_per_min",
+  "fl_hedges_apologies_per_10min",
+  "fl_repetitions_restarts_per_min",
+  "pq_integrated_lufs",
+  "pq_clipping_ratio",
+  "pq_snr_db",
+  "pq_true_peak_dbtp",
+  "pq_frozen_video_s",
+]);
+
+export function isSessionWideEvidence(item: {
+  t_start: number;
+  quote?: string | null;
+  text?: string;
+  metric_id?: string | null;
+  span?: string | null;
+}): boolean {
+  if (item.span === "session") return true;
+  if (item.metric_id && SESSION_WIDE_METRICS.has(item.metric_id)) return true;
+  if ((item.quote || "").trim()) return false;
+  if (item.t_start > 0.05) return false;
+  const text = (item.text || "").toLowerCase();
+  return (
+    text.includes("words per minute") ||
+    text.includes("speaking rate") ||
+    text.includes("filler-sound") ||
+    text.includes("filler sound") ||
+    text.includes("palavras por minuto")
+  );
+}
+
 function asNumber(value: ReportMetric["raw_value"]): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }

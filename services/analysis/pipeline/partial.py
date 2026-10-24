@@ -39,9 +39,11 @@ def stage_event(
     pct: float | None = None,
     eta_s: int | None = None,
     message: str | None = None,
+    artifact: str | None = None,
+    duration_s: float | None = None,
 ) -> dict[str, Any]:
     """SPEC §7.6 `type: stage` progress event."""
-    return {
+    event: dict[str, Any] = {
         "type": "stage",
         "session_id": session_id,
         "job_id": job_id,
@@ -52,6 +54,11 @@ def stage_event(
         "message": message,
         "timestamp": utc_timestamp(),
     }
+    if artifact:
+        event["artifact"] = artifact
+    if duration_s is not None and duration_s > 0:
+        event["duration_s"] = round(float(duration_s), 3)
+    return event
 
 
 def partial_ready_event(

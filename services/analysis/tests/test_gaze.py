@@ -117,6 +117,65 @@ def test_wide_shot_disables_eye_gaze_and_caps_confidence():
     assert payload["metrics"]["ec_audience_facing_ratio"]["confidence"] <= 0.6
 
 
+def test_webinar_gaze_uses_camera_full_time_only():
+    layout = {
+        "segments": [
+            {
+                "kind": "screen_share",
+                "t_start": 0,
+                "t_end": 80,
+                "regions": [{"role": "screen"}, {"role": "camera"}],
+            },
+            {
+                "kind": "camera_full",
+                "t_start": 80,
+                "t_end": 100,
+                "regions": [{"role": "camera"}],
+            },
+        ]
+    }
+    looking_away = [_face(float(t), 40.0, 0.0) for t in range(30)]
+    low = compute_gaze_metrics(
+        looking_away,
+        duration_s=30.0,
+        setup="to_camera",
+        delivery_mode="webinar",
+        layout=layout,
+        session_duration_s=100.0,
+    )
+    assert low is not None
+    assert low["applicable"] is False
+    assert "camera" in low["na_reason"].lower()
+
+    on_camera = [_face(float(t), 0.0, 0.0) for t in range(40)]
+    mid_layout = {
+        "segments": [
+            {"kind": "camera_full", "t_start": 0, "t_end": 40, "regions": [{"role": "camera"}]},
+            {"kind": "screen_share", "t_start": 40, "t_end": 100, "regions": [{"role": "screen"}]},
+        ]
+    }
+    scored = compute_gaze_metrics(
+        on_camera,
+        duration_s=40.0,
+        setup="to_camera",
+        delivery_mode="webinar",
+        layout=mid_layout,
+        session_duration_s=100.0,
+    )
+    assert scored["metrics"]["ec_audience_facing_ratio"]["value"] == pytest.approx(1.0)
+    assert scored["metrics"]["ec_audience_facing_ratio"]["confidence"] <= 0.55
+
+    stage = compute_gaze_metrics(
+        looking_away,
+        duration_s=30.0,
+        setup="stage",
+        delivery_mode="stage",
+        layout=layout,
+        session_duration_s=100.0,
+    )
+    assert stage["metrics"]["ec_audience_facing_ratio"]["applicable"] is True
+
+
 def test_audio_only_and_opt_out():
     rows = [_face(0.1, 0.0, 0.0)]
     assert compute_gaze_metrics(rows, duration_s=1.0, audio_only=True) is None

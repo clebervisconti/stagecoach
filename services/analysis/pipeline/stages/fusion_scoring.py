@@ -43,6 +43,17 @@ CONTENT_TEXT_CATEGORIES = {
     "impact",
 }
 QA_NOT_IN_SLOT_REASON = "This session did not include a Q&A segment."
+CONTENT_STEP_REASON = "The language model step didn't finish, so this category stays N/A."
+CAMERA_COVERAGE_NA = (
+    "The camera fills the frame for too little of this recording to score where you look."
+)
+_CONTENT_FIELD = {
+    "structure": ("outline", "outline_v1"),
+    "core_message": ("message", "message_v1"),
+    "storytelling": ("story_impact", "story_impact_v1"),
+    "audience_adaptation": ("audience_clarity", "audience_clarity_v1"),
+    "opening_close": ("open_close", "open_close_v1"),
+}
 ONLINE_STAGE_NA = {
     "screen_flow": "Screen flow is not scored for on-stage sessions.",
     "on_camera_presence": "On-camera presence is not scored for on-stage sessions.",
@@ -300,6 +311,12 @@ def _production_metrics_from_payload(
         metric_id = row.get("id")
         if metric_id not in defs or row.get("value") is None or row.get("applicable") is False:
             continue
+        if metric_id == "pq_integrated_lufs":
+            try:
+                if float(row["value"]) <= -70.0:
+                    continue
+            except (TypeError, ValueError):
+                continue
         metric_def = defs[metric_id]
         items.append(
             {
@@ -1066,6 +1083,35 @@ def _write_series(
     return refs
 
 
+def _content_gap_reason(content_raw: Optional[dict[str, Any]], category_id: str) -> Optional[str]:
+    """Why a content category has no model scores, when that is the real cause."""
+    if category_id not in CONTENT_TEXT_CATEGORIES or not isinstance(content_raw, dict):
+        return None
+    if content_raw.get("unavailable"):
+        reason = str(content_raw.get("unavailable_reason") or "")
+        lowered = reason.lower()
+        if "language model" in lowered or "didn't finish" in lowered or "did not finish" in lowered:
+            return CONTENT_STEP_REASON
+        return None
+    provenance = content_raw.get("provenance") or {}
+    stop = provenance.get("stop_reason")
+    if stop not in {"timeout", "error", "budget", "unavailable"}:
+        return None
+    field = _CONTENT_FIELD.get(category_id)
+    if field:
+        name, prompt_id = field
+        if content_raw.get(name):
+            return None
+        unfinished = set(provenance.get("unfinished_prompts") or [])
+        degraded = set(provenance.get("degraded_prompts") or [])
+        if prompt_id in unfinished or prompt_id in degraded or stop == "timeout":
+            return CONTENT_STEP_REASON
+        return None
+    if any(content_raw.get(name) for name, _prompt in _CONTENT_FIELD.values()):
+        return None
+    return CONTENT_STEP_REASON
+
+
 def run_fusion_scoring(
     *,
     session_id: str,
@@ -1320,6 +1366,9 @@ def run_fusion_scoring(
                 elif failed and face_allowed:
                     applicable = False
                     na_reason = failed
+                elif face_allowed and gaze and gaze.get("applicable") is False:
+                    applicable = False
+                    na_reason = str(gaze.get("na_reason") or CAMERA_COVERAGE_NA)
                 elif face_allowed and gaze:
                     extras["face_visible_ratio"] = float(gaze.get("face_visible_ratio") or 0.0)
                     extras["face_px_median"] = float(gaze.get("face_px_median") or 0.0)
@@ -1362,6 +1411,10 @@ def run_fusion_scoring(
                     content_na_reason
                     or "Content analysis was not run, so this category has no inputs."
                 )
+            gap = _content_gap_reason(content_raw, category_id)
+            if gap:
+                applicable = False
+                na_reason = gap
             if category_id == "vocal_variety" and music_flag:
                 applicable = False
                 na_reason = "Background music makes vocal-variety scoring unavailable."

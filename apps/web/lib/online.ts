@@ -86,6 +86,22 @@ export function formatBytes(bytes: number): string {
   return `${value.toFixed(digits)} ${units[unit]}`;
 }
 
+/** Database timestamps are UTC. A value with no zone is not local time. */
+export function parseServerInstant(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const zoned = /(?:[zZ]|[+-]\d{2}:?\d{2})$/.test(trimmed);
+  const parsed = Date.parse(zoned ? trimmed : `${trimmed}Z`);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function elapsedClock(startedAt: string | null | undefined, now = Date.now()): string {
+  const start = parseServerInstant(startedAt);
+  if (start == null) return "0:00";
+  return formatClock((now - start) / 1000);
+}
+
 export function formatClock(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(total / 3600);
@@ -152,12 +168,45 @@ export function segmentRoles(segment: LayoutSegment | undefined): LayoutRole[] {
   return (["camera", "screen", "other_participant", "ignore"] as const).filter((role) => seen.has(role));
 }
 
-export function layoutComposition(segment: LayoutSegment | undefined): "camera_screen" | "camera" | "screen" | "audio" {
+export type LayoutComposition = "camera_screen" | "camera" | "screen" | "audio";
+
+export function layoutComposition(segment: LayoutSegment | undefined): LayoutComposition {
   const roles = new Set(segmentRoles(segment));
   if (roles.has("camera") && roles.has("screen")) return "camera_screen";
   if (roles.has("camera")) return "camera";
   if (roles.has("screen")) return "screen";
   return "audio";
+}
+
+export type LayoutSummary = {
+  dominant: LayoutComposition;
+  cameraSegments: number;
+  segmentCount: number;
+  mixed: boolean;
+};
+
+/** Dominant layout by time on screen, plus how often the camera shows up. */
+export function summariseLayouts(segments: LayoutSegment[]): LayoutSummary {
+  const spans: Record<LayoutComposition, number> = { camera_screen: 0, camera: 0, screen: 0, audio: 0 };
+  const counts: Record<LayoutComposition, number> = { camera_screen: 0, camera: 0, screen: 0, audio: 0 };
+  let cameraSegments = 0;
+  for (const segment of segments) {
+    const composition = layoutComposition(segment);
+    spans[composition] += Math.max(0, segment.t_end - segment.t_start);
+    counts[composition] += 1;
+    if (composition === "camera" || composition === "camera_screen") cameraSegments += 1;
+  }
+  const ranked = (Object.keys(spans) as LayoutComposition[]).sort((a, b) => {
+    if (spans[b] !== spans[a]) return spans[b] - spans[a];
+    return counts[b] - counts[a];
+  });
+  const dominant = ranked[0] ?? "audio";
+  return {
+    dominant,
+    cameraSegments,
+    segmentCount: segments.length,
+    mixed: ranked.filter((key) => counts[key] > 0).length > 1,
+  };
 }
 
 export function regionPositionWords(region: LayoutRegion): { position: string; size: string } {
@@ -247,6 +296,8 @@ export const NA_CODES = [
   "hands_not_visible",
   "stage_mode",
   "no_slides",
+  "model_unavailable",
+  "camera_coverage_low",
   "not_applicable",
 ] as const;
 

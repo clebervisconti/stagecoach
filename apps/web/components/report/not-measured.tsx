@@ -2,9 +2,15 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Info } from "lucide-react";
 import { CATEGORY_IDS, type AnalysisReport } from "@/lib/report-types";
-import { isNaCode } from "@/lib/online";
+import { categoryNaCopy, isLanguageModelGap } from "@/lib/na-copy";
 
-export function NotMeasured({ report }: { report: AnalysisReport }) {
+export function NotMeasured({
+  report,
+  rerunHref,
+}: {
+  report: AnalysisReport;
+  rerunHref?: string | null;
+}) {
   const t = useTranslations("online");
   const reportT = useTranslations("report");
   const locale = useLocale();
@@ -22,12 +28,9 @@ export function NotMeasured({ report }: { report: AnalysisReport }) {
       <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{t("notMeasuredLead")}</p>
       <ul className="mt-6 grid gap-4 md:grid-cols-2">
         {rows.map((category) => {
-          const code = isNaCode(category.na_code) ? category.na_code : null;
-          const reason = code
-            ? t(`na.${code}`)
-            : category.id === "screen_flow"
-              ? t("na.screenFlowSoon")
-              : category.na_reason || t("na.not_applicable");
+          const reason = categoryNaCopy(category, t);
+          const rerun =
+            Boolean(rerunHref) && isLanguageModelGap(category.na_reason, category.na_code);
           return (
             <li key={category.id} className="flex items-start gap-3">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--text-tertiary)]" aria-hidden="true" />
@@ -38,9 +41,14 @@ export function NotMeasured({ report }: { report: AnalysisReport }) {
                     : category.id.replaceAll("_", " ")}
                 </p>
                 <p className="mt-1 text-sm text-[color:var(--text-secondary)]">{reason}</p>
-                {code === "consent_video_off" && (
+                {category.na_code === "consent_video_off" && (
                   <Link href={`${prefix}/settings`} className="mt-2 inline-block text-xs uppercase tracking-[0.08em]">
                     {t("openSettings")}
+                  </Link>
+                )}
+                {rerun && rerunHref && (
+                  <Link href={rerunHref} className="mt-2 inline-block text-xs uppercase tracking-[0.08em]">
+                    {t("rerunContent")}
                   </Link>
                 )}
               </div>

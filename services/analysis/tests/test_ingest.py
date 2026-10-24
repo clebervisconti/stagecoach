@@ -17,9 +17,12 @@ from pipeline.stages.ingest import (
     detect_person_presence,
     generate_sprites,
     ingest,
+    playback_ffmpeg_command,
+    prepare_eta_s,
     run_ffprobe,
     score_person_presence,
     transcode_audio,
+    transcode_timeout_s,
     validate_media,
 )
 
@@ -234,8 +237,12 @@ def test_ingest_audio_only(test_audio_file, temp_dir):
     """Test complete ingest pipeline for audio-only file."""
     output_dir = temp_dir / "output"
     output_dir.mkdir()
-    
-    result = ingest(test_audio_file, output_dir, "test-session")
+    steps = []
+
+    def on_progress(step, pct, artifact=None, eta=None):
+        steps.append((step, pct, artifact))
+
+    result = ingest(test_audio_file, output_dir, "test-session", on_progress=on_progress)
     
     # Check media info
     assert result.media_info.has_audio
@@ -254,14 +261,35 @@ def test_ingest_audio_only(test_audio_file, temp_dir):
     
     # Check hash
     assert len(result.sha256) == 64
+    assert [step for step, _pct, _artifact in steps] == ["ingest_check", "ingest_audio", "ingest_modality"]
+    assert "ingest_poster" not in {step for step, _pct, _artifact in steps}
+    assert not (output_dir / "poster.jpg").exists()
 
 
 def test_ingest_video(test_video_file, temp_dir):
     """Test complete ingest pipeline for video file."""
     output_dir = temp_dir / "output"
     output_dir.mkdir()
-    
-    result = ingest(test_video_file, output_dir, "test-session")
+    steps = []
+    seen = {}
+
+    def on_media(info):
+        seen["duration"] = info.duration
+        seen["audio_exists"] = (output_dir / "audio16k.wav").exists()
+
+    def on_progress(step, pct, artifact=None, eta=None):
+        steps.append((step, pct, artifact))
+        if step == "ingest_poster":
+            seen["poster_ready"] = (output_dir / "poster.jpg").is_file()
+            seen["playback_exists"] = (output_dir / "playback.mp4").exists()
+
+    result = ingest(
+        test_video_file,
+        output_dir,
+        "test-session",
+        on_progress=on_progress,
+        on_media=on_media,
+    )
     
     # Check media info
     assert result.media_info.has_video
@@ -286,6 +314,24 @@ def test_ingest_video(test_video_file, temp_dir):
     )
     # r_frame_rate should be "15/1"
     assert "15" in video_stream["r_frame_rate"]
+    names = [step for step, _pct, _artifact in steps]
+    assert names == [
+        "ingest_check",
+        "ingest_poster",
+        "ingest_audio",
+        "ingest_analysis",
+        "ingest_playback",
+        "ingest_sprites",
+        "ingest_modality",
+    ]
+    percents = [pct for _step, pct, _artifact in steps]
+    assert percents == sorted(percents)
+    assert seen["duration"] > 0
+    assert seen["audio_exists"] is False
+    assert seen["poster_ready"] is True
+    assert seen["playback_exists"] is False
+    poster = next(artifact for step, _pct, artifact in steps if step == "ingest_poster")
+    assert poster == "poster"
 
 
 def test_generate_sprites(test_video_file, temp_dir):
@@ -324,3 +370,25 @@ def test_media_info_serialization():
     assert data["duration"] == 10.5
     assert data["width"] == 1920
     assert data["fps"] == 30.0
+
+
+def test_playback_preset_is_veryfast_at_the_same_crf(temp_dir):
+    cmd = playback_ffmpeg_command(temp_dir / "in.mp4", temp_dir / "playback.mp4")
+    assert cmd[cmd.index("-preset") + 1] == "veryfast"
+    assert cmd[cmd.index("-crf") + 1] == "23"
+    assert "medium" not in cmd
+
+
+def test_transcode_timeout_scales_with_duration():
+    short = transcode_timeout_s(1, kind="playback")
+    webinar = transcode_timeout_s(36 * 60, kind="playback")
+    long = transcode_timeout_s(120 * 60, kind="playback")
+    assert short == 180
+    assert webinar > 1200
+    assert long > webinar
+    assert long <= 7200
+    assert transcode_timeout_s(0, kind="audio") == 180
+    assert 180 <= transcode_timeout_s(10, kind="audio") < transcode_timeout_s(3600, kind="audio")
+    early = prepare_eta_s(36 * 60, 8)
+    late = prepare_eta_s(36 * 60, 36)
+    assert early > late >= 1

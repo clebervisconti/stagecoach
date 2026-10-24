@@ -148,6 +148,34 @@ def test_local_qwen_uses_native_chat_with_reasoning_off():
     assert "Do not repeat the transcript" in call["system_prompt"]
 
 
+def test_local_native_chat_streams_deltas_when_the_transport_can():
+    class Streaming:
+        def __init__(self) -> None:
+            self.calls: list[dict] = []
+
+        def post_stream(self, url, headers, json_body, timeout):
+            self.calls.append(json_body)
+            yield 'data: {"type":"message.delta","content":"{\\"summary\\": \\""}'
+            yield 'data: {"type":"message.delta","content":"ok\\"}"}'
+            yield 'data: {"type":"chat.end","stats":{"input_tokens":4,"total_output_tokens":2}}'
+
+    transport = Streaming()
+    provider = OpenAICompatibleProvider(
+        api_key="local",
+        base_url="http://127.0.0.1:1234/v1",
+        models={"qwen/qwen3.8-27b": {"temperature_default": 0.1, "max_tokens": 1000, "price_per_input_token": 0, "price_per_output_token": 0}},
+        timeout=5,
+        retry_config={"max_attempts": 1, "backoff_factor": 1},
+        provider_id="local",
+        transport=transport,
+    )
+    response = provider.generate_structured("t", {"n": 1}, SCHEMA, "qwen/qwen3.8-27b")
+    assert response.data["summary"] == "ok"
+    assert transport.calls[0]["stream"] is True
+    assert transport.calls[0]["reasoning"] == "off"
+    assert transport.calls[0]["store"] is False
+
+
 def test_local_schema_echo_is_replaced_with_an_instance():
     class Sequence:
         def __init__(self) -> None:

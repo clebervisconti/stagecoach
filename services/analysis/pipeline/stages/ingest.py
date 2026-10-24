@@ -18,7 +18,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,50 @@ logger = logging.getLogger(__name__)
 MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB
 MAX_DURATION_SECONDS = int(os.getenv("MAX_DURATION_SECONDS", str(120 * 60)))  # OD-6: 120 minutes
 SPRITE_INTERVAL_SECONDS = 5
+
+# Historical flat timeout. Long recordings on one core outgrew it: a 36-minute
+# 1080p playback encode was already ~185s at preset medium, so a 120-minute
+# file needs a timeout that follows the duration. The cap stays well under a
+# day so a stuck ffmpeg is still killed.
+_TRANSCODE_TIMEOUT_FLOOR_S = 180
+_TRANSCODE_TIMEOUT_CAP_S = 7200
+_TRANSCODE_TIMEOUT_FACTOR = {
+    "audio": 0.35,
+    "analysis": 0.45,
+    "playback": 0.6,
+    "sprites": 0.25,
+}
+
+ProgressFn = Callable[[str, float, Optional[str], Optional[int]], None]
+MediaFn = Callable[["MediaInfo"], None]
+
+
+def transcode_timeout_s(duration_s: float, *, kind: str = "playback") -> int:
+    """Seconds to allow one ffmpeg, growing with the recording and bounded."""
+    try:
+        duration = float(duration_s)
+    except (TypeError, ValueError):
+        duration = 0.0
+    if duration < 0:
+        duration = 0.0
+    factor = _TRANSCODE_TIMEOUT_FACTOR.get(kind, 0.6)
+    scaled = int(duration * factor) + _TRANSCODE_TIMEOUT_FLOOR_S
+    return max(_TRANSCODE_TIMEOUT_FLOOR_S, min(scaled, _TRANSCODE_TIMEOUT_CAP_S))
+
+
+def prepare_eta_s(duration_s: float, pct: float) -> int:
+    """Rough remaining prepare time. veryfast playback is the long pole.
+
+    A 36-minute 1080p file was about seven minutes at preset medium. veryfast
+    at the same CRF is closer to 0.12× realtime plus a short fixed cost.
+    """
+    try:
+        duration = max(0.0, float(duration_s))
+    except (TypeError, ValueError):
+        duration = 0.0
+    total = max(20.0, duration * 0.12 + 20.0)
+    remaining = total * (1.0 - min(max(float(pct), 0.0), 99.0) / 100.0)
+    return max(1, int(remaining))
 
 # Supported containers and codecs
 SUPPORTED_VIDEO_CONTAINERS = {"mov", "mp4", "webm", "mkv", "avi"}
@@ -261,7 +305,7 @@ def validate_media(input_path: Path) -> MediaInfo:
     )
 
 
-def transcode_audio(input_path: Path, output_dir: Path) -> Path:
+def transcode_audio(input_path: Path, output_dir: Path, timeout: int = 1200) -> Path:
     """Transcode audio to 16kHz mono WAV for ASR.
     
     Per SPEC §6.2: 16kHz, mono, PCM s16le, with loudness normalization.
@@ -287,12 +331,12 @@ def transcode_audio(input_path: Path, output_dir: Path) -> Path:
         str(output_path),
     ]
     
-    subprocess.run(cmd, check=True, capture_output=True, timeout=600)
+    subprocess.run(cmd, check=True, capture_output=True, timeout=timeout)
     
     return output_path
 
 
-def transcode_analysis_video(input_path: Path, output_dir: Path) -> Path:
+def transcode_analysis_video(input_path: Path, output_dir: Path, timeout: int = 1200) -> Path:
     """Transcode to analysis proxy: ≤720p, 15fps, H.264.
     
     Per SPEC §6.2: Efficient for CV processing.
@@ -318,33 +362,45 @@ def transcode_analysis_video(input_path: Path, output_dir: Path) -> Path:
         str(output_path),
     ]
     
-    subprocess.run(cmd, check=True, capture_output=True, timeout=1200)
+    subprocess.run(cmd, check=True, capture_output=True, timeout=timeout)
     
     return output_path
 
 
-def transcode_playback_video(input_path: Path, output_dir: Path) -> Tuple[Path, Path]:
-    """Transcode to playback proxy: H.264+AAC, faststart, with poster.
-    
-    Per SPEC §6.2: Web-optimized playback.
-    
-    Args:
-        input_path: Input media file
-        output_dir: Output directory
-        
-    Returns:
-        Tuple of (playback.mp4 path, poster.jpg path)
+def extract_poster(input_path: Path, output_dir: Path, duration: float = 0) -> Path:
+    """JPEG from the original, before the long playback transcode.
+
+    Input seeking keeps this to about a second. The frame is 1s in, or 10%
+    for a clip shorter than 1.5s.
     """
-    playback_path = output_dir / "playback.mp4"
+    output_dir.mkdir(parents=True, exist_ok=True)
     poster_path = output_dir / "poster.jpg"
-    
-    # Transcode with faststart
+    timestamp = 1.0 if duration >= 1.5 else max(0.0, float(duration) * 0.1)
     cmd = [
+        "ffmpeg",
+        "-ss", f"{timestamp:.3f}",
+        "-i", str(input_path),
+        "-frames:v", "1",
+        "-q:v", "2",
+        "-y",
+        str(poster_path),
+    ]
+    subprocess.run(cmd, check=True, capture_output=True, timeout=30)
+    return poster_path
+
+
+def playback_ffmpeg_command(input_path: Path, playback_path: Path) -> List[str]:
+    """H.264+AAC faststart at CRF 23. veryfast instead of medium.
+
+    Same quality target as before. veryfast spends less time on a 1080p to
+    720p playback rendition; the file can be a little larger.
+    """
+    return [
         "ffmpeg",
         "-i", str(input_path),
         "-vf", "scale='min(1280,iw)':-2",
         "-c:v", "libx264",
-        "-preset", "medium",
+        "-preset", "veryfast",
         "-crf", "23",
         "-c:a", "aac",
         "-b:a", "128k",
@@ -352,51 +408,28 @@ def transcode_playback_video(input_path: Path, output_dir: Path) -> Tuple[Path, 
         "-y",
         str(playback_path),
     ]
-    
-    subprocess.run(cmd, check=True, capture_output=True, timeout=1200)
-    
-    # Extract poster frame at 1s (or 10% if shorter)
-    cmd_poster = [
-        "ffmpeg",
-        "-i", str(playback_path),
-        "-ss", "1",
-        "-vframes", "1",
-        "-q:v", "2",
-        "-y",
-        str(poster_path),
-    ]
-    
-    subprocess.run(cmd_poster, check=True, capture_output=True, timeout=30)
-    
-    return playback_path, poster_path
 
 
-def generate_sprites(input_path: Path, output_dir: Path, duration: float) -> List[Path]:
-    """Generate sprite thumbnails every 5 seconds.
-    
-    Per SPEC §6.2: For timeline hover previews.
-    
-    Args:
-        input_path: Input video file
-        output_dir: Output directory
-        duration: Media duration in seconds
-        
-    Returns:
-        List of sprite image paths
+def transcode_playback_video(input_path: Path, output_dir: Path, timeout: int = 1200) -> Path:
+    """Transcode to playback proxy: H.264+AAC, faststart.
+
+    The poster is extracted from the original earlier. This step does not
+    wait on that frame.
     """
-    sprites_dir = output_dir / "sprites"
-    sprites_dir.mkdir(exist_ok=True)
-    
+    playback_path = output_dir / "playback.mp4"
+    cmd = playback_ffmpeg_command(input_path, playback_path)
+    subprocess.run(cmd, check=True, capture_output=True, timeout=timeout)
+    return playback_path
+
+
+def _generate_sprites_sequential(input_path: Path, sprites_dir: Path, duration: float) -> List[Path]:
     sprites: List[Path] = []
     num_sprites = int(duration / SPRITE_INTERVAL_SECONDS) + 1
-    
     for i in range(num_sprites):
         timestamp = i * SPRITE_INTERVAL_SECONDS
         if timestamp >= duration:
             break
-        
         sprite_path = sprites_dir / f"sprite_{i:04d}.jpg"
-        
         cmd = [
             "ffmpeg",
             "-ss", str(timestamp),
@@ -407,11 +440,45 @@ def generate_sprites(input_path: Path, output_dir: Path, duration: float) -> Lis
             "-y",
             str(sprite_path),
         ]
-        
         subprocess.run(cmd, check=True, capture_output=True, timeout=30)
         sprites.append(sprite_path)
-    
     return sprites
+
+
+def generate_sprites(input_path: Path, output_dir: Path, duration: float) -> List[Path]:
+    """Sprite thumbnails every 5 seconds (SPEC §6.2).
+
+    One ffmpeg pass writes the series. A per-frame loop remains if that pass
+    produces nothing, so a short or odd file still gets a preview.
+    """
+    sprites_dir = output_dir / "sprites"
+    sprites_dir.mkdir(exist_ok=True)
+    if duration <= 0:
+        return []
+    pattern = sprites_dir / "sprite_%04d.jpg"
+    cmd = [
+        "ffmpeg",
+        "-i", str(input_path),
+        "-vf", f"fps=1/{SPRITE_INTERVAL_SECONDS},scale=160:-2",
+        "-q:v", "5",
+        "-start_number", "0",
+        "-y",
+        str(pattern),
+    ]
+    try:
+        subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            timeout=transcode_timeout_s(duration, kind="sprites"),
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        logger.warning("sprite pass failed; falling back to one frame at a time")
+        return _generate_sprites_sequential(input_path, sprites_dir, duration)
+    sprites = sorted(sprites_dir.glob("sprite_*.jpg"))
+    if sprites:
+        return sprites
+    return _generate_sprites_sequential(input_path, sprites_dir, duration)
 
 
 def _skin_ratio(bgr) -> float:
@@ -551,6 +618,8 @@ def ingest(
     input_path: Path,
     output_dir: Path,
     session_id: str,
+    on_progress: Optional[ProgressFn] = None,
+    on_media: Optional[MediaFn] = None,
 ) -> IngestOutput:
     """Run complete ingest stage.
     
@@ -574,43 +643,66 @@ def ingest(
         subprocess.CalledProcessError: If transcoding fails
     """
     logger.info(f"[{session_id}] Starting ingest: {input_path.name}")
-    
-    # Step 1: Validate
+    duration = 0.0
+
+    def report(step: str, pct: float, artifact: Optional[str] = None) -> None:
+        if on_progress is None:
+            return
+        eta = prepare_eta_s(duration, pct) if duration > 0 else None
+        on_progress(step, pct, artifact, eta)
+
+    # Step 1: Validate, then hash. The probe is what fills media duration.
     logger.info(f"[{session_id}] Validating media")
     media_info = validate_media(input_path)
-    
-    # Compute input file hash
+    duration = float(media_info.duration or 0)
+    if on_media is not None:
+        on_media(media_info)
     sha256 = compute_file_hash(input_path)
     logger.info(f"[{session_id}] Input SHA256: {sha256}")
-    
-    # Step 2: Transcode audio
-    logger.info(f"[{session_id}] Transcoding audio")
-    audio_path = transcode_audio(input_path, output_dir)
-    
-    artifacts = {
-        "audio16k": audio_path,
-    }
-    
-    # Step 3: Transcode video (if present)
+    report("ingest_check", 8)
+
+    audio_timeout = transcode_timeout_s(duration, kind="audio")
+    analysis_timeout = transcode_timeout_s(duration, kind="analysis")
+    playback_timeout = transcode_timeout_s(duration, kind="playback")
+
     analysis_video_path = None
-    
+    artifacts: Dict[str, Path] = {}
+
     if media_info.has_video:
-        logger.info(f"[{session_id}] Transcoding analysis video")
-        analysis_video_path = transcode_analysis_video(input_path, output_dir)
-        artifacts["analysis"] = analysis_video_path
-        
-        logger.info(f"[{session_id}] Transcoding playback video")
-        playback_path, poster_path = transcode_playback_video(input_path, output_dir)
-        artifacts["playback"] = playback_path
+        # Poster from the original first, so the preview exists during the
+        # long encodes instead of after them.
+        logger.info(f"[{session_id}] Extracting poster")
+        poster_path = extract_poster(input_path, output_dir, duration)
         artifacts["poster"] = poster_path
-        
-        # Step 4: Generate sprites
+        report("ingest_poster", 10, "poster")
+
+        logger.info(f"[{session_id}] Transcoding audio")
+        report("ingest_audio", 16)
+        audio_path = transcode_audio(input_path, output_dir, timeout=audio_timeout)
+        artifacts["audio16k"] = audio_path
+
+        logger.info(f"[{session_id}] Transcoding analysis video")
+        report("ingest_analysis", 26)
+        analysis_video_path = transcode_analysis_video(input_path, output_dir, timeout=analysis_timeout)
+        artifacts["analysis"] = analysis_video_path
+
+        logger.info(f"[{session_id}] Transcoding playback video")
+        report("ingest_playback", 36)
+        playback_path = transcode_playback_video(input_path, output_dir, timeout=playback_timeout)
+        artifacts["playback"] = playback_path
+
         logger.info(f"[{session_id}] Generating sprites")
-        sprites = generate_sprites(playback_path, output_dir, media_info.duration)
+        report("ingest_sprites", 39)
+        sprites = generate_sprites(playback_path, output_dir, duration)
         logger.info(f"[{session_id}] Generated {len(sprites)} sprites")
-    
-    # Step 5: Detect modality
+    else:
+        logger.info(f"[{session_id}] Transcoding audio")
+        report("ingest_audio", 20)
+        audio_path = transcode_audio(input_path, output_dir, timeout=audio_timeout)
+        artifacts["audio16k"] = audio_path
+
     logger.info(f"[{session_id}] Detecting modality")
+    report("ingest_modality", 40)
     modality = detect_modality(media_info, analysis_video_path)
     
     logger.info(

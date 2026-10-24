@@ -19,12 +19,20 @@ import { VoiceTab } from "@/components/report/voice-tab";
 import type { BodyPayload, SlidesPayload } from "@/lib/body-slides";
 import { exportFileUrl, exportStatusUrl, exportUrl } from "@/lib/pdf-export";
 import { formatTimestamp } from "@/lib/player";
-import { eventsUrl, parseProgressData, sessionConsentOff, shouldReloadReport, type StageProgressEvent, type StepSnapshot } from "@/lib/progress";
+import { eventsUrl, parseProgressData, sessionConsentOff, type StageProgressEvent, type StepSnapshot } from "@/lib/progress";
 import { ProcessingTimeline } from "@/components/report/processing-timeline";
 import { NotMeasured } from "@/components/report/not-measured";
 import { PreparingPanel } from "@/components/sessions/preparing-panel";
 import { WizardStepper } from "@/components/sessions/new/wizard-stepper";
 import { formatClock, type DeliveryMode } from "@/lib/online";
+import {
+  classifyArtifactStatus,
+  etaMinutes,
+  ingestStepText,
+  retryAfterMs,
+  SessionRefresh,
+  type SessionLoadResult,
+} from "@/lib/session-refresh";
 import { Globe, Mic, Play, Users } from "lucide-react";
 import { goalRadarPoints, radarPoints, type GoalLike } from "@/lib/report-view";
 import { exportVtt, type TranscriptPayload } from "@/lib/transcript";
@@ -41,7 +49,7 @@ type SessionDetail = {
   language: string;
   slot_min: number | null;
   created_at: string;
-  media?: { duration_s?: number | null } | null;
+  media?: { duration_s?: number | null; poster_ready?: boolean } | null;
   consent?: { video_analysis?: boolean } | null;
   job: null | {
     status: string;
@@ -89,99 +97,118 @@ export default function SessionPage() {
   >("categories");
   const seekRef = useRef<(tStart: number) => void>(() => undefined);
   const [live, setLive] = useState<StageProgressEvent | null>(null);
+  const [posterReady, setPosterReady] = useState(false);
   const [error, setError] = useState("");
   const [includeTranscript, setIncludeTranscript] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const pollerRef = useRef<SessionRefresh | null>(null);
   const terminal = session?.status === "ready" || session?.status === "partial" || session?.status === "failed";
 
   useEffect(() => {
     let active = true;
-    async function loadArtifacts() {
-      const reportResponse = await fetch(`/api/stagecoach/sessions/${params.id}/report`, {
-        cache: "no-store",
-      });
-      if (reportResponse.ok) {
-        const payload: unknown = await reportResponse.json();
-        if (isReport(payload) && active) setReport(payload);
+    const sessionId = params.id;
+    const loadError = t("loadError");
+
+    async function pull(url: string, delays: number[]): Promise<unknown | undefined> {
+      const response = await fetch(url, { cache: "no-store" });
+      const kind = classifyArtifactStatus(response.status);
+      if (kind === "rate_limited") {
+        delays.push(retryAfterMs(response.headers.get("retry-after")));
+        return undefined;
       }
-      const transcriptResponse = await fetch(`/api/stagecoach/sessions/${params.id}/transcript`, {
-        cache: "no-store",
-      });
-      if (transcriptResponse.ok && active) setTranscript(await transcriptResponse.json());
+      if (kind !== "ok") return undefined;
+      try {
+        return await response.json();
+      } catch {
+        return undefined;
+      }
+    }
+
+    async function loadArtifacts(): Promise<number | null> {
+      const delays: number[] = [];
+      const base = `/api/stagecoach/sessions/${sessionId}`;
       const seriesNames = ["pace", "pitch", "loudness", "energy"] as const;
-      const loaded: Record<string, SeriesPayload | null> = {};
-      await Promise.all(
-        seriesNames.map(async (name) => {
-          const response = await fetch(`/api/stagecoach/sessions/${params.id}/series/${name}`, {
-            cache: "no-store",
-          });
-          loaded[name] = response.ok ? ((await response.json()) as SeriesPayload) : null;
-        }),
-      );
-      if (active) setSeries(loaded);
-      const timelineResponse = await fetch(`/api/stagecoach/sessions/${params.id}/timeline`, {
-        cache: "no-store",
-      });
-      if (timelineResponse.ok && active) {
-        setTimeline((await timelineResponse.json()) as TimelinePayload);
-      }
-      const coachingResponse = await fetch(`/api/stagecoach/sessions/${params.id}/coaching`, {
-        cache: "no-store",
-      });
-      if (coachingResponse.ok && active) {
-        setCoaching((await coachingResponse.json()) as CoachingPayload);
-      }
-      const bodyResponse = await fetch(`/api/stagecoach/sessions/${params.id}/body`, {
-        cache: "no-store",
-      });
-      if (bodyResponse.ok && active) {
-        setBody((await bodyResponse.json()) as BodyPayload);
-      }
-      const slidesResponse = await fetch(`/api/stagecoach/sessions/${params.id}/slides`, {
-        cache: "no-store",
-      });
-      if (slidesResponse.ok && active) {
-        setSlides((await slidesResponse.json()) as SlidesPayload);
-      }
-      const goalsResponse = await fetch("/api/stagecoach/goals", { cache: "no-store" });
-      if (goalsResponse.ok && active) {
-        const payload = (await goalsResponse.json()) as { goals?: GoalLike[] };
+      const [reportBody, transcriptBody, timelineBody, coachingBody, bodyBody, slidesBody, goalsBody, ...seriesBodies] =
+        await Promise.all([
+          pull(`${base}/report`, delays),
+          pull(`${base}/transcript`, delays),
+          pull(`${base}/timeline`, delays),
+          pull(`${base}/coaching`, delays),
+          pull(`${base}/body`, delays),
+          pull(`${base}/slides`, delays),
+          pull("/api/stagecoach/goals", delays),
+          ...seriesNames.map((name) => pull(`${base}/series/${name}`, delays)),
+        ]);
+      if (!active) return delays.length ? Math.max(...delays) : null;
+      if (isReport(reportBody)) setReport(reportBody);
+      if (transcriptBody && typeof transcriptBody === "object") setTranscript(transcriptBody as TranscriptPayload);
+      if (timelineBody && typeof timelineBody === "object") setTimeline(timelineBody as TimelinePayload);
+      if (coachingBody && typeof coachingBody === "object") setCoaching(coachingBody as CoachingPayload);
+      if (bodyBody && typeof bodyBody === "object") setBody(bodyBody as BodyPayload);
+      if (slidesBody && typeof slidesBody === "object") setSlides(slidesBody as SlidesPayload);
+      if (goalsBody && typeof goalsBody === "object") {
+        const payload = goalsBody as { goals?: GoalLike[] };
         setGoals(payload.goals ?? []);
       }
+      const patch: Record<string, SeriesPayload> = {};
+      seriesNames.forEach((name, index) => {
+        const value = seriesBodies[index];
+        if (value && typeof value === "object") patch[name] = value as SeriesPayload;
+      });
+      if (Object.keys(patch).length) setSeries((prev) => ({ ...prev, ...patch }));
+      return delays.length ? Math.max(...delays) : null;
     }
-    async function refresh() {
-      try {
-        const response = await fetch(`/api/stagecoach/sessions/${params.id}`, { cache: "no-store" });
-        if (!response.ok) throw new Error(t("loadError"));
-        const body: SessionDetail = await response.json();
-        if (!active) return;
-        setSession(body);
-        const ready = body.status === "ready" || body.status === "partial";
-        if (ready || body.status === "processing") {
-          await loadArtifacts();
-        }
-      } catch (reason) {
-        if (active) setError(reason instanceof Error ? reason.message : t("loadError"));
+
+    async function loadSession(): Promise<SessionLoadResult> {
+      const response = await fetch(`/api/stagecoach/sessions/${sessionId}`, { cache: "no-store" });
+      if (!response.ok) {
+        return {
+          httpStatus: response.status,
+          retryAfter: response.headers.get("retry-after"),
+          session: null,
+        };
       }
+      const body = (await response.json()) as SessionDetail;
+      return { httpStatus: response.status, retryAfter: null, session: body };
     }
-    void refresh();
-    const timer = window.setInterval(() => {
-      if (!terminal) void refresh();
-    }, 2500);
-    const source = new EventSource(eventsUrl(params.id));
+
+    const poller = new SessionRefresh({
+      loadError,
+      loadSession,
+      loadArtifacts,
+      onSession: (body) => {
+        const detail = body as SessionDetail;
+        setSession(detail);
+        if (detail.media?.poster_ready) setPosterReady(true);
+      },
+      onError: (message) => setError(message ?? ""),
+    });
+    pollerRef.current = poller;
+    const source = new EventSource(eventsUrl(sessionId));
     source.onmessage = (message) => {
       if (!active) return;
       const event = parseProgressData(message.data);
-      if (event?.type === "stage") setLive(event);
-      if (shouldReloadReport(event)) void loadArtifacts();
-      if (event?.type === "done") void refresh();
+      if (event?.type === "stage") {
+        setLive(event);
+        if (event.artifact === "poster") setPosterReady(true);
+        if (event.duration_s != null && event.duration_s > 0) {
+          setSession((prev) =>
+            prev
+              ? { ...prev, media: { ...prev.media, duration_s: event.duration_s ?? prev.media?.duration_s } }
+              : prev,
+          );
+        }
+      }
+      poller.onEvent(event);
     };
+    poller.start();
     return () => {
       active = false;
-      window.clearInterval(timer);
+      poller.stop();
+      if (pollerRef.current === poller) pollerRef.current = null;
       source.close();
     };
-  }, [params.id, terminal, t]);
+  }, [params.id, t]);
 
   async function exportPdf() {
     setExporting(true);
@@ -230,6 +257,7 @@ export default function SessionPage() {
     }
     setReport(null);
     setSession((prev) => (prev ? { ...prev, status: "processing" } : prev));
+    pollerRef.current?.wake();
   }
 
   async function remove() {
@@ -251,6 +279,11 @@ export default function SessionPage() {
     session?.status === "layout_review" ||
     (session?.status === "failed" && !report);
   const durationS = session?.media?.duration_s ?? report?.media?.duration_s ?? null;
+  const runningIngest = session?.job?.steps?.find((step) => step.stage === "ingest" && step.status === "running");
+  const prepActivity = ingestStepText(
+    live?.stage === "ingest" && live.message ? live.message : runningIngest?.message,
+    (key) => tOnline(key),
+  );
   const durationMin = durationS ? durationS / 60 : null;
   const slotLabel =
     session?.slot_min && durationMin
@@ -303,7 +336,7 @@ export default function SessionPage() {
               />
             )}
             <p className="font-mono text-xs uppercase tracking-[0.08em]">
-              {sessionMeta(session?.created_at, locale, report?.media?.duration_s, session?.language)}
+              {sessionMeta(session?.created_at, locale, durationS, session?.language)}
               {slotLabel ? ` · ${t("slotVsActual")}: ${slotLabel}` : ""}
               {report?.overall.partial ? ` · ${t("partial")}` : ""}
             </p>
@@ -366,10 +399,13 @@ export default function SessionPage() {
       {showPrepare && session && (
         <PreparingPanel
           title={session.title}
-          posterUrl={`/api/stagecoach/sessions/${session.id}/poster`}
+          posterUrl={posterReady ? `/api/stagecoach/sessions/${session.id}/poster` : null}
+          onPosterError={() => setPosterReady(false)}
           durationS={durationS}
           steps={session.job?.steps ?? []}
           startedAt={session.job?.created_at ?? session.created_at}
+          activity={prepActivity}
+          etaMinutes={live?.stage === "ingest" ? etaMinutes(live.eta_s) : null}
           failed={session.status === "failed" ? session.job?.error?.message || "unreadable" : null}
           skipReview={autoConfirmed}
         />
@@ -451,7 +487,14 @@ export default function SessionPage() {
             />
             <KeyMetrics report={report} />
           </div>
-          <NotMeasured report={report} />
+          <NotMeasured
+            report={report}
+            rerunHref={
+              session?.delivery_mode && session.delivery_mode !== "stage"
+                ? `${sessionsPath}/${session.id}/layout?edit=1&f6=1`
+                : null
+            }
+          />
           <div>
             <div role="tablist" aria-label={t("tabs")} className="mb-4 flex flex-wrap gap-2">
               {(

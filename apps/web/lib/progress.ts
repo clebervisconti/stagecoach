@@ -6,6 +6,9 @@ export type StageProgressEvent = {
   status: string;
   pct?: number | null;
   message?: string | null;
+  eta_s?: number | null;
+  artifact?: string | null;
+  duration_s?: number | null;
   session_id?: string | null;
   job_id?: string | null;
 };
@@ -64,6 +67,9 @@ export function parseProgressData(raw: string): ProgressEvent | null {
       status: typeof row.status === "string" ? row.status : "running",
       pct: typeof row.pct === "number" ? row.pct : null,
       message: typeof row.message === "string" ? row.message : null,
+      eta_s: typeof row.eta_s === "number" ? row.eta_s : null,
+      artifact: typeof row.artifact === "string" ? row.artifact : null,
+      duration_s: typeof row.duration_s === "number" ? row.duration_s : null,
     };
   }
   return null;

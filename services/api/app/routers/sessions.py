@@ -510,20 +510,70 @@ async def get_session(
         "rights_attested_at": session.rights_attested_at.isoformat()
         if getattr(session, "rights_attested_at", None)
         else None,
-        "created_at": session.created_at.isoformat(),
+        "created_at": _iso_utc(session.created_at),
         "consent": {"video_analysis": _video_analysis_granted(snapshot, step_rows)},
+        "media": _session_media(session, job, db),
         "job": (
             {
                 "id": str(job.id),
                 "status": job.status,
                 "error": job.error,
-                "created_at": job.created_at.isoformat(),
+                "created_at": _iso_utc(job.created_at),
                 "steps": step_rows,
             }
             if job
             else None
         ),
     }
+
+
+def _session_media(session: SessionModel, job: Optional[AnalysisJob], db: Session) -> dict:
+    original = (
+        db.query(MediaAsset)
+        .filter(MediaAsset.session_id == session.id, MediaAsset.kind == "original")
+        .order_by(MediaAsset.created_at.desc())
+        .first()
+    )
+    duration = stored_duration(original.duration_s) if original is not None else None
+    return {
+        "duration_s": duration,
+        "poster_ready": poster_ready(MEDIA_ROOT, str(session.id), str(job.id) if job else None),
+    }
+
+
+def stored_duration(probed: Optional[float]) -> Optional[float]:
+    """Duration to write on an original asset. Non-positive probes stay unset."""
+    if probed is None:
+        return None
+    try:
+        value = float(probed)
+    except (TypeError, ValueError):
+        return None
+    if value <= 0 or value != value:
+        return None
+    return value
+
+
+def poster_ready(media_root: Path, session_id: str, job_id: Optional[str]) -> bool:
+    """True when this job already has a poster JPEG inside the media root."""
+    if not job_id:
+        return False
+    root = media_root.resolve()
+    poster = (root / session_id / job_id / "poster.jpg").resolve()
+    try:
+        return poster.is_file() and poster.is_relative_to(root)
+    except (OSError, ValueError):
+        return False
+
+
+def _iso_utc(value: Optional[datetime]) -> Optional[str]:
+    """UTC timestamp with a Z suffix. Naive values from the database are UTC."""
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        text = value.isoformat()
+        return text if text.endswith("Z") else f"{text}Z"
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _probe_duration_seconds(path: Path) -> Optional[float]:
@@ -611,6 +661,7 @@ def finalize_stored_upload(
         kind="original",
         storage_uri=str(stored_path),
         bytes=total,
+        duration_s=stored_duration(duration),
         sha256=digest_hex,
         retention_until=retention_until,
         codec_info={"content_type": content_type, "extension": extension, "retention_policy": policy},
