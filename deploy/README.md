@@ -91,10 +91,14 @@ healthcheck uses `wget` against `/minio/health/live`.
 Production (`docker-compose.prod.yml` / LaunchAgent) still binds web on
 `127.0.0.1:3107` and also runs the standalone Next server.
 
-Public URLs come from `STAGECOACH_PUBLIC_URL` (API verify/reset/export
-links and the overlay `NEXTAUTH_URL`). The lab overlay defaults to
-`http://127.0.0.1:8870`. On LION production set the Cloudflare origin in
-`.env` — never commit it:
+Public URLs come from `STAGECOACH_PUBLIC_URL`. The lab overlay
+(`infra/compose.lion.yaml`) copies that value into `AUTH_URL`,
+`NEXTAUTH_URL`, and the API's public URL. The default, when the variable
+is unset, is `http://127.0.0.1:8870`. `AUTH_URL` is the public origin, not
+a secret. Auth.js returns 500 UntrustedHost on `/api/auth/*` until it is
+set. The overlay also sets `AUTH_TRUST_HOST=true` so a forwarded host from
+the tunnel is accepted. On LION production set the Cloudflare origin in
+`.env` — never commit a password or a personal address:
 
 ```bash
 STAGECOACH_PUBLIC_URL=https://stagecoach.cybersphere.com.br
@@ -171,7 +175,7 @@ Do not `launchctl kickstart -k` while Compose is the foreground process.
 
 ## App auth cutover
 
-Migration `012_roles_sessions` runs when the API container starts (`alembic upgrade head` in `docker-compose.prod.yml`). It adds roles and session versions. It does not insert an account. Existing users become `member`. `ONLINE_MODES_ALLOWED_EMAILS`, `PRIVATE_BETA_EMAIL`, and `STAGECOACH_ADMIN_EMAILS` no longer grant access. Online modes stay off until an admin turns on that user's flag, and `ONLINE_MODES_ENABLED` must still be on.
+Migration `012_roles_sessions` runs when the API container starts. Both `docker-compose.prod.yml` and the LION overlay `infra/compose.lion.yaml` run `alembic upgrade head` before uvicorn. A restart at the current head is a no-op. The migration adds roles and session versions. It does not insert an account. Existing users become `member`. `ONLINE_MODES_ALLOWED_EMAILS`, `PRIVATE_BETA_EMAIL`, and `STAGECOACH_ADMIN_EMAILS` no longer grant access. Online modes stay off for every user until an admin turns on that user's `online_modes` flag at `/admin/users` (Turn online modes on). `ONLINE_MODES_ENABLED` must still be on for the whole service. An admin account does not get the flag automatically.
 
 Do this in order. Leave Cloudflare Access in place until the last step.
 
@@ -188,9 +192,19 @@ docker compose -f docker-compose.prod.yml exec -T \
 unset BOOTSTRAP_ADMIN_TEMP_PASSWORD
 ```
 
+On the LION host that runs the lab stack through `sc.sh`, use that wrapper instead of `docker-compose.prod.yml`:
+
+```bash
+read -r BOOTSTRAP_ADMIN_EMAIL
+read -rs BOOTSTRAP_ADMIN_TEMP_PASSWORD
+export BOOTSTRAP_ADMIN_EMAIL BOOTSTRAP_ADMIN_TEMP_PASSWORD
+~/Cyberlabs/services/stagecoach-lion/sc.sh exec -T -e BOOTSTRAP_ADMIN_EMAIL -e BOOTSTRAP_ADMIN_TEMP_PASSWORD api python -m app.bootstrap_admin
+unset BOOTSTRAP_ADMIN_TEMP_PASSWORD
+```
+
 `created` or `updated` means the temporary password must be changed at first sign-in. `present` means an admin with a password was left alone. Run it again only to confirm; it will not reset that password.
 
-3. Sign in at the app with that email and the temporary password. Set a new password (at least 10 characters, not a common breached password). Open Users and confirm you can see the account. Open a normal session page.
+3. Sign in at the app with that email and the temporary password. Set a new password (at least 10 characters, not a common breached password). Open Users and confirm you can see the account. Online modes stay off until you turn that user's flag on there. Open a normal session page.
 4. Only then remove the Cloudflare Access application. `deploy/cloudflare-private-beta.sh` stays in the repo until that change is done on the zone. The app does not read `Cf-Access-Jwt-Assertion`.
 
 Forgot password does not send email. An admin uses Force password reset on Users and reads the temporary password once.

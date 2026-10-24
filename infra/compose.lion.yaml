@@ -22,15 +22,10 @@ services:
 
   api:
     ports: !reset []
-    command:
-      [
-        "uvicorn",
-        "app.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8000",
-      ]
+    # Idempotent. A restart at head is a no-op. Matches docker-compose.prod.yml.
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
     environment:
       LLM_PROVIDER: ${LLM_PROVIDER:-local}
       LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
@@ -73,6 +68,11 @@ services:
     # Production standalone server from apps/web/Dockerfile (not the Next.js dev server).
     command: ["node", "server.js"]
     environment:
+      # Public origin, not a secret. Auth.js rejects /api/auth/* with
+      # UntrustedHost until AUTH_URL matches the host the browser uses.
+      # Lab default is the loopback publish; LION sets STAGECOACH_PUBLIC_URL.
+      AUTH_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
+      AUTH_TRUST_HOST: "true"
       NEXTAUTH_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
       STAGECOACH_PUBLIC_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
       NODE_ENV: production

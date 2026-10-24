@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Deploy
+
+- The LION overlay sets `AUTH_URL` from `STAGECOACH_PUBLIC_URL` (default `http://127.0.0.1:8870`) and `AUTH_TRUST_HOST=true`, so Auth.js does not return UntrustedHost on `/api/auth/*`.
+- The LION API runs `alembic upgrade head` before uvicorn. A restart at the current head does nothing.
+- `deploy/README.md` documents the LION bootstrap command (`sc.sh exec … python -m app.bootstrap_admin`). Online modes stay off per user until an admin turns the flag on at `/admin/users`.
+
 ### Security
 
 - App sign-in no longer depends on Cloudflare Access. Email and password sit beside Sign in with Apple. Sessions are httpOnly SameSite=Lax cookies, argon2id hashes, login lockout that does not reveal whether an account exists, Origin checks on BFF mutations, and a session version that dies on password, role, and disable changes. See ADR-083 and ADR-084.
