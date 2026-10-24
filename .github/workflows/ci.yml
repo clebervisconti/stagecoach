@@ -62,8 +62,6 @@ jobs:
         working-directory: apps/web
         env:
           AUTH_SECRET: ci-build-placeholder-not-a-runtime-secret
-          PRIVATE_BETA_MODE: "true"
-          PRIVATE_BETA_EMAIL: ci@example.invalid
         run: npm run build
 
   playwright-e2e:
@@ -86,8 +84,6 @@ jobs:
         working-directory: apps/web
         env:
           AUTH_SECRET: ci-build-placeholder-not-a-runtime-secret
-          PRIVATE_BETA_MODE: "true"
-          PRIVATE_BETA_EMAIL: ci@example.invalid
           OTEL_ENABLED: "false"
         run: npm run build
       - name: Run e2e
@@ -95,8 +91,6 @@ jobs:
         env:
           CI: "true"
           AUTH_SECRET: ci-build-placeholder-not-a-runtime-secret
-          PRIVATE_BETA_MODE: "true"
-          PRIVATE_BETA_EMAIL: ci@example.invalid
           OTEL_ENABLED: "false"
         run: npm run test:e2e
 
@@ -395,8 +389,6 @@ jobs:
             echo "AUTH_SECRET=$(openssl rand -base64 48 | tr -d '\n')"
             echo "MINIO_ACCESS_KEY=$(openssl rand -hex 12)"
             echo "MINIO_SECRET_KEY=$(openssl rand -hex 32)"
-            echo "PRIVATE_BETA_MODE=true"
-            echo "PRIVATE_BETA_EMAIL=ci@example.invalid"
             echo "STAGECOACH_ARTIFACT_KEY=$(openssl rand -hex 32)"
           } > .env
       
@@ -670,7 +662,57 @@ jobs:
           echo ""
           
           echo "7. POST /api/v1/sessions with JWT:"
-          TEST_JWT=$(docker compose exec -T api python -c "import os; from datetime import datetime, timedelta, timezone; import jwt; now=datetime.now(timezone.utc); print(jwt.encode({'email':'test@example.com','sub':'test-user','iss':'stagecoach-web','aud':'stagecoach-api','iat':now,'nbf':now-timedelta(seconds=5),'exp':now+timedelta(minutes=5)}, os.environ['AUTH_SECRET'], algorithm='HS256'))")
+          # The API resolves the bearer token to a real user and checks sv.
+          # Seed the smoke member, then sign a token for that row.
+          TEST_JWT=$(docker compose exec -T api python - <<'PY'
+          import os
+          from datetime import datetime, timedelta, timezone
+          import jwt
+          from app.database import SessionLocal
+          from app.models.user import User
+
+          email = "test@example.com"
+          db = SessionLocal()
+          try:
+              user = (
+                  db.query(User)
+                  .filter(User.email == email, User.deleted_at.is_(None))
+                  .first()
+              )
+              if user is None:
+                  user = User(
+                      email=email,
+                      locale="en",
+                      timezone="UTC",
+                      role="member",
+                      email_verified_at=datetime.utcnow(),
+                      must_change_password=False,
+                      session_version=1,
+                      online_modes=False,
+                  )
+                  db.add(user)
+                  db.commit()
+                  db.refresh(user)
+              now = datetime.now(timezone.utc)
+              token = jwt.encode(
+                  {
+                      "email": email,
+                      "sub": str(user.id),
+                      "sv": int(user.session_version or 1),
+                      "iss": "stagecoach-web",
+                      "aud": "stagecoach-api",
+                      "iat": now,
+                      "nbf": now - timedelta(seconds=5),
+                      "exp": now + timedelta(minutes=5),
+                  },
+                  os.environ["AUTH_SECRET"],
+                  algorithm="HS256",
+              )
+              print(token)
+          finally:
+              db.close()
+          PY
+          )
 
           echo ""
           echo "7a. GET/POST /api/v1/me/consents (issue #37):"

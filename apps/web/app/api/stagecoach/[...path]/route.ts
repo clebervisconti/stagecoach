@@ -1,10 +1,18 @@
 import { stagecoachApi } from "@/lib/api";
+import { mutationAllowed } from "@/lib/csrf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/;
 const ALLOWED_METHODS = new Set(["GET", "POST", "PATCH", "DELETE"]);
+const ANONYMOUS_AUTH = new Set(["login", "register", "forgot", "verify-email", "reset", "session-ticket"]);
+
+function isAnonymous(parts: string[]): boolean {
+  if (parts[0] !== "auth") return false;
+  if (parts[1] === "apple") return true;
+  return ANONYMOUS_AUTH.has(parts[1] ?? "");
+}
 
 function apiPath(parts: string[]): string {
   if (!parts.length || parts.some((part) => !SAFE_SEGMENT.test(part))) {
@@ -19,6 +27,17 @@ async function proxy(
 ): Promise<Response> {
   if (!ALLOWED_METHODS.has(request.method)) {
     return Response.json({ detail: "Method not allowed" }, { status: 405 });
+  }
+  if (
+    !mutationAllowed({
+      method: request.method,
+      origin: request.headers.get("origin"),
+      host: request.headers.get("host"),
+      forwardedHost: request.headers.get("x-forwarded-host"),
+      secFetchSite: request.headers.get("sec-fetch-site"),
+    })
+  ) {
+    return Response.json({ detail: "Cross-site request blocked" }, { status: 403 });
   }
 
   let path: string;
@@ -56,6 +75,10 @@ async function proxy(
   if (contentType) headers.set("content-type", contentType);
   if (contentLength) headers.set("content-length", contentLength);
   if (range) headers.set("range", range);
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  const realIp = request.headers.get("x-real-ip");
+  if (forwardedFor) headers.set("x-forwarded-for", forwardedFor);
+  else if (realIp) headers.set("x-forwarded-for", realIp);
 
   const init: RequestInit & { duplex?: "half" } = {
     method: request.method,
@@ -66,7 +89,7 @@ async function proxy(
     init.duplex = "half";
   }
 
-  const upstream = await stagecoachApi(path, init, { anonymous: parts[0] === "auth" });
+  const upstream = await stagecoachApi(path, init, { anonymous: isAnonymous(parts) });
   const responseHeaders = new Headers();
   for (const name of [
     "content-type",

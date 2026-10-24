@@ -4,10 +4,12 @@ import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { SessionWatch } from "@/components/shell/session-watch";
 
 type AppShellProps = {
   locale: string;
   email?: string | null;
+  role?: string | null;
   children: React.ReactNode;
 };
 
@@ -29,11 +31,12 @@ const LINKS = [
   { key: "settings", href: "/settings", testId: "nav-settings" },
 ] as const;
 
-export function AppShell({ locale, email, children }: AppShellProps) {
+export function AppShell({ locale, email, role, children }: AppShellProps) {
   const t = useTranslations("nav");
   const pathname = usePathname();
   const prefix = locale === "en" ? "" : `/${locale}`;
   const theme = useSyncExternalStore(subscribeTheme, themeSnapshot, () => "dark");
+  const links = role === "admin" ? [...LINKS, { key: "admin", href: "/admin/users", testId: "nav-admin" }] : [...LINKS];
 
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";
@@ -43,6 +46,7 @@ export function AppShell({ locale, email, children }: AppShellProps) {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <SessionWatch locale={locale} />
       <header className="flex h-14 items-center justify-between gap-4 border-b px-4 md:px-6">
         <Link href={`${prefix}/sessions`} data-testid="brand" className="flex flex-col leading-none">
           <span className="cs-eyebrow">Cybersphere</span>
@@ -74,7 +78,7 @@ export function AppShell({ locale, email, children }: AppShellProps) {
       </header>
       <div className="flex min-h-0 flex-1">
         <nav className="hidden w-60 shrink-0 flex-col border-r py-4 md:flex" aria-label={t("home")}>
-          {LINKS.map((link) => {
+          {links.map((link) => {
             const href = `${prefix}${link.href}`;
             const active = pathname === href || pathname.startsWith(`${href}/`);
             return (
@@ -92,7 +96,7 @@ export function AppShell({ locale, email, children }: AppShellProps) {
         </nav>
         <div className="flex min-w-0 flex-1 flex-col">
           <nav className="flex flex-wrap border-b md:hidden" aria-label={t("home")}>
-            {LINKS.map((link) => {
+            {links.map((link) => {
               const href = `${prefix}${link.href}`;
               const active = pathname === href || pathname.startsWith(`${href}/`);
               return (

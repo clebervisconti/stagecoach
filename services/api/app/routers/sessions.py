@@ -164,8 +164,8 @@ class SessionCreate(BaseModel):
         return self
 
 
-def gate_online_session_fields(session_data: SessionCreate, email: Optional[str] = None) -> None:
-    """Reject online-only fields unless the flag is on for this account (OD-10)."""
+def gate_online_session_fields(session_data: SessionCreate, account: object = None) -> None:
+    """Reject online-only fields unless the global flag and the user's flag are on."""
     onlineish = (
         session_data.delivery_mode != "stage"
         or session_data.source_kind != "upload"
@@ -173,7 +173,7 @@ def gate_online_session_fields(session_data: SessionCreate, email: Optional[str]
         or session_data.analysis_window is not None
         or session_data.target_length_min is not None
     )
-    if onlineish and not user_online_modes_enabled(email):
+    if onlineish and not user_online_modes_enabled(account):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Online modes are not enabled",
@@ -326,7 +326,7 @@ async def create_session(
     db: Session = Depends(get_db)
 ):
     """Create a private-beta session and return the authenticated upload route."""
-    gate_online_session_fields(session_data, current_user.email)
+    gate_online_session_fields(session_data, current_user)
     plan = resolve_talk_plan(db, current_user.id, session_data.talk_plan_id)
     attested_at = datetime.now(timezone.utc).replace(tzinfo=None) if session_data.rights_attested else None
     session = SessionModel(
@@ -555,7 +555,7 @@ async def upload_and_analyze(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Session already uploaded")
     _ = role
     delivery_mode = getattr(session, "delivery_mode", "stage") or "stage"
-    if delivery_mode != "stage" and not user_online_modes_enabled(current_user.email):
+    if delivery_mode != "stage" and not user_online_modes_enabled(current_user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Online modes are not enabled")
     needs_rights = delivery_mode in {"webinar", "online_talk"}
     if needs_rights and not (rights_attested or session.rights_attested_at):

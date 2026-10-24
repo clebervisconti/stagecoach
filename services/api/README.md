@@ -7,7 +7,7 @@ FastAPI REST API service.
 - **Framework**: FastAPI with pydantic v2
 - **Database**: PostgreSQL 16 via SQLAlchemy 2
 - **Migrations**: Alembic
-- **Auth**: JWT verification (Auth.js session tokens)
+- **Auth**: Auth.js session JWTs (`email`, `sv`) plus password and Sign in with Apple. Roles: `admin`, `member`, `viewer`. First admin: `python -m app.bootstrap_admin`.
 - **OpenAPI**: Auto-generated docs at `/docs`
 
 ## Structure

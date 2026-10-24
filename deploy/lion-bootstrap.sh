@@ -60,7 +60,7 @@ echo "main is $(git -C "$APP_DIR" rev-parse --short HEAD)"
 step "Keychain items (values are never shown)"
 has_secret POSTGRES_PASSWORD || generated_secret POSTGRES_PASSWORD
 has_secret AUTH_SECRET || generated_secret AUTH_SECRET
-has_secret PRIVATE_BETA_EMAIL || prompt_secret PRIVATE_BETA_EMAIL "Type the email address Cloudflare Access should allow."
+has_secret PRIVATE_BETA_EMAIL || prompt_secret PRIVATE_BETA_EMAIL "Type the email Cloudflare Access should allow until Access is removed. This is not the app login."
 CF_ITEM=cloudflare-api
 if ! has_secret cloudflare-api; then
   CF_ITEM=CF_API_TOKEN

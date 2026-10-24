@@ -106,7 +106,7 @@ Create these items; do not put values in git:
 
 - `cyberlabs-POSTGRES_PASSWORD`
 - `cyberlabs-AUTH_SECRET` (≥ 32 characters)
-- `cyberlabs-PRIVATE_BETA_EMAIL`
+- `cyberlabs-PRIVATE_BETA_EMAIL` — only the Cloudflare Access allow policy, until Access is removed. The app does not read it.
 - Cloudflare: the existing lab token `cyberlabs-cloudflare-api` is used first; `cyberlabs-CF_API_TOKEN` is only a fallback
 - `cyberlabs-splunk-rum-token` (optional public browser RUM token; omitted means RUM stays off)
 
@@ -169,13 +169,39 @@ launchctl start com.cyberlabs.stagecoach
 
 Do not `launchctl kickstart -k` while Compose is the foreground process.
 
+## App auth cutover
+
+Migration `012_roles_sessions` runs when the API container starts (`alembic upgrade head` in `docker-compose.prod.yml`). It adds roles and session versions. It does not insert an account. Existing users become `member`. `ONLINE_MODES_ALLOWED_EMAILS`, `PRIVATE_BETA_EMAIL`, and `STAGECOACH_ADMIN_EMAILS` no longer grant access. Online modes stay off until an admin turns on that user's flag, and `ONLINE_MODES_ENABLED` must still be on.
+
+Do this in order. Leave Cloudflare Access in place until the last step.
+
+1. Deploy this release and wait until the API is healthy (the migration has run).
+2. On LION, create the first admin. The values stay in the shell. Do not write them into git, `.env`, or the LaunchAgent:
+
+```bash
+read -r BOOTSTRAP_ADMIN_EMAIL
+read -rs BOOTSTRAP_ADMIN_TEMP_PASSWORD
+export BOOTSTRAP_ADMIN_EMAIL BOOTSTRAP_ADMIN_TEMP_PASSWORD
+docker compose -f docker-compose.prod.yml exec -T \
+  -e BOOTSTRAP_ADMIN_EMAIL -e BOOTSTRAP_ADMIN_TEMP_PASSWORD \
+  api python -m app.bootstrap_admin
+unset BOOTSTRAP_ADMIN_TEMP_PASSWORD
+```
+
+`created` or `updated` means the temporary password must be changed at first sign-in. `present` means an admin with a password was left alone. Run it again only to confirm; it will not reset that password.
+
+3. Sign in at the app with that email and the temporary password. Set a new password (at least 10 characters, not a common breached password). Open Users and confirm you can see the account. Open a normal session page.
+4. Only then remove the Cloudflare Access application. `deploy/cloudflare-private-beta.sh` stays in the repo until that change is done on the zone. The app does not read `Cf-Access-Jwt-Assertion`.
+
+Forgot password does not send email. An admin uses Force password reset on Users and reads the temporary password once.
+
 ## Constraints recorded here
 
-- This product currently lives in a **public** GitHub repo. Homelab policy prefers a private repo; keep Cloudflare Access on until that changes.
+- This product currently lives in a **public** GitHub repo. Do not commit emails, passwords, or personal data. Cloudflare Access can come off only after the app-auth cutover above.
 - The worker runs CPU ASR (`ASR_MODEL=tiny`) on LION. Larger models belong on TIGER. Moving ASR is an owner decision; do not point LION at a remote ASR API until that contract exists.
 - The upload job runs content analysis before final scoring. If the local model on TIGER is down, categories 1–7 stay N/A. Video categories score only when `video_analysis` consent is on. Q&A stays N/A unless the session includes a Q&A segment; diarization still needs `HF_TOKEN` and is not on the live job.
 - WhisperX alignment is implemented and not called by `tasks.run_mvp_analysis`.
 - Production mail stays on the console stand-in until `RESEND_API_KEY`, `STAGECOACH_EMAIL_FROM`, and the domain DNS in `docs/email.md` are set by the owner.
-- Sign in with Apple stays disabled until `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, and `APPLE_PRIVATE_KEY` are set. Cloudflare Access remains the private-beta login.
+- Sign in with Apple stays disabled until `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, and `APPLE_PRIVATE_KEY` are set. Email and password work without Apple. Cloudflare Access is not the app login; remove it only after the cutover above.
 - `docs/PRIVACY.md` is an engineering draft. Counsel reviews it before a public launch. Envelope encryption uses a local key; KMS is an owner decision.
 - Live UAT in `tests/uat/mvp-flow.md` is still a manual pass against the running host. It was not executed as part of the 2026-10-17 wiring change.

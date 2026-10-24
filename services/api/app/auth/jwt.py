@@ -2,7 +2,7 @@
 
 import os
 from typing import Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -59,46 +59,81 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
         ) from e
 
 
-async def get_current_user(
+_VIEWER_WRITE_ALLOW = {
+    "/api/v1/me/export",
+    "/api/v1/auth/password",
+}
+_PASSWORD_CHANGE = "/api/v1/auth/password"
+
+
+def _unauthorized(detail: str = "Invalid authentication credentials") -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={
+            "type": "https://datatracker.ietf.org/doc/html/rfc9457",
+            "title": "Unauthorized",
+            "status": 401,
+            "detail": detail,
+        },
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+def _session_version(token_data: dict) -> int:
+    try:
+        return int(token_data.get("sv"))
+    except (TypeError, ValueError):
+        return -1
+
+
+async def get_authenticated_user(
+    request: Request,
     token_data: dict = Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> User:
-    """Get current authenticated user from JWT.
-    
-    Args:
-        token_data: Decoded JWT payload
-        db: Database session
-        
-    Returns:
-        User model
-        
-    Raises:
-        HTTPException: 401 if user not found
-    """
-    email = token_data.get("email")
+    """Resolve the session user. Does not enforce must_change_password."""
+    _ = request
+    email = str(token_data.get("email") or "").strip().lower()
     if not email:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "type": "https://datatracker.ietf.org/doc/html/rfc9457",
-                "title": "Unauthorized",
-                "status": 401,
-                "detail": "Invalid token: no email claim",
-            },
-        )
-    
+        raise _unauthorized("Invalid token: no email claim")
     user = db.query(User).filter(User.email == email, User.deleted_at.is_(None)).first()
-    if not user:
-        # Create user on first sign-in (Auth.js behavior)
-        user = User(email=email)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    
+    if user is None or user.disabled_at is not None:
+        raise _unauthorized()
+    if _session_version(token_data) != int(user.session_version or 1):
+        raise _unauthorized()
+    return user
+
+
+def _path(request: Request) -> str:
+    return request.url.path.rstrip("/") or "/"
+
+
+async def get_current_user(
+    request: Request,
+    token_data: dict = Depends(verify_token),
+    db: Session = Depends(get_db),
+) -> User:
+    """Authenticated user who is allowed to use the product.
+
+    A must_change_password session can only call the password-change route.
+    Viewers can read, and can export or change their own password, but cannot
+    mutate the product.
+    """
+    user = await get_authenticated_user(request, token_data, db)
+    path = _path(request)
+    if user.must_change_password and path != _PASSWORD_CHANGE:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Password change required")
+    if (user.role or "member") == "viewer" and request.method not in {"GET", "HEAD", "OPTIONS"}:
+        if path not in _VIEWER_WRITE_ALLOW:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Viewer accounts cannot change this resource",
+            )
     return user
 
 
 async def get_optional_user(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
     db: Session = Depends(get_db),
 ) -> Optional[User]:
@@ -106,4 +141,4 @@ async def get_optional_user(
     if credentials is None:
         return None
     token_data = verify_token(credentials)
-    return await get_current_user(token_data, db)
+    return await get_current_user(request, token_data, db)

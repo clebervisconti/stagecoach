@@ -84,6 +84,8 @@ class UserProfile(BaseModel):
     retention_policy: str = DEFAULT_RETENTION_POLICY
     llm_settings: Optional[dict] = None
     online_modes_enabled: bool = False
+    role: str = "member"
+    must_change_password: bool = False
 
 
 class UserProfileUpdate(BaseModel):
@@ -154,7 +156,9 @@ async def get_me(current_user: User = Depends(get_current_user)):
         accessibility_profile=current_user.accessibility_profile,
         retention_policy=parse_retention_policy(getattr(current_user, "retention_policy", None)),
         llm_settings=parse_llm_settings(getattr(current_user, "llm_settings", None)),
-        online_modes_enabled=user_online_modes_enabled(current_user.email),
+        online_modes_enabled=user_online_modes_enabled(current_user),
+        role=current_user.role or "member",
+        must_change_password=bool(current_user.must_change_password),
     )
 
 
@@ -199,7 +203,9 @@ async def update_me(
         accessibility_profile=current_user.accessibility_profile,
         retention_policy=parse_retention_policy(getattr(current_user, "retention_policy", None)),
         llm_settings=parse_llm_settings(getattr(current_user, "llm_settings", None)),
-        online_modes_enabled=user_online_modes_enabled(current_user.email),
+        online_modes_enabled=user_online_modes_enabled(current_user),
+        role=current_user.role or "member",
+        must_change_password=bool(current_user.must_change_password),
     )
 
 

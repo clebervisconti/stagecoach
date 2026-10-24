@@ -7,7 +7,6 @@ os.environ.setdefault("DATABASE_URL", "postgresql://stagecoach@127.0.0.1/stageco
 from app.observability import (
     error_tracking_status,
     handler_label,
-    is_admin_email,
     render_metrics,
     summarize_steps,
 )
@@ -27,11 +26,6 @@ def test_sentry_choices_are_flagged_not_started():
     hosted = error_tracking_status("sentry_self_hosted")
     assert hosted["needs_owner_decision"] is True
     assert hosted["active"] is False
-
-
-def test_admin_email_list():
-    assert is_admin_email("owner@example.com", "owner@example.com, ops@example.com")
-    assert not is_admin_email("user@example.com", "owner@example.com")
 
 
 def test_handler_label_strips_ids():

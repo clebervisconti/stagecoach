@@ -147,8 +147,6 @@ services:
       NEXTAUTH_URL: ${STAGECOACH_PUBLIC_URL:-https://stagecoach.cybersphere.com.br}
       STAGECOACH_PUBLIC_URL: ${STAGECOACH_PUBLIC_URL:-https://stagecoach.cybersphere.com.br}
       INTERNAL_API_URL: http://api:8000
-      PRIVATE_BETA_MODE: "true"
-      PRIVATE_BETA_EMAIL: ${PRIVATE_BETA_EMAIL:?PRIVATE_BETA_EMAIL is required}
       HOSTNAME: 0.0.0.0
       PORT: "3000"
       OTEL_SERVICE_NAME: stagecoach

@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "type-check": "next typegen && tsc --noEmit",
-    "test": "node --experimental-strip-types --experimental-default-type=module --test lib/report-view.test.ts lib/forbidden-terms.test.ts lib/player.test.ts lib/transcript.test.ts lib/voice-charts.test.ts lib/consents.test.ts lib/progress.test.ts lib/timeline.test.ts lib/body-slides.test.ts lib/pdf-export.test.ts lib/retention.test.ts lib/llm-providers.test.ts lib/research-sources.test.ts lib/prep-form.test.ts lib/trends.test.ts lib/plan-readiness.test.ts lib/plan-export.test.ts lib/online.test.ts lib/layout-edit.test.ts",
+    "test": "node --experimental-strip-types --experimental-default-type=module --test lib/report-view.test.ts lib/forbidden-terms.test.ts lib/player.test.ts lib/transcript.test.ts lib/voice-charts.test.ts lib/consents.test.ts lib/progress.test.ts lib/timeline.test.ts lib/body-slides.test.ts lib/pdf-export.test.ts lib/retention.test.ts lib/llm-providers.test.ts lib/research-sources.test.ts lib/prep-form.test.ts lib/trends.test.ts lib/plan-readiness.test.ts lib/plan-export.test.ts lib/online.test.ts lib/layout-edit.test.ts lib/csrf.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

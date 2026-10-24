@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- App sign-in no longer depends on Cloudflare Access. Email and password sit beside Sign in with Apple. Sessions are httpOnly SameSite=Lax cookies, argon2id hashes, login lockout that does not reveal whether an account exists, Origin checks on BFF mutations, and a session version that dies on password, role, and disable changes. See ADR-083 and ADR-084.
+- Roles are `admin`, `member`, and `viewer`. Admin user management is enforced on the API. The first admin is created on the server with `python -m app.bootstrap_admin` and must change the temporary password. No account is committed.
+- Online modes and admin access are no longer email allowlists. `PRIVATE_BETA_MODE` does not sign anyone in.
+- Password reset email is not sent. An admin sets a temporary password.
 - Web production dependency `zod` is `^4.6.7` (resolved 4.6.7), the patched release for GHSA-mrhx-c7xc-m3w5. `eslint-plugin-react-hooks` and `zod-validation-error` resolve to that same copy. The app has no zod call sites. See ADR-080.
 
 ### Long-session content analysis

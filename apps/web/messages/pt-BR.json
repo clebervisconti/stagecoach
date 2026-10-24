@@ -21,7 +21,8 @@
     "themeToLight": "Claro",
     "themeToDark": "Escuro",
     "themeToLightAria": "Usar tema claro",
-    "themeToDarkAria": "Usar tema escuro"
+    "themeToDarkAria": "Usar tema escuro",
+    "admin": "Usuários"
   },
   "marketing": {
     "tagline": "Coaching de apresentações baseado em evidências",
@@ -99,7 +100,8 @@
     "account": "Conta",
     "email": "E-mail",
     "locale": "Idioma",
-    "signOut": "Sair"
+    "signOut": "Sair",
+    "changePassword": "Alterar senha"
   },
   "accountRights": {
     "heading": "Os seus dados",
