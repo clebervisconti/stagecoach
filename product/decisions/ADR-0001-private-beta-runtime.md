@@ -1,7 +1,7 @@
 # ADR-0001: Private-beta runtime and authentication boundary
 
 **Date:** 2026-10-10  
-**Status:** Accepted
+**Status:** Superseded for app identity by [docs/adr/083-app-owned-auth.md](../../docs/adr/083-app-owned-auth.md). Cloudflare Access may remain in front of the host until the cutover in `deploy/README.md`. The app no longer treats Access as its login.
 
 ## Context
 

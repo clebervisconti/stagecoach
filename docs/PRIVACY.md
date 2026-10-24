@@ -67,7 +67,7 @@ List what is actually wired. Paid / unchosen vendors stay flagged.
 | Redis | Queue / cache | Self-hosted in compose | — |
 | Default LLM (LM Studio / Qwen on TIGER) | Prep and content JSON | Local OpenAI-compatible; `LOCAL_LLM_BASE_URL`; no key | Yes — 2026-10-16 |
 | Optional LLM (xAI/Grok, OpenAI, Anthropic, Gemini, custom) | User-selected | Off unless the user picks them; "leaves the machine" warning | User choice; still a processor. xAI key optional |
-| Email (verification, password reset, deletion confirmation) | Auth + compliance | Resend (D10, free tier) when `RESEND_API_KEY` is set; otherwise console | Yes — Resend |
+| Email (verification, deletion confirmation) | Auth + compliance | Resend (D10, free tier) when `RESEND_API_KEY` is set; otherwise console. Password reset is an admin-set temporary password; the app does not email a reset link. | Yes — Resend |
 | Sign in with Apple | OIDC (D9, 2026-10-15) | Disabled until `APPLE_*` secrets exist | Yes — Apple (private relay possible) |
 | Error tracking | Sentry or none | `STAGECOACH_ERROR_TRACKING=none`. **No Sentry SDK** | Yes — SaaS / self-hosted / none |
 | Antivirus / deck scan | Upload safety | Local sandbox | — |

@@ -1,7 +1,7 @@
 # ADR-040: Observability without choosing Sentry
 
 **Date:** 2026-10-15  
-**Status:** Accepted  
+**Status:** Accepted. The `STAGECOACH_ADMIN_EMAILS` gate below is superseded by the `admin` role in [ADR-084](084-roles-and-online-modes.md).  
 **Phase:** 2  
 **Issue:** #52
 

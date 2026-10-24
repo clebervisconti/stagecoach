@@ -25,7 +25,6 @@ COMPOSE_ENV = {
     "AUTH_SECRET": "ci-lion-compose-secret-not-for-production",
     "MINIO_ACCESS_KEY": "ci-minio-access",
     "MINIO_SECRET_KEY": "ci-minio-secret-key-value",
-    "PRIVATE_BETA_EMAIL": "ci@example.invalid",
 }
 
 

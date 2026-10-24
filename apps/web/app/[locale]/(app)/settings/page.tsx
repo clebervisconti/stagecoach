@@ -1,5 +1,6 @@
 import { auth, signOut } from "@/auth";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { ConsentPanel } from "@/components/consents/consent-panel";
 import { AccessibilityPanel } from "@/components/settings/accessibility-panel";
 import { RetentionPanel } from "@/components/settings/retention-panel";
@@ -9,7 +10,9 @@ import { AccountRightsPanel } from "@/components/settings/account-rights-panel";
 export default async function SettingsPage() {
   const session = await auth();
   const t = await getTranslations("settings");
-  const email = session?.user?.email || process.env.PRIVATE_BETA_EMAIL;
+  const locale = await getLocale();
+  const prefix = locale === "en" ? "" : `/${locale}`;
+  const email = session?.user?.email;
 
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8">
@@ -19,10 +22,13 @@ export default async function SettingsPage() {
         <div className="rounded-lg border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold">{t("account")}</h2>
           <div className="space-y-2">
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">{t("email")}</span>
-              <span>{email}</span>
+              <span className="break-all">{email}</span>
             </div>
+            <Link href={`${prefix}/account/password`} className="inline-block text-sm underline">
+              {t("changePassword")}
+            </Link>
           </div>
         </div>
 

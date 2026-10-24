@@ -61,17 +61,6 @@ def error_tracking_status(raw: str | None = None) -> dict[str, Any]:
     }
 
 
-def admin_emails(raw: str | None = None) -> set[str]:
-    text = raw if raw is not None else os.getenv("STAGECOACH_ADMIN_EMAILS", "")
-    return {part.strip().lower() for part in text.split(",") if part.strip()}
-
-
-def is_admin_email(email: str | None, raw: str | None = None) -> bool:
-    if not email:
-        return False
-    return email.strip().lower() in admin_emails(raw)
-
-
 def handler_label(path: str) -> str:
     if path in {"/health", "/ready", "/metrics"}:
         return path

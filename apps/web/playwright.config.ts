@@ -4,6 +4,9 @@ const port = 3100;
 const baseURL = `http://localhost:${port}`;
 const authSecret = process.env.AUTH_SECRET || "ci-build-placeholder-not-a-runtime-secret";
 
+process.env.AUTH_URL = baseURL;
+process.env.NEXTAUTH_URL = baseURL;
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
@@ -17,9 +20,16 @@ export default defineConfig({
   },
   projects: [
     {
+      name: "setup",
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
       name: "chromium",
+      dependencies: ["setup"],
+      testIgnore: /auth\.setup\.ts/,
       use: {
         ...devices["Desktop Chrome"],
+        storageState: "e2e/.auth/member.json",
         launchOptions: { args: ["--disable-lcd-text"] },
       },
     },
@@ -34,8 +44,10 @@ export default defineConfig({
     env: {
       ...process.env,
       AUTH_SECRET: authSecret,
-      PRIVATE_BETA_MODE: "true",
-      PRIVATE_BETA_EMAIL: "ci@example.invalid",
+      AUTH_URL: baseURL,
+      NEXTAUTH_URL: baseURL,
+      PRIVATE_BETA_MODE: "",
+      PRIVATE_BETA_EMAIL: "",
       INTERNAL_API_URL: "http://127.0.0.1:9",
       OTEL_ENABLED: "false",
     },

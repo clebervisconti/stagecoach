@@ -72,6 +72,9 @@ class MemoryStore:
     def expire(self, key: str, seconds: int) -> None:
         return None
 
+    def clear(self) -> None:
+        self._data.clear()
+
 
 def _client_ip(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-for", "")

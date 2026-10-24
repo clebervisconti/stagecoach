@@ -1,7 +1,7 @@
 # ADR-072: Online modes allowlist (OD-10)
 
 **Date:** 2026-10-22
-**Status:** Accepted
+**Status:** Superseded by [ADR-084](084-roles-and-online-modes.md). Online modes are a per-user flag, not an email allowlist.
 **Phase:** O1
 
 ## Context

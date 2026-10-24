@@ -89,3 +89,6 @@ services/analysis/models/weights/
 services/analysis/tests/online/cache/
 services/analysis/tests/online/generated/
 tests/fixtures/llm_cassettes/*.json
+apps/web/e2e/.auth/
+apps/web/test-results/
+apps/web/playwright-report/

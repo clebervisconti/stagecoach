@@ -1,7 +1,7 @@
 # ADR-057: D9 — email+password and Sign in with Apple
 
 **Date:** 2026-10-16  
-**Status:** Accepted  
+**Status:** Accepted. The Cloudflare Access bypass in Consequences is removed by [ADR-083](083-app-owned-auth.md) (2026-10-24). This file stays the record of password and Apple sign-in.  
 **Phase:** 3  
 **Issue:** #68  
 **Owner decision:** 2026-10-15 (D9)

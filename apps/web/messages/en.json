@@ -21,7 +21,8 @@
     "themeToLight": "Light",
     "themeToDark": "Dark",
     "themeToLightAria": "Switch to light theme",
-    "themeToDarkAria": "Switch to dark theme"
+    "themeToDarkAria": "Switch to dark theme",
+    "admin": "Users"
   },
   "marketing": {
     "tagline": "Evidence-based presentation coaching",
@@ -99,7 +100,8 @@
     "account": "Account",
     "email": "Email",
     "locale": "Locale",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "changePassword": "Change password"
   },
   "accountRights": {
     "heading": "Your data",

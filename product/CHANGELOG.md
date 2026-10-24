@@ -4,6 +4,7 @@
 
 ### Added
 
+- App sign-in is email and password or Sign in with Apple, with admin, member, and viewer roles. Online modes are a per-user flag plus `ONLINE_MODES_ENABLED`. An email allowlist no longer grants access. Cloudflare Access can come off only after the admin account exists. See `deploy/README.md`.
 - Phase O2 layout correction: adjust boxes and the analysis window, then re-analyse. The transcript is reused when the window does not change. Online modes stay behind the flag.
 - Phase O1 walking skeleton: wizard, prepare_session, read-only layout review, production quality, N/A codes, and the online report header. Online modes stay behind the flag and Cleber's allowlisted account.
 - Phase O0 foundations for online and recorded session analysis: scoring 1.1.0, YuNet layout detector, migration 011, synthetic fixtures. `ONLINE_MODES_ENABLED` stays off. Stage scoring is unchanged. OD-1–OD-10 are approved as the spec recommends (22 Oct 2026).

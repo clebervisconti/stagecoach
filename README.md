@@ -4,7 +4,7 @@ An evidence-based presentation coaching platform that analyzes recorded presenta
 
 ## Project Status
 
-In-tree product `0.4.0`: upload → analysis (audio, consented video, slides, content coach) → report, plus talk-prep (`/prep`), trends, and account export. Production at `https://stagecoach.cybersphere.com.br` is still the Cloudflare Access private beta on LION (`ASR_MODEL=tiny`) until the owner cuts a release.
+In-tree product `0.4.0`: upload → analysis (audio, consented video, slides, content coach) → report, plus talk-prep (`/prep`), trends, and account export. Sign-in is the app's own email and password or Sign in with Apple (ADR-083). Cloudflare Access may still sit in front of `https://stagecoach.cybersphere.com.br` until the cutover in `deploy/README.md`. The app does not trust Access headers. LION still runs `ASR_MODEL=tiny` until the owner cuts a release.
 
 Production: LION loopback `:3107`, LaunchAgent `com.cyberlabs.stagecoach`. See `deploy/README.md`.
 
@@ -36,7 +36,7 @@ Stage Coach is a monorepo containing:
 - **Workers**: Celery + Redis queue
 - **Database**: PostgreSQL 16 with SQLAlchemy 2
 - **Storage**: S3-compatible object storage (MinIO locally)
-- **Auth**: email + password (argon2id) and Sign in with Apple (D9). Magic links retired. See `docs/apple-signin.md`.
+- **Auth**: email + password (argon2id) and Sign in with Apple. Roles are `admin`, `member`, and `viewer` (ADR-083, ADR-084). The first admin is created on the server with `python -m app.bootstrap_admin`, not from git. See `deploy/README.md`.
 - **Analysis**: faster-whisper, MediaPipe, parselmouth, LLM providers
 
 ## Development Setup

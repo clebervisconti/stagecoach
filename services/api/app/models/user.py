@@ -1,7 +1,7 @@
 """User model."""
 
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Text, Integer, ForeignKey
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, false
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 import uuid
 
@@ -60,6 +60,11 @@ class User(Base):
     failed_logins = Column(Integer, nullable=False, default=0)
     locked_until = Column(DateTime, nullable=True)
     apple_sub = Column(String(255), nullable=True, unique=True, index=True)
+    role = Column(String(32), nullable=False, default="member", server_default="member")
+    must_change_password = Column(Boolean, nullable=False, default=False, server_default=false())
+    disabled_at = Column(DateTime, nullable=True)
+    session_version = Column(Integer, nullable=False, default=1, server_default="1")
+    online_modes = Column(Boolean, nullable=False, default=False, server_default=false())
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True, index=True)

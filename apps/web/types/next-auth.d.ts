@@ -4,6 +4,24 @@ declare module "next-auth" {
   interface Session {
     user: {
       id?: string;
+      role?: string;
+      mustChangePassword?: boolean;
+      sessionVersion?: number;
     } & DefaultSession["user"];
+  }
+
+  interface User {
+    role?: string;
+    mustChangePassword?: boolean;
+    sessionVersion?: number;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id?: string;
+    role?: string;
+    mustChangePassword?: boolean;
+    sessionVersion?: number;
   }
 }

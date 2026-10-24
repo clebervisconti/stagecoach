@@ -87,7 +87,6 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       STAGECOACH_ERROR_TRACKING: ${STAGECOACH_ERROR_TRACKING:-none}
-      STAGECOACH_ADMIN_EMAILS: ${STAGECOACH_ADMIN_EMAILS:-}
       STAGECOACH_PUBLIC_URL: ${STAGECOACH_PUBLIC_URL:-http://127.0.0.1:8870}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     depends_on:
@@ -192,8 +191,6 @@ services:
       EMAIL_SERVER: smtp://mailpit:1025
       EMAIL_FROM: noreply@stagecoach.example.com
       INTERNAL_API_URL: http://api:8000
-      PRIVATE_BETA_MODE: ${PRIVATE_BETA_MODE:-true}
-      PRIVATE_BETA_EMAIL: ${PRIVATE_BETA_EMAIL:-local@example.invalid}
     depends_on:
       - api
       - mailpit

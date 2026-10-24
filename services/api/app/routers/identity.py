@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.apple_oidc import apple_configured, authorize_url, exchange_code, pkce_pair
 from app.database import get_db
+from app.auth import get_authenticated_user
 from app.identity_service import (
+    change_password,
     consume_session_ticket,
     default_auth_store,
     finish_apple,
@@ -20,6 +22,7 @@ from app.identity_service import (
     reset_password,
     verify_email,
 )
+from app.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -44,6 +47,12 @@ class EmailBody(BaseModel):
 
 class TicketBody(BaseModel):
     ticket: str = Field(..., min_length=8)
+
+
+class ChangePasswordBody(BaseModel):
+    current_password: Optional[str] = None
+    new_password: str = Field(..., min_length=1, max_length=200)
+    confirm_password: str = Field(..., min_length=1, max_length=200)
 
 
 class AppleStartBody(BaseModel):
@@ -98,8 +107,27 @@ def reset(body: ResetBody, db: Session = Depends(get_db)) -> dict[str, Any]:
 
 
 @router.post("/session-ticket")
-def session_ticket(body: TicketBody) -> dict[str, Any]:
-    return consume_session_ticket(body.ticket)
+def session_ticket(body: TicketBody, db: Session = Depends(get_db)) -> dict[str, Any]:
+    return consume_session_ticket(db, body.ticket)
+
+
+@router.post("/password")
+def password(
+    body: ChangePasswordBody,
+    request: Request,
+    user: User = Depends(get_authenticated_user),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Change the signed-in user's password. Allowed while must_change_password is set."""
+    current = body.current_password.strip() if body.current_password else None
+    return change_password(
+        db,
+        user,
+        current_password=current or None,
+        new_password=body.new_password,
+        confirm_password=body.confirm_password,
+        ip=_client_ip(request),
+    )
 
 
 @router.post("/apple/start")

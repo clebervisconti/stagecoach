@@ -28,12 +28,21 @@ export const authConfig = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        if (user.email) token.email = user.email;
+        token.role = user.role ?? "member";
+        token.mustChangePassword = Boolean(user.mustChangePassword);
+        token.sessionVersion = Number(user.sessionVersion ?? 0);
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id as string;
+        if (typeof token.id === "string") session.user.id = token.id;
+        if (typeof token.email === "string") session.user.email = token.email;
+        session.user.role = typeof token.role === "string" ? token.role : "member";
+        session.user.mustChangePassword = Boolean(token.mustChangePassword);
+        session.user.sessionVersion =
+          typeof token.sessionVersion === "number" ? token.sessionVersion : 0;
       }
       return session;
     },
