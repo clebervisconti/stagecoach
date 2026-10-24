@@ -145,10 +145,11 @@ export function segmentRoles(segment: LayoutSegment | undefined): LayoutRole[] {
   if (!segment) return [];
   const seen = new Set<LayoutRole>();
   for (const region of segment.regions || []) {
-    const role = region.role === "other_participant" ? "ignore" : region.role;
-    if (role === "camera" || role === "screen" || role === "ignore") seen.add(role);
+    if (region.role === "camera" || region.role === "screen" || region.role === "ignore" || region.role === "other_participant") {
+      seen.add(region.role);
+    }
   }
-  return ["camera", "screen", "ignore"].filter((role): role is LayoutRole => seen.has(role as LayoutRole));
+  return (["camera", "screen", "other_participant", "ignore"] as const).filter((role) => seen.has(role));
 }
 
 export function layoutComposition(segment: LayoutSegment | undefined): "camera_screen" | "camera" | "screen" | "audio" {

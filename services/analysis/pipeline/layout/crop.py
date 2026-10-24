@@ -11,12 +11,26 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 
-def _region_for(layout: dict[str, Any], role: str) -> Optional[dict[str, Any]]:
+def regions_for(layout: dict[str, Any], role: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
     for segment in layout.get("segments") or []:
         for region in segment.get("regions") or []:
             if region.get("role") == role:
-                return {**region, "t_start": segment.get("t_start", 0.0), "t_end": segment.get("t_end")}
-    return None
+                rows.append({**region, "t_start": segment.get("t_start", 0.0), "t_end": segment.get("t_end")})
+    return rows
+
+
+def dominant_region(layout: dict[str, Any], role: str) -> Optional[dict[str, Any]]:
+    """Longest span of `role`. A single-segment layout returns that one box."""
+    rows = regions_for(layout, role)
+
+    def span(region: dict[str, Any]) -> float:
+        end = float(region["t_end"]) if region.get("t_end") is not None else 0.0
+        return end - float(region.get("t_start") or 0.0)
+
+    if not rows:
+        return None
+    return max(rows, key=span)
 
 
 def _pixel_crop(region: dict[str, Any], width: int, height: int) -> tuple[int, int, int, int]:
@@ -82,7 +96,8 @@ def write_region_tracks(
         ("camera", "min(720\\,iw):-2", 15),
         ("screen", "min(1920\\,iw):-2", 5),
     ):
-        region = _region_for(layout, role)
+        rows = regions_for(layout, role)
+        region = dominant_region(layout, role)
         if not region:
             continue
         x, y, w, h = _pixel_crop(region, frame_width, frame_height)
@@ -91,7 +106,22 @@ def write_region_tracks(
         t1 = region.get("t_end")
         t1_f = float(t1) if t1 is not None else None
         _run_crop(original, dest, x=x, y=y, w=w, h=h, t0=t0, t1=t1_f, scale=scale, fps=fps)
-        spans = [{"t0": t0, "t1": t1_f, "src_t0": t0, "src_t1": t1_f}]
+        spans = []
+        for row in rows:
+            row_end = float(row["t_end"]) if row.get("t_end") is not None else None
+            px = _pixel_crop(row, frame_width, frame_height)
+            spans.append(
+                {
+                    "t0": float(row.get("t_start") or 0.0),
+                    "t1": row_end,
+                    "src_t0": float(row.get("t_start") or 0.0),
+                    "src_t1": row_end,
+                    "x": px[0],
+                    "y": px[1],
+                    "w": px[2],
+                    "h": px[3],
+                }
+            )
         spans_path = output_dir / f"{role}_spans.json"
         spans_path.write_text(json.dumps(spans, indent=2) + "\n")
         artifacts[role] = str(dest)

@@ -38,6 +38,8 @@ test("keyboard-only: player, evidence, and timeline stay reachable", async ({ pa
 
 test("report video exposes captions from the transcript", async ({ page }) => {
   await mockStagecoachApi(page, { language: "en", title: "Caption talk" });
+  // A failed media response removes the video. Hold the request so the track stays mounted.
+  await page.route("**/api/stagecoach/sessions/*/media**", () => new Promise(() => undefined));
   await page.goto(`/sessions/${SESSION_ID}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("report")).toBeVisible({ timeout: 15_000 });
   await expect(page.locator("video track[kind='captions']")).toHaveCount(1);

@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { CircleCheck, TriangleAlert } from "lucide-react";
 import { confidenceTone, layoutComposition, type LayoutView } from "@/lib/online";
 
-export function ConfidenceLine({ layout }: { layout: LayoutView }) {
+export function ConfidenceLine({ layout, consentOff = false }: { layout: LayoutView; consentOff?: boolean }) {
   const t = useTranslations("online");
   const segment = layout.segments[0];
   const tone = confidenceTone(
@@ -15,8 +15,9 @@ export function ConfidenceLine({ layout }: { layout: LayoutView }) {
   const composition = layoutComposition(segment);
   const word =
     tone === "high" ? t("confidenceHigh") : tone === "unsure" ? t("confidenceUnsure") : t("confidenceCheck");
-  const sentence =
-    tone === "high"
+  const sentence = consentOff
+    ? t("layout.consentBody")
+    : tone === "high"
       ? composition === "camera"
         ? t("foundCamera")
         : composition === "screen"
@@ -37,7 +38,7 @@ export function ConfidenceLine({ layout }: { layout: LayoutView }) {
     >
       <p className={`flex items-center gap-2 text-xs uppercase tracking-[0.08em] ${color}`}>
         <Icon className="h-4 w-4" aria-hidden="true" />
-        {word}
+        {consentOff ? t("layout.layoutCheck") : word}
       </p>
       <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{sentence}</p>
     </div>

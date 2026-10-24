@@ -20,7 +20,8 @@ export function LayoutPreview({
   const description = regions
     .map((region) => {
       const { position, size } = regionPositionWords(region);
-      const role = region.role === "other_participant" ? t("chip.ignored") : t(`chip.${region.role}`);
+      const role =
+        region.role === "other_participant" ? t("chip.other") : region.role === "ignore" ? t("chip.ignored") : t(`chip.${region.role}`);
       return `${role}: ${position}, ${size}.`;
     })
     .join(" ");
@@ -61,9 +62,10 @@ function RegionBox({ region, uncertain }: { region: LayoutRegion; uncertain: boo
   const h = Math.max(region.h, 0.02);
   const x = region.x;
   const y = region.y;
-  const role = region.role === "other_participant" ? "ignore" : region.role;
+  const other = region.role === "other_participant";
+  const role = other ? "ignore" : region.role;
   const kind = role === "camera" ? "camera" : role === "screen" ? "screen" : "ignored";
-  const label = role === "camera" ? t("chip.camera") : role === "screen" ? t("chip.screen") : t("chip.ignored");
+  const label = region.role === "camera" ? t("chip.camera") : region.role === "screen" ? t("chip.screen") : other ? t("chip.other") : t("chip.ignored");
   return (
     <div
       className={`cs-region cs-region--${kind}`}

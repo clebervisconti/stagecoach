@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
-import { Info } from "lucide-react";
-import { ConfidenceLine } from "@/components/layout/confidence-line";
-import { LayoutLegend } from "@/components/layout/layout-legend";
-import { LayoutPreview } from "@/components/layout/layout-preview";
-import { SegmentStrip } from "@/components/layout/segment-strip";
+import { LayoutWorkspace, type LayoutHeading } from "@/components/layout/layout-workspace";
 import { WizardStepper } from "@/components/sessions/new/wizard-stepper";
-import { confidenceTone, isDeliveryMode, segmentRoles, type DeliveryMode, type LayoutView } from "@/lib/online";
+import type { LayoutDraft } from "@/lib/layout-edit";
+import { isDeliveryMode, type DeliveryMode, type LayoutView } from "@/lib/online";
+
+let layoutLoadGeneration = 0;
 
 export default function LayoutReviewPage() {
   const t = useTranslations("online");
@@ -18,36 +17,83 @@ export default function LayoutReviewPage() {
   const params = useParams<{ id: string }>();
   const prefix = locale === "en" ? "" : `/${locale}`;
   const sessionHref = `${prefix}/sessions/${params.id}`;
+  const layoutHref = `${prefix}/sessions/${params.id}/layout`;
   const [layout, setLayout] = useState<LayoutView | null>(null);
   const [mode, setMode] = useState<DeliveryMode>("webinar");
   const [sessionStatus, setSessionStatus] = useState("layout_review");
-  const [selected, setSelected] = useState(0);
+  const [consentOff, setConsentOff] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [f6, setF6] = useState(false);
+  const [resetToken, setResetToken] = useState(0);
+  const [heading, setHeading] = useState<LayoutHeading>({
+    eyebrow: t("checkLayout"),
+    title: t("layoutTitle"),
+    lead: t("layoutLead"),
+  });
   const lastAudioOnly = useRef(false);
+  const appliedLayout = useRef(false);
+  const onHeading = useCallback((next: LayoutHeading) => {
+    setHeading((prev) =>
+      prev.eyebrow === next.eyebrow && prev.title === next.title && prev.lead === next.lead ? prev : next,
+    );
+  }, []);
 
   useEffect(() => {
     document.getElementById("layout-title")?.focus({ preventScroll: true });
-    document.title = `${t("checkLayout")} · Stage Coach`;
-  }, [t]);
+  }, []);
 
   useEffect(() => {
+    document.title = `${heading.title} · Stage Coach`;
+  }, [heading.title]);
+
+  useEffect(() => {
+    const generation = ++layoutLoadGeneration;
     let active = true;
     async function load() {
+      const query = new URLSearchParams(window.location.search);
+      const wantEdit = query.get("edit") === "1";
+      const wantF6 = query.get("f6") === "1";
       try {
         const session = await fetch(`/api/stagecoach/sessions/${params.id}`, { cache: "no-store" });
+        let status = "layout_review";
         if (session.ok) {
-          const body = (await session.json()) as { delivery_mode?: string; status?: string };
+          const body = (await session.json()) as {
+            delivery_mode?: string;
+            status?: string;
+            consent?: { video_analysis?: boolean };
+          };
           if (isDeliveryMode(body.delivery_mode)) setMode(body.delivery_mode);
-          if (body.status) setSessionStatus(body.status);
+          if (body.status) {
+            status = body.status;
+            setSessionStatus(body.status);
+          }
+          setConsentOff(body.consent?.video_analysis === false);
+        }
+        if (!active || generation !== layoutLoadGeneration) return;
+        const reopen = wantF6 && status !== "layout_review" && status !== "preparing" && status !== "created";
+        if (reopen) {
+          const created = await fetch(`/api/stagecoach/sessions/${params.id}/reanalyse-layout`, { method: "POST" });
+          if (!created.ok) throw new Error(t("layout.saveFailedBody"));
+          if (active) {
+            setF6(true);
+            setEditing(true);
+            window.history.replaceState(null, "", `${layoutHref}?edit=1`);
+          }
+        } else if (active) {
+          if (wantF6) setF6(true);
+          setEditing(wantEdit || wantF6);
         }
         const response = await fetch(`/api/stagecoach/sessions/${params.id}/layout`, { cache: "no-store" });
         if (!response.ok) throw new Error(t("layoutLoadError"));
         const body = (await response.json()) as LayoutView;
-        if (!active) return;
+        if (!active || appliedLayout.current) return;
+        appliedLayout.current = true;
         setLayout(body);
-        setSelected(body.segments[0]?.index ?? 0);
+        setResetToken((value) => value + 1);
       } catch (reason) {
         if (active) setError(reason instanceof Error ? reason.message : t("layoutLoadError"));
       } finally {
@@ -58,7 +104,13 @@ export default function LayoutReviewPage() {
     return () => {
       active = false;
     };
-  }, [params.id, t]);
+  }, [params.id, t, layoutHref]);
+
+  function enterEdit(next: boolean) {
+    setEditing(next);
+    const url = next ? `${layoutHref}?edit=1` : layoutHref;
+    window.history.replaceState(null, "", url);
+  }
 
   async function accept(audioOnly: boolean) {
     lastAudioOnly.current = audioOnly;
@@ -78,21 +130,63 @@ export default function LayoutReviewPage() {
     }
   }
 
-  const segment = layout?.segments.find((row) => row.index === selected) ?? layout?.segments[0];
-  const tone = layout
-    ? confidenceTone(
-        layout.confidence,
-        layout.review_reason,
-        layout.segments.map((row) => row.confidence),
-      )
-    : "empty";
-  const empty = tone === "empty" || (layout && !segment?.regions.length);
-  const roles = segmentRoles(segment);
-  const preview = segment?.preview_url
-    ? `/api/stagecoach${segment.preview_url.replace("/api/v1", "")}`
-    : null;
+  async function save(draft: LayoutDraft) {
+    if (!layout) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/stagecoach/sessions/${params.id}/layout`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          version: layout.version,
+          analysis_window: draft.analysis_window,
+          segments: draft.segments.map((segment) => ({
+            index: segment.index,
+            t_start: segment.t_start,
+            t_end: segment.t_end,
+            kind: segment.kind,
+            confidence: segment.confidence,
+            regions: segment.regions.map((region) => ({
+              id: region.id,
+              role: region.role,
+              x: region.x,
+              y: region.y,
+              w: region.w,
+              h: region.h,
+              confidence: region.confidence,
+              source: region.source ?? "user",
+            })),
+          })),
+        }),
+      });
+      if (!response.ok) throw new Error(t("layout.saveFailedBody"));
+      router.push(sessionHref);
+    } catch (reason) {
+      setSaveError(true);
+      setError(reason instanceof Error ? reason.message : t("layout.saveFailedBody"));
+      setBusy(false);
+    }
+  }
+
+  async function discard() {
+    setBusy(true);
+    setSaveError(false);
+    setError(null);
+    try {
+      const response = await fetch(`/api/stagecoach/sessions/${params.id}/layout`, { cache: "no-store" });
+      if (!response.ok) throw new Error(t("layoutLoadError"));
+      setLayout((await response.json()) as LayoutView);
+      setResetToken((value) => value + 1);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t("layoutLoadError"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const reviewing = sessionStatus === "layout_review" || sessionStatus === "preparing" || sessionStatus === "created";
-  const readOnly = Boolean(layout?.auto_confirmed || (layout && !reviewing));
+  const readOnly = Boolean(layout?.auto_confirmed || (layout && !reviewing && !f6 && !editing));
   const auto = Boolean(layout?.auto_confirmed);
 
   return (
@@ -102,24 +196,19 @@ export default function LayoutReviewPage() {
         current="layout"
         layoutDone={readOnly || auto}
         autoConfirmed={auto}
+        consentOff={consentOff}
         onSelect={(id) => {
           if (id === "where") router.push(`${prefix}/sessions/new?step=where&mode=${mode}`);
           if (id === "recording") router.push(`${prefix}/sessions/new?step=recording&mode=${mode}`);
-          if (id === "layout") router.push(`${prefix}/sessions/${params.id}/layout`);
+          if (id === "layout") router.push(layoutHref);
         }}
       />
-      <p className="cs-eyebrow">{readOnly ? t("layoutEyebrow") : t("checkLayout")}</p>
-      <h1 id="layout-title" tabIndex={-1} className="cs-wizard-title mt-3 max-w-4xl outline-none">
-        {readOnly ? t("usedTitle") : empty && !loading ? t("emptyTitle") : t("layoutTitle")}
+      <p className="cs-eyebrow">{heading.eyebrow}</p>
+      <h1 id="layout-title" tabIndex={-1} className="cs-wizard-title mt-3 max-w-4xl text-balance outline-none">
+        {heading.title}
       </h1>
       <p className="mt-3 max-w-3xl text-base leading-7 text-[color:var(--text-secondary)] md:text-lg md:leading-[30px]">
-        {readOnly
-          ? auto
-            ? t("usedLeadAuto")
-            : t("usedLeadYou")
-          : empty && !loading
-            ? t("emptyLead")
-            : t("layoutLead")}
+        {heading.lead}
       </p>
 
       {loading && (
@@ -132,75 +221,31 @@ export default function LayoutReviewPage() {
         </div>
       )}
 
-      {!loading && empty && !readOnly && (
-        <div className="cs-empty mt-10 rounded-[var(--radius-sm)] border p-10 text-center" data-testid="layout-empty">
-          <Info className="relative mx-auto h-6 w-6 text-[color:var(--text-tertiary)]" aria-hidden="true" />
-          <p className="relative mt-4 text-sm">{t("noRegions")}</p>
-          <button
-            type="button"
-            data-testid="analyse-audio"
-            onClick={() => void accept(true)}
-            className="relative mt-6 inline-flex h-11 items-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-5 text-xs uppercase tracking-[0.08em] text-[color:var(--text-inverse)]"
-          >
-            {t("analyseAudio")}
-          </button>
-        </div>
+      {!loading && layout && (
+        <LayoutWorkspace
+          key={resetToken}
+          layout={layout}
+          editing={editing && !readOnly}
+          f6={f6}
+          consentOff={consentOff}
+          readOnly={readOnly}
+          auto={auto}
+          busy={busy}
+          saveError={saveError}
+          sessionHref={sessionHref}
+          onHeading={onHeading}
+          onEditing={enterEdit}
+          onAccept={(audioOnly) => void accept(audioOnly)}
+          onSave={(draft) => void save(draft)}
+          onDiscard={() => void discard()}
+        />
       )}
 
-      {!loading && layout && !empty && (
-        <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div>
-            <LayoutPreview
-              src={preview}
-              segment={segment}
-              previewT={layout.preview_t}
-              uncertainRole={tone === "check" ? "camera" : null}
-            />
-            <SegmentStrip segments={layout.segments} selected={segment?.index ?? 0} onSelect={setSelected} />
-          </div>
-          <div className="space-y-8">
-            <ConfidenceLine layout={layout} />
-            <LayoutLegend roles={roles} />
-            {readOnly ? (
-              <a
-                href={sessionHref}
-                data-testid="back-to-session"
-                className="inline-flex h-11 w-full items-center justify-center rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] px-5 text-xs uppercase tracking-[0.08em]"
-              >
-                ← {t("backToSession")}
-              </a>
-            ) : (
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  data-testid="looks-right"
-                  disabled={busy}
-                  onClick={() => void accept(false)}
-                  className="inline-flex h-11 w-full items-center justify-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-5 text-xs uppercase tracking-[0.08em] text-[color:var(--text-inverse)]"
-                >
-                  {t("looksRight")}
-                </button>
-                <button
-                  type="button"
-                  data-testid="analyse-audio"
-                  disabled={busy}
-                  onClick={() => void accept(true)}
-                  className="inline-flex h-11 w-full items-center justify-center rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] px-5 text-xs uppercase tracking-[0.08em]"
-                >
-                  {t("analyseAudio")}
-                </button>
-                <p className="text-sm text-[color:var(--text-secondary)]">{t("boxesWrong")}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {error && (
+      {error && !saveError && (
         <div role="alert" className="mt-6 rounded-[var(--radius-sm)] border border-[color:var(--status-critical)] p-4">
           <p className="text-sm">
             <span className="font-display text-xs font-bold uppercase tracking-[0.08em] text-[color:var(--status-critical)]">
-              ✕ {t("acceptErrorWord")}
+              {t("acceptErrorWord")}
             </span>
             <span className="text-[color:var(--text)]"> · {error}</span>
           </p>

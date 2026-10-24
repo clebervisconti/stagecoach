@@ -394,6 +394,58 @@
   box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000;
   pointer-events: none;
   container-type: inline-size;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+button.cs-region {
+  pointer-events: auto;
+  cursor: move;
+}
+button.cs-region:not(.cs-region--ignored) {
+  background: transparent;
+}
+.cs-region--edit {
+  pointer-events: auto;
+}
+.cs-region--selected {
+  z-index: 2;
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, 0 0 0 1px var(--text-on-media);
+}
+.cs-region:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.cs-handle {
+  position: absolute;
+  z-index: 3;
+  width: 24px;
+  height: 24px;
+}
+.cs-handle::before {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: var(--text-on-media);
+  border-style: solid;
+}
+.cs-handle--nw { left: -12px; top: -12px; cursor: nwse-resize; }
+.cs-handle--ne { right: -12px; top: -12px; cursor: nesw-resize; }
+.cs-handle--sw { left: -12px; bottom: -12px; cursor: nesw-resize; }
+.cs-handle--se { right: -12px; bottom: -12px; cursor: nwse-resize; }
+.cs-handle--nw::before { left: 12px; top: 12px; border-width: 1px 0 0 1px; }
+.cs-handle--ne::before { right: 12px; top: 12px; border-width: 1px 1px 0 0; }
+.cs-handle--sw::before { left: 12px; bottom: 12px; border-width: 0 0 1px 1px; }
+.cs-handle--se::before { right: 12px; bottom: 12px; border-width: 0 1px 1px 0; }
+.cs-segment-row {
+  scroll-snap-type: x mandatory;
+  max-width: 100%;
+}
+.cs-segment-row > * {
+  scroll-snap-align: start;
 }
 .cs-region--screen {
   border-style: dashed;
@@ -415,8 +467,8 @@
 
 .cs-region__label {
   position: absolute;
-  left: 0;
-  top: 0;
+  left: 4px;
+  top: 4px;
   display: inline-flex;
   gap: 4px;
   align-items: center;

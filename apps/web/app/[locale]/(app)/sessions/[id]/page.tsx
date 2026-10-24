@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { AlertTriangle, FileDown, Trash2 } from "lucide-react";
+import { AlertTriangle, FileDown, MoreHorizontal, Trash2 } from "lucide-react";
 import type { AnalysisReport } from "@/lib/report-types";
 import { CategoryCards } from "@/components/report/category-cards";
 import { InsightsPanel } from "@/components/report/insights-panel";
@@ -70,6 +70,7 @@ function isReport(value: unknown): value is AnalysisReport {
 
 export default function SessionPage() {
   const t = useTranslations("report");
+  const tOnline = useTranslations("online");
   const locale = useLocale();
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -212,6 +213,25 @@ export default function SessionPage() {
     }
   }
 
+  async function reanalyseAudio() {
+    const created = await fetch(`/api/stagecoach/sessions/${params.id}/reanalyse-layout`, { method: "POST" });
+    if (!created.ok) {
+      setError(t("failedHelp"));
+      return;
+    }
+    const accepted = await fetch(`/api/stagecoach/sessions/${params.id}/layout/accept`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ audio_only: true }),
+    });
+    if (!accepted.ok) {
+      setError(t("failedHelp"));
+      return;
+    }
+    setReport(null);
+    setSession((prev) => (prev ? { ...prev, status: "processing" } : prev));
+  }
+
   async function remove() {
     if (!window.confirm(t("deleteConfirm"))) return;
     const response = await fetch(`/api/stagecoach/sessions/${params.id}`, { method: "DELETE" });
@@ -254,12 +274,15 @@ export default function SessionPage() {
           autoConfirmed={autoConfirmed}
           consentOff={consentOff}
           onSelect={(id) => {
+            const setup = `${locale === "en" ? "" : `/${locale}`}/sessions/new`;
+            if (id === "where") router.push(`${setup}?step=where&mode=${session.delivery_mode}`);
+            if (id === "recording") router.push(`${setup}?step=recording&mode=${session.delivery_mode}`);
             if (id === "layout" && session) router.push(`${sessionsPath}/${session.id}/layout`);
           }}
         />
       )}
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <button
             type="button"
             onClick={() => router.push(sessionsPath)}
@@ -267,7 +290,7 @@ export default function SessionPage() {
           >
             ← {t("back")}
           </button>
-          <h1 className="text-3xl font-bold">{session?.title}</h1>
+          <h1 className="break-words text-3xl font-bold">{session?.title}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             {session?.delivery_mode && session.delivery_mode !== "stage" && (
               <ModeBadge
@@ -286,7 +309,18 @@ export default function SessionPage() {
             </p>
           </div>
         </div>
-        {!showPrepare && (
+        {!showPrepare && session?.delivery_mode && session.delivery_mode !== "stage" && (
+          <ReportMenu
+            exporting={exporting}
+            includeTranscript={includeTranscript}
+            onIncludeTranscript={setIncludeTranscript}
+            onExport={() => void exportPdf()}
+            onChangeLayout={() => router.push(`${sessionsPath}/${session.id}/layout?edit=1&f6=1`)}
+            onAudio={() => void reanalyseAudio()}
+            onDelete={() => void remove()}
+          />
+        )}
+        {!showPrepare && (!session?.delivery_mode || session.delivery_mode === "stage") && (
         <div className="flex flex-col items-end gap-2">
           {report && (
             <div className="flex flex-wrap items-center gap-2">
@@ -344,11 +378,9 @@ export default function SessionPage() {
       {session?.status === "layout_review" && (
         <div role="status" className="rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] p-4">
           <a href={`${sessionsPath}/${session.id}/layout`} className="text-xs uppercase tracking-[0.08em]">
-            Check the layout
+            {tOnline("checkTheLayout")}
           </a>
-          <p className="mt-2 text-sm text-[color:var(--text-secondary)]">
-            Confirm the layout before we analyse this recording.
-          </p>
+          <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{tOnline("layoutWaiting")}</p>
         </div>
       )}
 
@@ -385,6 +417,19 @@ export default function SessionPage() {
 
       {report && !showPrepare && (
         <div data-testid="report" className="space-y-8">
+          {session?.delivery_mode && session.delivery_mode !== "stage" && (
+            <section className="rounded-[var(--radius-sm)] border border-[color:var(--line)] p-4">
+              <button
+                type="button"
+                data-testid="change-layout-card"
+                onClick={() => router.push(`${sessionsPath}/${session.id}/layout?edit=1&f6=1`)}
+                className="text-xs uppercase tracking-[0.08em]"
+              >
+                {t("changeLayout")}
+              </button>
+              <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{t("changeLayoutHelp")}</p>
+            </section>
+          )}
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
             <SummaryCard report={report} />
             <section className="rounded-lg border bg-card p-6">
@@ -400,6 +445,7 @@ export default function SessionPage() {
               sessionId={params.id}
               evidence={report.evidence ?? []}
               captionsVtt={transcript ? exportVtt(transcript) : undefined}
+              captionLang={transcript?.language || locale}
               seekRef={seekRef}
               timeline={timeline}
             />
@@ -577,5 +623,86 @@ function ModeBadge({
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />
       {compact ? label : `${label} · ${half}`}
     </span>
+  );
+}
+
+function ReportMenu({
+  exporting,
+  includeTranscript,
+  onIncludeTranscript,
+  onExport,
+  onChangeLayout,
+  onAudio,
+  onDelete,
+}: {
+  exporting: boolean;
+  includeTranscript: boolean;
+  onIncludeTranscript: (value: boolean) => void;
+  onExport: () => void;
+  onChangeLayout: () => void;
+  onAudio: () => void;
+  onDelete: () => void;
+}) {
+  const t = useTranslations("report");
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointer(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative shrink-0" ref={rootRef}>
+      <button
+        type="button"
+        data-testid="report-menu"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t("moreActions")}
+        onClick={() => setOpen((value) => !value)}
+        className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-sm)] border border-[color:var(--line-strong)]"
+      >
+        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 z-20 mt-2 w-64 border border-[color:var(--line-strong)] bg-[color:var(--bg)] p-1">
+          <label className="flex items-center gap-2 px-3 py-2 text-sm">
+            <input
+              type="checkbox"
+              data-testid="include-transcript"
+              checked={includeTranscript}
+              onChange={(event) => onIncludeTranscript(event.target.checked)}
+            />
+            {t("includeTranscript")}
+          </label>
+          <button type="button" role="menuitem" data-testid="export-pdf" disabled={exporting} onClick={onExport} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm">
+            <FileDown className="h-4 w-4" aria-hidden="true" />
+            {exporting ? t("exportQueued") : t("exportPdf")}
+          </button>
+          <button type="button" role="menuitem" data-testid="change-layout" onClick={onChangeLayout} className="block w-full px-3 py-2 text-left text-sm">
+            {t("changeLayout")}
+          </button>
+          <button type="button" role="menuitem" data-testid="reanalyse-audio" onClick={onAudio} className="block w-full px-3 py-2 text-left text-sm">
+            {t("reanalyseAudio")}
+          </button>
+          <button type="button" role="menuitem" data-testid="delete-session" onClick={onDelete} className="block w-full px-3 py-2 text-left text-sm text-[color:var(--status-critical)]">
+            <Trash2 className="mr-2 inline h-4 w-4" aria-hidden="true" />
+            {t("deleteSession")}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

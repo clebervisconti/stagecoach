@@ -212,6 +212,12 @@
     "content_llm": "Escrevendo suas notas de coaching",
     "report": "Montando o relatório",
     "layout": "Localizando a câmera e a tela",
+    "layoutCheck": "Checagem de layout",
+    "moreActions": "Mais ações",
+    "changeLayout": "Mudar layout e reanalisar",
+    "changeLayoutHelp": "Abre o mesmo editor com as caixas confirmadas. A transcrição é reaproveitada quando a janela de análise não muda.",
+    "reanalyseAudio": "Reanalisar só o áudio",
+    "deleteSession": "Excluir sessão",
     "layout_review": "Layout confirmado",
     "production_quality": "Verificando som e imagem",
     "region_crops": "Separando a câmera e a tela",
@@ -604,6 +610,7 @@
     "chip": {
       "camera": "Câmera",
       "screen": "Tela",
+      "other": "Outro",
       "ignored": "Ignorado",
       "cameraCheck": "Câmera · Confira"
     },
@@ -620,7 +627,8 @@
     "legend": {
       "camera": "A sua câmera. Enquadramento, luz e para onde você olha são medidos só aqui.",
       "screen": "A sua tela compartilhada. Trocas de slide e o fluxo da demo são medidos aqui.",
-      "ignore": "Nunca analisado. Outras pessoas, chat e barras da plataforma."
+      "ignore": "Nunca analisado. Outras pessoas, chat e barras da plataforma.",
+      "other": "Outro participante. Mesma marca de Ignorado — nunca analisado."
     },
     "layoutOverTime": "Layout ao longo do tempo",
     "segmentCount": "{n, plural, one {# segmento} other {# segmentos}}",
@@ -810,6 +818,103 @@
       "stage_mode": "Não medido para palestras no palco.",
       "no_slides": "Nenhum slide foi encontrado.",
       "not_applicable": "Não medido nesta gravação."
+    },
+    "layout": {
+      "eyebrow": {
+        "review": "Conferir o layout",
+        "edit": "Ajustar o layout",
+        "f6": "Mudar layout · reanalisar"
+      },
+      "title": {
+        "review": "Esta é a sua câmera e a sua tela?",
+        "editDirty": "Ajuste as caixas e analise",
+        "empty": "Nenhuma câmera ou tela encontrada",
+        "draw": "Desenhe a primeira região",
+        "trim": "Recorte o que vamos analisar",
+        "split": "Divida onde o layout muda",
+        "saveFailed": "Não foi possível salvar o layout"
+      },
+      "cta": {
+        "looksRight": "Está certo · analisar",
+        "adjust": "Ajustar",
+        "analyseLayout": "Analisar com este layout",
+        "discard": "Descartar alterações",
+        "doneEditing": "Concluir edição",
+        "done": "Concluir",
+        "draw": "Desenhar regiões",
+        "audioOnly": "Analisar só o áudio",
+        "tryAgain": "Tentar de novo",
+        "split": "Dividir",
+        "merge": "Unir",
+        "add": "Adicionar",
+        "addRegion": "Adicionar região",
+        "remove": "Remover",
+        "backToReport": "Voltar ao relatório"
+      },
+      "role": {
+        "camera": "Câmera",
+        "screen": "Tela",
+        "other": "Outro",
+        "ignore": "Ignorar"
+      },
+      "roles": "Papel da região",
+      "status": {
+        "editing": "Editando o layout",
+        "unsaved": "Alterações não salvas",
+        "saveFailed": "Não foi possível salvar",
+        "noRegions": "Sem regiões",
+        "checkThis": "Confira isto"
+      },
+      "layoutCheck": "Checagem de layout",
+      "consentTitle": "Quais regiões devemos usar?",
+      "consentBody": "A análise de câmera está desligada. Ajuste as caixas de tela e ignorar e depois analise.",
+      "lead": {
+        "edit": "Arraste, redimensione ou mude o papel de uma caixa. Divida o tempo quando o layout mudar. Depois analise com este layout.",
+        "draw": "Arraste uma caixa em volta da sua câmera ou da sua tela.",
+        "trim": "Mantenha a gravação inteira. Mova as pontas da janela para a análise cobrir só a fala.",
+        "empty": "Desenhe uma caixa em volta da sua câmera ou da sua tela, ou analise só o áudio.",
+        "f6": "Ajuste as caixas e analise de novo. A transcrição é reaproveitada quando a janela de análise não muda."
+      },
+      "unsavedBody": "Analise com este layout para salvar e rodar de novo. Descarte para voltar.",
+      "saveFailedBody": "O servidor recusou a atualização (conflito de versão ou rede). Suas edições ficam neste aparelho.",
+      "emptyHint": "Desenhe uma caixa em volta da câmera ou da tela, ou analise só o áudio.",
+      "drawing": "Desenhando",
+      "selected": "Selecionado",
+      "nothingSelected": "Nada selecionado",
+      "noCamera": "Sem caixa de câmera. A presença não será medida.",
+      "deleteLastCamera": "Remover a última caixa de câmera?",
+      "deleteLastCameraBody": "A presença não será medida.",
+      "mergeTitle": "Estes segmentos usam caixas diferentes",
+      "mergeBody": "Fique com um layout para o tempo unido.",
+      "merge": {
+        "keepLeft": "Ficar com as caixas anteriores",
+        "keepRight": "Ficar com as caixas seguintes"
+      },
+      "windowShort": "A janela de análise precisa ter pelo menos 60 segundos.",
+      "keyboardHint": "Teclado: setas movem · Tab percorre · Delete remove · Esc cancela o arraste.",
+      "nudge": {
+        "hint": "1 px · Shift 10 px",
+        "fine": "Passo fino, 1 ou 10 pixels",
+        "up": "Mover para cima",
+        "down": "Mover para baixo",
+        "left": "Mover para a esquerda",
+        "right": "Mover para a direita"
+      },
+      "trim": {
+        "label": "Janela de análise",
+        "help": "Arraste as pontas para recortar. Mínimo 60 segundos.",
+        "start": "Início da janela de análise",
+        "end": "Fim da janela de análise"
+      },
+      "pos": {
+        "top": "em cima",
+        "middle": "no meio",
+        "bottom": "embaixo",
+        "left": "à esquerda",
+        "centre": "no centro",
+        "right": "à direita"
+      },
+      "regionAria": "{role}, {position}, {w} por {h} por cento"
     }
   }
 }

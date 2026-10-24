@@ -100,7 +100,13 @@ Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026, each exactly as
 
 **Blocked by:** O1 and OD-7.
 
-- [ ] E2-1 through E2-7: region editor, multi-segment layouts, gallery and active speaker, analysis-window trim, re-analyse without a second ASR pass, review preference.
+- [x] E2-1 Region editor (roles, pointer, keyboard, 390 sheet).
+- [x] E2-2 Multi-segment layouts. Runs shorter than three samples fold into a neighbour.
+- [x] E2-3 Gallery marks the highest-score face as camera and the rest as other participants. Mouth×VAD active-speaker correlation waits until layout runs after aligned speech.
+- [x] E2-4 Analysis-window trim, minimum 60 seconds.
+- [x] E2-5 Re-analyse without a second ASR pass when the window is unchanged.
+- [x] E2-6 Report entry back into the editor.
+- [ ] E2-7 Review-preference settings row (OD-3). Deferred with the O2 design.
 
 ### SC-ONL-O3 — Screen and flow
 
