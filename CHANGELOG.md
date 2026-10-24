@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Web production dependency `zod` is `^4.6.7` (resolved 4.6.7), the patched release for GHSA-mrhx-c7xc-m3w5. `eslint-plugin-react-hooks` and `zod-validation-error` resolve to that same copy. The app has no zod call sites. See ADR-080.
+
 ### Long-session content analysis
 
 - `content_llm` maps `outline_v1`, `message_v1`, `story_impact_v1`, and `audience_clarity_v1` over transcript chunks of at most 6k tokens, then reduces each prompt to the stage schema. `open_close_v1` stays the first 60 seconds and the last 90 seconds.
