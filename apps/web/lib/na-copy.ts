@@ -21,6 +21,7 @@ export function categoryNaCopy(category: NaCategory, t: (key: string) => string)
   const reason = (category.na_reason || "").trim();
   if (isLanguageModelGap(reason, category.na_code)) return t("na.model_unavailable");
   if (isCameraCoverageGap(reason, category.na_code)) return t("na.camera_coverage_low");
+  if (/2 minutes of visible screen|2 minutos de tela/i.test(reason)) return t("na.screenVisibleShort");
   if (category.id === "screen_flow" && !reason && !isNaCode(category.na_code)) return t("na.screenFlowSoon");
   if (isNaCode(category.na_code) && category.na_code !== "not_applicable") return t(`na.${category.na_code}`);
   if (reason) return reason;

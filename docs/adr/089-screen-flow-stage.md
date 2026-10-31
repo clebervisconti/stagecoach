@@ -33,5 +33,5 @@ E3-1 through E3-4 need a backend measurement: 1 Hz activity, debounced transitio
 
 - Online jobs gain a `screen_flow` step and rewrite `slides.json` from the measured segments. Stage jobs are unchanged.
 - `alembic upgrade head` must apply `014_screen_flow` before the API writes those tables. This change does not deploy.
-- Issues #169–#172 are the backend stories. #173–#176 (scoring, the tab, `online_flow_v1`, prompt 1.0.1) are not implemented.
+- Issues #169–#172 are the backend stories. Scoring, the tab, `online_flow_v1`, and prompt 1.0.1 are [ADR-090](090-o3-screen-flow-ui.md).
 - The owner still needs a GitHub label `phase:O3`. The token used here cannot create labels.

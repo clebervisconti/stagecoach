@@ -466,7 +466,7 @@ def check_for_content_judgment(
     """True when text judges factual correctness.
 
     `wrong` counts unless the next word is slide, screen, or order.
-    Prompt wiring is E3-7. This function does not edit user text.
+    Wired by online_flow_v1. This function does not edit user text.
     """
     haystack = text or ""
     lowered = haystack.lower()

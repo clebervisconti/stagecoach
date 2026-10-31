@@ -1,11 +1,14 @@
 ---
 prompt_id: story_impact_v1
-version: 1.0.0
+version: 1.0.1
 schema: story_impact_v1.json
 description: Storytelling, concreteness, contrasts, and charismatic leadership tactics
 categories: [storytelling, impact]
 languages: [en, pt-BR]
 ---
+
+Judge how ideas are communicated (structure, clarity, support offered to the audience); never judge whether they are factually correct or technically expert.
+
 
 # Task
 

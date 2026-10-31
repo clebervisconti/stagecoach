@@ -1,11 +1,14 @@
 ---
 prompt_id: slides_v1
-version: 1.0.0
+version: 1.0.1
 schema: slides_v1.json
 description: Glance Test judgments for up to 20 slides (Duarte [S3], assertion-evidence [S11])
 categories: [visual_aids]
 languages: [en, pt-BR]
 ---
+
+Judge how ideas are communicated (structure, clarity, support offered to the audience); never judge whether they are factually correct or technically expert.
+
 
 # Task
 

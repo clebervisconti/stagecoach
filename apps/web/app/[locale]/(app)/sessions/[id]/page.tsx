@@ -14,6 +14,8 @@ import { SummaryCard } from "@/components/report/summary-card";
 import { BodyTab } from "@/components/report/body-tab";
 import { ObjectivesTab, type CoachingPayload } from "@/components/report/objectives-tab";
 import { SlidesTab } from "@/components/report/slides-tab";
+import { ScreenFlowTab } from "@/components/report/screen-flow-tab";
+import type { ScreenDocument } from "@/lib/screen-flow";
 import { TranscriptTab } from "@/components/report/transcript-tab";
 import { VoiceTab } from "@/components/report/voice-tab";
 import type { BodyPayload, SlidesPayload } from "@/lib/body-slides";
@@ -90,10 +92,14 @@ export default function SessionPage() {
   const [timeline, setTimeline] = useState<TimelinePayload | null>(null);
   const [body, setBody] = useState<BodyPayload | null>(null);
   const [slides, setSlides] = useState<SlidesPayload | null>(null);
+  const [screenDoc, setScreenDoc] = useState<ScreenDocument | null>(null);
+  const [screensLoading, setScreensLoading] = useState(true);
+  const [screensError, setScreensError] = useState(false);
+  const [playhead, setPlayhead] = useState(0);
   const [goals, setGoals] = useState<GoalLike[]>([]);
   const [coaching, setCoaching] = useState<CoachingPayload | null>(null);
   const [tab, setTab] = useState<
-    "categories" | "transcript" | "voice" | "timeline" | "body" | "slides" | "objectives"
+    "categories" | "screen_flow" | "transcript" | "voice" | "timeline" | "body" | "slides" | "objectives"
   >("categories");
   const seekRef = useRef<(tStart: number) => void>(() => undefined);
   const [live, setLive] = useState<StageProgressEvent | null>(null);
@@ -146,6 +152,19 @@ export default function SessionPage() {
       if (coachingBody && typeof coachingBody === "object") setCoaching(coachingBody as CoachingPayload);
       if (bodyBody && typeof bodyBody === "object") setBody(bodyBody as BodyPayload);
       if (slidesBody && typeof slidesBody === "object") setSlides(slidesBody as SlidesPayload);
+      const screensResponse = await fetch(`${base}/screens`, { cache: "no-store" });
+      if (active) {
+        if (screensResponse.status === 404) {
+          setScreenDoc(null);
+          setScreensError(false);
+        } else if (!screensResponse.ok) {
+          setScreensError(true);
+        } else {
+          setScreenDoc((await screensResponse.json()) as ScreenDocument);
+          setScreensError(false);
+        }
+        setScreensLoading(false);
+      }
       if (goalsBody && typeof goalsBody === "object") {
         const payload = goalsBody as { goals?: GoalLike[] };
         setGoals(payload.goals ?? []);
@@ -484,6 +503,7 @@ export default function SessionPage() {
               captionLang={transcript?.language || locale}
               seekRef={seekRef}
               timeline={timeline}
+              onTime={setPlayhead}
             />
             <KeyMetrics report={report} />
           </div>
@@ -497,16 +517,9 @@ export default function SessionPage() {
           />
           <div>
             <div role="tablist" aria-label={t("tabs")} className="mb-4 flex flex-wrap gap-2">
-              {(
-                [
-                  "categories",
-                  "transcript",
-                  "voice",
-                  "timeline",
-                  ...(session?.delivery_mode && session.delivery_mode !== "stage" ? [] : (["body"] as const)),
-                  "slides",
-                  "objectives",
-                ] as const
+              {(session?.delivery_mode && session.delivery_mode !== "stage"
+                ? (["categories", "screen_flow", "transcript", "voice", "timeline", "objectives"] as const)
+                : (["categories", "transcript", "voice", "timeline", "body", "slides", "objectives"] as const)
               ).map((id) => (
                 <button
                   key={id}
@@ -518,26 +531,62 @@ export default function SessionPage() {
                     tab === id ? "border-current text-foreground" : "border-transparent text-muted-foreground"
                   }`}
                 >
-                  {t(
-                    id === "categories"
-                      ? "categories"
-                      : id === "transcript"
-                        ? "transcript"
-                        : id === "voice"
-                          ? "voiceTab"
-                          : id === "timeline"
-                            ? "timeline"
-                            : id === "body"
-                              ? "bodyTab"
-                              : id === "slides"
-                                ? "slidesTab"
-                                : "objectivesTab",
-                  )}
+                  {id === "screen_flow"
+                    ? tOnline("screenFlow.tab")
+                    : t(
+                        id === "categories"
+                          ? "categories"
+                          : id === "transcript"
+                            ? "transcript"
+                            : id === "voice"
+                              ? "voiceTab"
+                              : id === "timeline"
+                                ? "timeline"
+                                : id === "body"
+                                  ? "bodyTab"
+                                  : id === "slides"
+                                    ? "slidesTab"
+                                    : "objectivesTab",
+                      )}
                 </button>
               ))}
             </div>
             {tab === "categories" && (
               <CategoryCards report={report} onSeek={(time) => seekRef.current(time)} />
+            )}
+            {tab === "screen_flow" && (
+              <ScreenFlowTab
+                report={report}
+                document={screenDoc}
+                loading={screensLoading}
+                error={screensError}
+                sessionStatus={session?.status}
+                steps={session?.job?.steps}
+                deckSlides={slides?.slides}
+                playhead={playhead}
+                sessionId={params.id}
+                onSeek={(time) => {
+                  setPlayhead(time);
+                  seekRef.current(time);
+                  document.getElementById("report-player")?.scrollIntoView({ behavior: "smooth" });
+                }}
+                onRetry={() => {
+                  setScreensLoading(true);
+                  setScreensError(false);
+                  void fetch(`/api/stagecoach/sessions/${params.id}/screens`, { cache: "no-store" }).then(async (response) => {
+                    if (response.status === 404) {
+                      setScreenDoc(null);
+                      setScreensError(false);
+                    } else if (!response.ok) {
+                      setScreensError(true);
+                    } else {
+                      setScreenDoc((await response.json()) as ScreenDocument);
+                      setScreensError(false);
+                    }
+                    setScreensLoading(false);
+                  });
+                }}
+              />
             )}
             {tab === "transcript" && (
               <TranscriptTab payload={transcript} onSeek={(time) => seekRef.current(time)} />

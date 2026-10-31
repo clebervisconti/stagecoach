@@ -101,7 +101,25 @@
     "email": "Email",
     "locale": "Locale",
     "signOut": "Sign Out",
-    "changePassword": "Change password"
+    "changePassword": "Change password",
+    "reviewPref": {
+      "title": "Analysis preferences",
+      "sub": "Applies to webinar and online-talk sessions.",
+      "legend": "Review layout before analysis",
+      "always": "Always",
+      "alwaysHint": "Ask every time before analysis starts.",
+      "when_unsure": "When unsure",
+      "default": "Default",
+      "meter": "{count} of 3 layouts confirmed",
+      "never": "Never",
+      "neverHint": "We still ask if we're very unsure of the layout.",
+      "neverNote": "We still ask if we're very unsure.",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "errorTitle": "Couldn't save",
+      "errorBody": "We kept '{choice}'. Check your connection and choose again.",
+      "when_unsureHint": "Ask for the first 3 confirmed layouts, then when confidence is below 0.80."
+    }
   },
   "accountRights": {
     "heading": "Your data",
@@ -845,7 +863,8 @@
       "no_slides": "No slides were found.",
       "model_unavailable": "The language model step didn't finish.",
       "camera_coverage_low": "The camera wasn't on screen long enough to score where you look.",
-      "not_applicable": "Not measured for this recording."
+      "not_applicable": "Not measured for this recording.",
+      "screenVisibleShort": "Needs at least 2 minutes of visible screen."
     },
     "rerunContent": "Change layout and re-analyse",
     "layout": {
@@ -944,6 +963,100 @@
         "right": "right"
       },
       "regionAria": "{role}, {position}, {w} by {h} percent"
+    },
+    "screenFlow": {
+      "tab": "Screen & flow",
+      "eyebrow": "Screen & flow · {mode} · {count} screens",
+      "insight": {
+        "title": "Where the flow breaks",
+        "body": "Each block is a screen. Select one to hear what you said while it was up."
+      },
+      "kpi": {
+        "screens": "Screens",
+        "clean": "Clean transitions",
+        "aligned": "Narration aligned",
+        "lead": "Narration lead",
+        "deadAir": "Dead air per 10 min",
+        "signposted": "Signposted",
+        "prompts": "Audience prompts",
+        "rushed": "Rushed"
+      },
+      "strip": {
+        "label": "Flow strip, {count} screens",
+        "screenTime": "Flow · screen time {screen} of {total}",
+        "block": "Screen {index}, {type}, {start} to {end}"
+      },
+      "legend": {
+        "screen": "Screen",
+        "selected": "Selected",
+        "cameraOnly": "Camera only",
+        "talkOver": "Talk-over",
+        "deadAir": "Dead air",
+        "silentDemo": "Silent demo",
+        "prompt": "Audience prompt"
+      },
+      "filters": {
+        "all": "All {count}",
+        "long": "Long {count}",
+        "rushed": "Rushed {count}",
+        "silent": "Silent {count}",
+        "talkOver": "Talk-over {count}",
+        "status": "{shown} of {total} screens",
+        "clear": "Clear filter"
+      },
+      "type": {
+        "slide": "Slide",
+        "demo": "Demo",
+        "video": "Video",
+        "idle": "Idle",
+        "page": "Page"
+      },
+      "narration": {
+        "aligned": "Aligned · {count} shared",
+        "notAligned": "Not aligned · {count} shared",
+        "notEligible": "Not eligible"
+      },
+      "excerpt": {
+        "label": "Narration · {start}–{end}",
+        "play": "Play from {time}",
+        "silent": "Silent stretch",
+        "legend": "Shows narration and screen were about the same thing, not whether it was right."
+      },
+      "empty": {
+        "body": "No screen share found in this recording.",
+        "cta": "Change layout"
+      },
+      "processing": {
+        "title": "Measuring screen and flow",
+        "body": "You can leave this page. The list will be here when measurement finishes."
+      },
+      "error": {
+        "title": "We couldn't load the screen list",
+        "body": "The scores below are still available.",
+        "retry": "Try again"
+      },
+      "deckOnly": {
+        "title": "Deck only",
+        "body": "These pages have no timing. Needs at least 2 minutes of visible screen."
+      },
+      "long": {
+        "overview": "Overview",
+        "zoomHint": "15 min window",
+        "zoomIn": "Zoom in",
+        "zoomOut": "Zoom out"
+      },
+      "scoringConfig": "Scoring config",
+      "coaching": {
+        "title": "Flow coaching",
+        "source": "Written from measurements only · online_flow_v1 · no images sent",
+        "fallbackTitle": "From your numbers",
+        "fallbackBody": "From your numbers · These tips come from fixed templates based on your measurements.",
+        "drills": "Practise this week",
+        "drill": "Drill {n} · {minutes} min",
+        "keep": "Keep doing",
+        "footer": "We coach how you present: timing, flow and how your words follow the screen. We never judge whether your content is correct.",
+        "howWeMeasure": "How we measure"
+      }
     }
   }
 }

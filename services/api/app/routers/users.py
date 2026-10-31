@@ -63,6 +63,43 @@ def parse_llm_settings(value: Optional[dict]) -> dict:
         ) from exc
 
 
+REVIEW_LAYOUTS = ("always", "when_unsure", "never")
+
+
+def parse_review_layout(value: Optional[str]) -> str:
+    if value is None or value == "":
+        return "when_unsure"
+    if value not in REVIEW_LAYOUTS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"review_layout must be one of {list(REVIEW_LAYOUTS)}",
+        )
+    return value
+
+
+def confirmed_online_layouts(db: Session, user_id: object) -> int:
+    """Confirmed non-stage layouts. MemoryDB has no join, so tests stay at 0."""
+    try:
+        from app.models.session import Session as TalkSession
+        from app.models.session_layout import SessionLayout
+
+        query = db.query(SessionLayout)
+    except Exception:
+        return 0
+    if not hasattr(query, "join"):
+        return 0
+    try:
+        counted = (
+            query.join(TalkSession, SessionLayout.session_id == TalkSession.id)
+            .filter(TalkSession.user_id == user_id, TalkSession.delivery_mode != "stage")
+            .filter(SessionLayout.status.in_(("confirmed", "auto_confirmed")))
+            .count()
+        )
+        return int(counted or 0)
+    except Exception:
+        return 0
+
+
 def parse_retention_policy(value: Optional[str]) -> str:
     try:
         return normalize_retention_policy(value)
@@ -84,6 +121,8 @@ class UserProfile(BaseModel):
     retention_policy: str = DEFAULT_RETENTION_POLICY
     llm_settings: Optional[dict] = None
     online_modes_enabled: bool = False
+    review_layout: str = "when_unsure"
+    confirmed_online_layouts: int = 0
     role: str = "member"
     must_change_password: bool = False
 
@@ -96,6 +135,7 @@ class UserProfileUpdate(BaseModel):
     accessibility_profile: Optional[dict] = None
     retention_policy: Optional[str] = None
     llm_settings: Optional[dict] = None
+    review_layout: Optional[str] = None
 
 
 class ConsentChange(BaseModel):
@@ -116,6 +156,24 @@ def _country(request: Request) -> Optional[str]:
     if len(raw) == 2 and raw.isalpha() and raw != "XX":
         return raw
     return None
+
+
+def _profile(user: User, db: Optional[Session] = None) -> UserProfile:
+    return UserProfile(
+        id=str(user.id),
+        email=user.email,
+        name=user.name,
+        locale=user.locale,
+        timezone=user.timezone,
+        accessibility_profile=user.accessibility_profile,
+        retention_policy=parse_retention_policy(getattr(user, "retention_policy", None)),
+        llm_settings=parse_llm_settings(getattr(user, "llm_settings", None)),
+        online_modes_enabled=user_online_modes_enabled(user),
+        review_layout=parse_review_layout(getattr(user, "layout_review_pref", None)),
+        confirmed_online_layouts=confirmed_online_layouts(db, user.id) if db is not None else 0,
+        role=user.role or "member",
+        must_change_password=bool(user.must_change_password),
+    )
 
 
 def build_consent_payload(user: User, db: Session, locale: str) -> dict:
@@ -145,21 +203,12 @@ def build_consent_payload(user: User, db: Session, locale: str) -> dict:
 
 
 @router.get("", response_model=UserProfile)
-async def get_me(current_user: User = Depends(get_current_user)):
+async def get_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Get current user profile."""
-    return UserProfile(
-        id=str(current_user.id),
-        email=current_user.email,
-        name=current_user.name,
-        locale=current_user.locale,
-        timezone=current_user.timezone,
-        accessibility_profile=current_user.accessibility_profile,
-        retention_policy=parse_retention_policy(getattr(current_user, "retention_policy", None)),
-        llm_settings=parse_llm_settings(getattr(current_user, "llm_settings", None)),
-        online_modes_enabled=user_online_modes_enabled(current_user),
-        role=current_user.role or "member",
-        must_change_password=bool(current_user.must_change_password),
-    )
+    return _profile(current_user, db)
 
 
 @router.get("/ai-providers")
@@ -190,23 +239,13 @@ async def update_me(
         current_user.retention_policy = parse_retention_policy(update.retention_policy)
     if update.llm_settings is not None:
         current_user.llm_settings = parse_llm_settings(update.llm_settings)
+    if update.review_layout is not None:
+        current_user.layout_review_pref = parse_review_layout(update.review_layout)
 
     db.commit()
     db.refresh(current_user)
 
-    return UserProfile(
-        id=str(current_user.id),
-        email=current_user.email,
-        name=current_user.name,
-        locale=current_user.locale,
-        timezone=current_user.timezone,
-        accessibility_profile=current_user.accessibility_profile,
-        retention_policy=parse_retention_policy(getattr(current_user, "retention_policy", None)),
-        llm_settings=parse_llm_settings(getattr(current_user, "llm_settings", None)),
-        online_modes_enabled=user_online_modes_enabled(current_user),
-        role=current_user.role or "member",
-        must_change_password=bool(current_user.must_change_password),
-    )
+    return _profile(current_user, db)
 
 
 @router.get("/consents")

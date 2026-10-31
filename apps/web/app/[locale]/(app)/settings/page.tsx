@@ -5,6 +5,7 @@ import { ConsentPanel } from "@/components/consents/consent-panel";
 import { AccessibilityPanel } from "@/components/settings/accessibility-panel";
 import { RetentionPanel } from "@/components/settings/retention-panel";
 import { AiProvidersPanel } from "@/components/settings/ai-providers-panel";
+import { ReviewPreferencePanel } from "@/components/settings/review-preference-panel";
 import { AccountRightsPanel } from "@/components/settings/account-rights-panel";
 
 export default async function SettingsPage() {
@@ -35,6 +36,8 @@ export default async function SettingsPage() {
         <ConsentPanel />
 
         <AiProvidersPanel />
+
+        <ReviewPreferencePanel />
 
         <RetentionPanel />
 

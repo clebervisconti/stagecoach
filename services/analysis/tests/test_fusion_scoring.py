@@ -438,8 +438,8 @@ def test_webinar_marks_o1_categories_na_with_codes(tmp_path: Path):
     by_id = {c["id"]: c for c in result["categories"]}
     assert result["schema_version"] == "1.1.0"
     assert by_id["screen_flow"]["applicable"] is False
-    assert by_id["screen_flow"]["na_code"] == "not_in_phase"
-    assert by_id["online_engagement"]["na_code"] == "not_in_phase"
+    assert by_id["screen_flow"]["na_code"] == "no_screen"
+    assert by_id["online_engagement"]["na_code"] == "insufficient_speech"
     assert by_id["on_camera_presence"]["na_code"] == "consent_video_off"
     assert "core_delivery" in result
 

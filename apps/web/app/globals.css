@@ -516,3 +516,48 @@ button.cs-region:not(.cs-region--ignored) {
     scroll-behavior: auto !important;
   }
 }
+
+/* NEW O3 · screen flow. Aliases of existing hues only. */
+:root,
+:root[data-theme="dark"],
+:root[data-theme="light"] {
+  --flow-strip-h: 40px;
+  --flow-strip-h-compact: 32px;
+  --flow-block-gap: 2px;
+  --flow-block-fill: var(--data-4);
+  --flow-block-fill-hover: var(--data-3);
+  --flow-block-fill-selected: var(--data-1);
+  --flow-block-edge: var(--line-strong);
+  --flow-block-min-w: 2px;
+  --flow-gap-hatch: var(--line);
+  --flow-playhead: var(--text-strong);
+  --flow-ruler: var(--line-strong);
+  --flow-marker-size: 10px;
+  --flow-marker-row-h: 24px;
+  --flow-marker-color: var(--text-strong);
+  --flow-window-fill: var(--selection);
+  --screen-row-h: 72px;
+  --screen-row-h-compact: 88px;
+  --screen-thumb-w: 96px;
+  --screen-thumb-h: 54px;
+  --screen-thumb-w-compact: 80px;
+  --screen-thumb-h-compact: 45px;
+  --screen-row-selected: var(--bg-subtle);
+  --screen-row-rule: var(--line-subtle);
+  --type-chip-h: 22px;
+  --shared-word-bg: var(--bg-emphasis);
+  --shared-word-underline: var(--line-strong);
+  --radio-size: 20px;
+  --radio-dot: 8px;
+  --setting-row-gap: 12px;
+}
+@media (max-width: 599px) {
+  :root,
+  :root[data-theme="dark"],
+  :root[data-theme="light"] {
+    --flow-strip-h: var(--flow-strip-h-compact);
+    --screen-row-h: var(--screen-row-h-compact);
+    --screen-thumb-w: var(--screen-thumb-w-compact);
+    --screen-thumb-h: var(--screen-thumb-h-compact);
+  }
+}

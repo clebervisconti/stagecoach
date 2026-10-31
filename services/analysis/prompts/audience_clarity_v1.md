@@ -1,11 +1,14 @@
 ---
 prompt_id: audience_clarity_v1
-version: 1.0.0
+version: 1.0.1
 schema: audience_clarity_v1.json
 description: Audience adaptation, jargon, claim support, redundancy, and vagueness
 categories: [audience_adaptation, clarity]
 languages: [en, pt-BR]
 ---
+
+Judge how ideas are communicated (structure, clarity, support offered to the audience); never judge whether they are factually correct or technically expert.
+
 
 # Task
 

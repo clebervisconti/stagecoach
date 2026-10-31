@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stagecoach.local/schemas/llm/online_flow_v1.json",
+  "title": "OnlineFlowV1",
+  "description": "Coaching from measured screen and voice facts. No factual judgment.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["observations", "drills", "strengths", "insufficient_evidence"],
+  "properties": {
+    "observations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "detail", "evidence_ids", "t"],
+        "properties": {
+          "title": {"type": "string", "minLength": 1, "maxLength": 80},
+          "detail": {"type": "string", "minLength": 1, "maxLength": 400},
+          "evidence_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+          "t": {"type": "number", "minimum": 0},
+          "category": {"type": "string"}
+        }
+      }
+    },
+    "drills": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "how", "practice_time_min", "targets_metric"],
+        "properties": {
+          "title": {"type": "string", "minLength": 1, "maxLength": 80},
+          "how": {"type": "string", "minLength": 1, "maxLength": 400},
+          "practice_time_min": {"type": "number", "minimum": 1},
+          "targets_metric": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "strengths": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "evidence_ids"],
+        "properties": {
+          "title": {"type": "string", "minLength": 1, "maxLength": 80},
+          "evidence_ids": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "insufficient_evidence": {"type": "boolean"}
+  }
+}

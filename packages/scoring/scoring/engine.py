@@ -250,6 +250,7 @@ class ScoringEngine:
         categories: list[dict[str, Any]],
         context: str = "keynote",
         focus_areas: list[str] | None = None,
+        mode: str = "stage",
     ) -> list[dict[str, Any]]:
         """Rank improvement opportunities by impact.
 
@@ -257,8 +258,9 @@ class ScoringEngine:
             categories: List of category dicts with scores and confidence
             context: Presentation context type
             focus_areas: Optional list of category IDs to boost
+            mode: Delivery mode. Stage uses the published context weights.
 
         Returns:
             List of opportunity dicts sorted by impact (highest first)
         """
-        return rank_opportunities(categories, context, self.config, focus_areas or [])
+        return rank_opportunities(categories, context, self.config, focus_areas or [], mode=mode)
