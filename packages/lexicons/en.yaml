@@ -82,3 +82,67 @@ signposts:
   - to summarize
   - in short
   - here's why
+  - next
+  - now let's
+  - moving on
+  - let me show you
+  - here you can see
+  - on this screen
+  - switching to
+  - let's look at
+  - turning to
+  - as you can see
+  - on the next
+  - the point is
+  - what this means
+  - to wrap up
+  - in summary
+  - coming up
+  - let me walk you through
+  - on this slide
+  - over here
+  - the first thing
+
+interaction_prompts:
+  - in the chat
+  - drop a comment
+  - let me know
+  - poll
+  - raise your hand
+  - type in
+  - any questions
+  - unmute
+  - "in the q&a"
+  - put in the chat
+  - vote in
+  - raise a hand
+  - tell me
+  - what do you think
+  - over to you
+  - your turn
+  - in the comments
+  - react in
+  - hands up
+
+demo_waits:
+  - let it load
+  - give it a second
+  - this takes a moment
+  - one moment
+  - hang on
+  - still loading
+  - just a second
+  - loading now
+  - give it a moment
+  - almost there
+  - one second
+
+content_judgment_terms:
+  - incorrect
+  - inaccurate
+  - factually
+  - false claim
+  - outdated
+  - misleading
+  - error in your
+  - bug in your

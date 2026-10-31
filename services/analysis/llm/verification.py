@@ -406,3 +406,78 @@ def check_for_emotion_inference(text: str, language: str) -> Tuple[bool, List[st
             found.append(term)
 
     return len(found) > 0, found
+
+
+_WRONG = re.compile(r"\bwrong\b", re.IGNORECASE)
+_WRONG_OK = re.compile(r"\s+(slide|screen|order)\b", re.IGNORECASE)
+
+_CONTENT_TERMS = {
+    "en": [
+        "incorrect",
+        "inaccurate",
+        "factually",
+        "false claim",
+        "outdated",
+        "misleading",
+        "error in your",
+        "bug in your",
+    ],
+    "pt-BR": [
+        "incorreto",
+        "impreciso",
+        "factualmente",
+        "desatualizado",
+        "errado",
+        "enganoso",
+        "erro no seu",
+    ],
+}
+
+
+def content_judgment_terms(language: str) -> List[str]:
+    """Phrases that would judge whether a slide is true. Not wired into prompts."""
+    key = "pt-BR" if str(language or "en").lower().startswith("pt") else "en"
+    name = "pt-BR.yaml" if key == "pt-BR" else "en.yaml"
+    path = Path(__file__).resolve().parents[3] / "packages" / "lexicons" / name
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        terms = data.get("content_judgment_terms")
+        if isinstance(terms, list) and terms:
+            return [str(item) for item in terms]
+    except (OSError, yaml.YAMLError):
+        pass
+    return list(_CONTENT_TERMS[key])
+
+
+def _term_present(text: str, term: str) -> bool:
+    lowered = term.lower().strip()
+    if not lowered or lowered == "wrong":
+        return False
+    if " " in lowered:
+        return lowered in text
+    return re.search(rf"\b{re.escape(lowered)}\b", text) is not None
+
+
+def check_for_content_judgment(
+    text: str,
+    language: str = "en",
+    terms: Optional[List[str]] = None,
+) -> Tuple[bool, List[str]]:
+    """True when text judges factual correctness.
+
+    `wrong` counts unless the next word is slide, screen, or order.
+    Prompt wiring is E3-7. This function does not edit user text.
+    """
+    haystack = text or ""
+    lowered = haystack.lower()
+    chosen = terms if terms is not None else content_judgment_terms(language)
+    found: List[str] = []
+    for term in chosen:
+        if _term_present(lowered, str(term)):
+            found.append(str(term))
+    for match in _WRONG.finditer(haystack):
+        if _WRONG_OK.match(haystack[match.end():]):
+            continue
+        found.append("wrong")
+        break
+    return len(found) > 0, found

@@ -4,15 +4,16 @@ Per issue #29 acceptance criteria: test that forbidden terms are detected
 in LLM output text fields (rationale, explanations, etc.).
 """
 
-import pytest
-
+import re
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from llm.verification import check_for_emotion_inference
+from llm.verification import check_for_emotion_inference, load_forbidden_terms
 
 
 class TestForbiddenTermsEnglish:
@@ -191,3 +192,24 @@ class TestEdgeCases:
         has_forbidden, terms = check_for_emotion_inference(text, "fr")
         assert not has_forbidden
         assert len(terms) == 0
+
+
+def test_screen_flow_sources_do_not_name_affect():
+    """Word-boundary scan. A metric id with an underscore is not that word."""
+    root = Path(__file__).resolve().parents[1]
+    files = list((root / "pipeline" / "screen").glob("*.py"))
+    files.append(root / "pipeline" / "stages" / "screen_flow.py")
+    blob = "\n".join(path.read_text(encoding="utf-8") for path in files)
+    found = [term for term in load_forbidden_terms("en") if re.search(rf"\b{re.escape(term)}\b", blob, re.IGNORECASE)]
+    assert found == []
+
+
+def test_content_judgment_checker_ignores_order_words_and_flags_claims():
+    from llm.verification import check_for_content_judgment
+
+    flagged, terms = check_for_content_judgment("That statement is incorrect.", "en")
+    assert flagged and "incorrect" in terms
+    clear, _found = check_for_content_judgment("The wrong slide is still on screen.", "en")
+    assert clear is False
+    wrong, hits = check_for_content_judgment("The date on the slide is wrong.", "en")
+    assert wrong and "wrong" in hits

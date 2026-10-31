@@ -19,6 +19,8 @@ synthetic speech clip stay in git.
 - **Licence:** The waveform is synthetic TTS. [espeak-ng](https://github.com/espeak-ng/espeak-ng) is GPL-3.0. The spoken words are original to this repository. Not a recording of a person and not a recording of Cleber. No third-party voice corpus.
 - **Regenerate:** `espeak-ng -v en-us -s 145 -w /tmp/raw.wav "$TEXT"` then `ffmpeg -i /tmp/raw.wav -ar 16000 -ac 1` into this path. `generate_online_fixtures.py` will recreate the file if it is missing and espeak-ng is installed.
 
+Screen-flow tests build gray frames in `tests/online/screen_frames.py`. The manifest `screen_flow_manifest.json` records the acceptance thresholds. Those tests do not commit a video or a recording of a person.
+
 ## Generating videos
 
 ```bash
