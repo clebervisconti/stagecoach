@@ -80,7 +80,28 @@ async def get_screens(
         if view.get("keyframe") and index >= 1:
             view["keyframe_url"] = _keyframe_url(str(session.id), index)
         segments.append(view)
-    return {**document, "segments": segments}
+    coaching = None
+    flow_path = directory / "online_flow.json"
+    if flow_path.is_file():
+        try:
+            loaded = json.loads(flow_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            loaded = None
+        if isinstance(loaded, dict):
+            coaching = {
+                key: loaded.get(key)
+                for key in (
+                    "source",
+                    "fallback",
+                    "prompt_version",
+                    "observations",
+                    "drills",
+                    "strengths",
+                    "latency_s",
+                    "provider",
+                )
+            }
+    return {**document, "segments": segments, "coaching": coaching}
 
 
 @router.get("/{session_id}/screens/keyframe/{index}")

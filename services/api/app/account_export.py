@@ -8,6 +8,7 @@ import io
 import json
 import os
 import zipfile
+from pathlib import Path
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -40,6 +41,7 @@ ZIP_FILES = (
     "media_links.json",
     "layouts.json",
     "screen_flow.json",
+    "online_flow.json",
 )
 
 
@@ -127,6 +129,23 @@ def pack_zip(files: dict[str, Any]) -> bytes:
 
 def export_filename(user_id: UUID | str) -> str:
     return f"stagecoach-export-{user_id}.zip"
+
+
+def _online_flow_files(jobs: list) -> list[dict[str, Any]]:
+    """Read coaching files from the job directory. Missing files stay an empty list."""
+    root = Path(os.getenv("MEDIA_ROOT", "/data/stagecoach")).resolve()
+    rows: list[dict[str, Any]] = []
+    for job in jobs:
+        path = (root / str(job.session_id) / str(job.id) / "online_flow.json").resolve()
+        try:
+            if not path.is_relative_to(root) or not path.is_file():
+                continue
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(payload, dict):
+            rows.append({"session_id": str(job.session_id), "job_id": str(job.id), "document": payload})
+    return rows
 
 
 def collect_export(
@@ -401,4 +420,5 @@ def collect_export(
             )
             for row in screen_flows
         ],
+        "online_flow.json": _online_flow_files(jobs),
     }
