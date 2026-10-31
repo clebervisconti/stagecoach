@@ -111,6 +111,10 @@ test("pipelineStages keeps stage order and folds alignment for online", () => {
   assert.equal(online.includes("alignment"), false);
   assert.equal(online.includes("layout"), true);
   assert.equal(online.includes("production_quality"), true);
+  assert.equal(online.includes("screen_flow"), true);
+  assert.equal(online.indexOf("screen_flow") > online.indexOf("slides"), true);
+  assert.equal(online.indexOf("screen_flow") < online.indexOf("content_llm"), true);
+  assert.equal(pipelineStages("stage").includes("screen_flow"), false);
   assert.equal(online.includes("sync"), false);
   assert.equal(pipelineStages("webinar", "two_track").includes("sync"), true);
 });

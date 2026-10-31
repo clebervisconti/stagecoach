@@ -1719,6 +1719,96 @@ def run_mvp_analysis_task(
             )
             emit_progress(job_id, "slides", "failed", pct=87, message="Slides failed; scoring continues")
 
+        if delivery_mode != "stage":
+            from pipeline.stages.screen_flow import run_screen_flow, screen_flow_skip_reason
+
+            started = datetime.utcnow()
+            screen_path = destination / "screen.mp4"
+            if (
+                not screen_path.is_file()
+                and camera_setup == "screen_recording"
+                and (destination / "analysis.mp4").is_file()
+            ):
+                screen_path = destination / "analysis.mp4"
+            elif not screen_path.is_file():
+                screen_path = None
+            flow_reason = screen_flow_skip_reason(
+                delivery_mode,
+                audio_only=bool(audio_only_chosen or camera_setup == "audio_only"),
+                video_ready=bool(screen_path and screen_path.is_file()),
+            )
+            if flow_reason:
+                _record_job_step(
+                    job_id=job_id,
+                    stage="screen_flow",
+                    status="skipped",
+                    started_at=started,
+                    metrics={"reason": flow_reason},
+                )
+                emit_progress(
+                    job_id,
+                    "screen_flow",
+                    "skipped",
+                    pct=87,
+                    message=flow_reason,
+                    session_id=session_id,
+                )
+            else:
+                emit_progress(
+                    job_id,
+                    "screen_flow",
+                    "running",
+                    pct=87,
+                    message="Following your screens",
+                    session_id=session_id,
+                )
+                try:
+                    flow_out = run_screen_flow(
+                        output_dir=destination,
+                        session_id=session_id,
+                        job_id=job_id,
+                        video_path=screen_path,
+                        delivery_mode=delivery_mode,
+                        language=resolved_language,
+                        packages_dir=Path("/packages"),
+                        transcript_path=transcript_path,
+                    )
+                    flow_status = "skipped" if flow_out.skipped else "succeeded"
+                    _record_job_step(
+                        job_id=job_id,
+                        stage="screen_flow",
+                        status=flow_status,
+                        started_at=started,
+                        outputs=flow_out.artifacts,
+                        metrics={**flow_out.metrics, "reason": flow_out.skip_reason},
+                    )
+                    emit_progress(
+                        job_id,
+                        "screen_flow",
+                        flow_status,
+                        pct=87,
+                        message=flow_out.skip_reason or "Screens followed",
+                        session_id=session_id,
+                        artifact="screen_flow.json" if flow_status == "succeeded" else None,
+                    )
+                except Exception as flow_exc:
+                    logger.exception("screen_flow failed session=%s; scoring continues", session_id)
+                    _record_job_step(
+                        job_id=job_id,
+                        stage="screen_flow",
+                        status="failed",
+                        started_at=started,
+                        error={"type": type(flow_exc).__name__, "message": str(flow_exc)[:200]},
+                    )
+                    emit_progress(
+                        job_id,
+                        "screen_flow",
+                        "failed",
+                        pct=87,
+                        message="Screen measurement failed; scoring continues",
+                        session_id=session_id,
+                    )
+
         from pipeline.stages.content_llm import content_progress_view, run_content_llm_safe
 
         started = datetime.utcnow()
