@@ -1878,6 +1878,7 @@ def run_mvp_analysis_task(
             duration_s=media_duration if media_duration > 0 else None,
             on_progress=_on_content_progress,
             on_partial_ready=_on_content_partial,
+            delivery_mode=delivery_mode,
         )
         view = content_progress_view(content_outcome)
         _record_job_step(
@@ -1894,6 +1895,8 @@ def run_mvp_analysis_task(
                 "partial": bool(content_outcome.get("partial")),
                 "k": content_outcome.get("k"),
                 "chunk_count": content_outcome.get("chunk_count"),
+                "online_flow_latency_s": content_outcome.get("online_flow_latency_s"),
+                "online_flow_source": content_outcome.get("online_flow_source"),
             },
         )
         emit_progress(

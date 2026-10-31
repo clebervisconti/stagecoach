@@ -1,11 +1,14 @@
 ---
 prompt_id: open_close_v1
-version: 1.0.0
+version: 1.0.1
 schema: open_close_v1.json
 description: Opening and closing effectiveness
 categories: [opening_close]
 languages: [en, pt-BR]
 ---
+
+Judge how ideas are communicated (structure, clarity, support offered to the audience); never judge whether they are factually correct or technically expert.
+
 
 # Task
 

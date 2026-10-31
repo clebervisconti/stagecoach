@@ -90,6 +90,7 @@ def test_review_shown_for_new_users():
     assert needs_layout_review(pref="when_unsure", confirmed_count=3, confidence=0.7) is True
     assert needs_layout_review(pref="never", confirmed_count=0, confidence=0.7) is False
     assert needs_layout_review(pref="never", confirmed_count=0, confidence=0.4) is True
+    assert needs_layout_review(pref="always", confirmed_count=3, confidence=0.95) is True
 
 
 def test_prepare_session_skips_layout_without_video_consent(tmp_path: Path):

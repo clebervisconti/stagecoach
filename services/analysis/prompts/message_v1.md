@@ -1,11 +1,14 @@
 ---
 prompt_id: message_v1
-version: 1.0.0
+version: 1.0.1
 schema: message_v1.json
 description: Extract core message, reinforcements, call to action, and BLUF
 categories: [core_message, opening_close, clarity, impact]
 languages: [en, pt-BR]
 ---
+
+Judge how ideas are communicated (structure, clarity, support offered to the audience); never judge whether they are factually correct or technically expert.
+
 
 # Task
 
