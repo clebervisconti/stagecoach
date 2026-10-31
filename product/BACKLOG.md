@@ -106,7 +106,7 @@ Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026, each exactly as
 - [x] E2-4 Analysis-window trim, minimum 60 seconds.
 - [x] E2-5 Re-analyse without a second ASR pass when the window is unchanged.
 - [x] E2-6 Report entry back into the editor.
-- [ ] E2-7 Review-preference settings row (OD-3). Deferred with the O2 design.
+- [x] E2-7 Review-preference settings row (OD-3). Shown when online modes are on for that user.
 
 ### SC-ONL-O3 — Screen and flow
 
@@ -116,10 +116,10 @@ Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026, each exactly as
 - [x] E3-2 Transitions (SSIM and PySceneDetect). #170
 - [x] E3-3 Segment types. Online `slides.json` scenes follow them. #171
 - [x] E3-4 Alignment, dead air, silent demo, ASR guard. #172
-- [ ] E3-5 Score `screen_flow` and `online_engagement`. #173
-- [ ] E3-6 Screen & Flow tab. Needs design. #174
-- [ ] E3-7 `online_flow_v1`. #175
-- [ ] E3-8 OD-5 prompt guard 1.0.1. #176
+- [x] E3-5 Score `screen_flow` and `online_engagement`. #173
+- [x] E3-6 Screen & Flow tab. #174
+- [x] E3-7 `online_flow_v1`. #175
+- [x] E3-8 OD-5 prompt guard 1.0.1. #176
 
 ### SC-ONL-O4 — On camera, trends, release candidate
 

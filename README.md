@@ -99,6 +99,8 @@ The application will be available at:
 - ✅ **Phase 3 (in tree)**: Talk-prep generators on the live job, objectives panel, trends, goals, personal-baseline badge after 3 sessions, account export/deletion
 - 📅 **Phase O0 (in tree)**: Online-session foundations — scoring 1.1.0, YuNet, migration 011, synthetic fixtures. Flag off. See `docs/online-sessions/SPEC.md`.
 - 📅 **Phase O1 (in tree)**: Walking skeleton — wizard at `/sessions/new`, `tasks.prepare_session`, read-only layout review, production quality, `na_code`, online report. Enabled only for allowlisted accounts when `ONLINE_MODES_ENABLED=true`. The linux/arm64 worker image, baked YuNet/Silero/MediaPipe/faster-whisper-small, the composite face, and espeak-ng speech are required for the LION real stack.
+- 📅 **Phase O2 (in tree)**: Editable layout, analysis-window trim, re-analyse without a second transcript when the window is unchanged. Flag stays off.
+- 📅 **Phase O3 (in tree)**: Screen measurement, scoring for screen flow and online engagement, Screen & flow tab, text-only flow coaching, factual-correctness line on prompts, and the layout-review preference. On-camera presence stays unstarted. Flag stays off until O4.
 - 📅 **Phase 4** (v2): Practice loop - in-browser recording, live feedback, drills
 - 📅 **Phase 5** (v3): Teams - organizations, coaches, cohort analytics, benchmarks
 

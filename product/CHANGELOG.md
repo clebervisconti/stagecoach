@@ -4,7 +4,8 @@
 
 ### Added
 
-- Online sessions measure screen activity, slide changes, segment type, narration alignment, and dead air (E3-1 through E3-4). The numbers are stored and not scored yet. Stage mode is unchanged. `ONLINE_MODES_ENABLED` stays off. See ADR-089.
+- Screen flow and online engagement are scored for webinar, online talk, and recorded video (E3-5). The Screen & flow tab, text-only flow coaching, and the factual-correctness line on existing prompts are in (E3-6 through E3-8). Settings can say when to review a layout (E2-7, OD-3). Stage mode is unchanged. `ONLINE_MODES_ENABLED` stays off. See ADR-090.
+- Online sessions measure screen activity, slide changes, segment type, narration alignment, and dead air (E3-1 through E3-4). Stage mode is unchanged. `ONLINE_MODES_ENABLED` stays off. See ADR-089.
 - App sign-in is email and password or Sign in with Apple, with admin, member, and viewer roles. Online modes are a per-user flag plus `ONLINE_MODES_ENABLED`. An email allowlist no longer grants access. Cloudflare Access can come off only after the admin account exists. See `deploy/README.md`.
 - Phase O2 layout correction: adjust boxes and the analysis window, then re-analyse. The transcript is reused when the window does not change. Online modes stay behind the flag.
 - Phase O1 walking skeleton: wizard, prepare_session, read-only layout review, production quality, N/A codes, and the online report header. Online modes stay behind the flag and Cleber's allowlisted account.

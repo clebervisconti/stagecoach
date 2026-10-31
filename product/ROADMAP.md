@@ -16,7 +16,7 @@ Licensed-speech validation, ASR moved off the `tiny` model, alignment on the liv
 
 Spec: `docs/online-sessions/SPEC.md`. Delivery mode is orthogonal to context type: stage, webinar, online talk, recorded video. Stage mode stays identical. The flag `ONLINE_MODES_ENABLED` stays off until O4.
 
-Phases O0–O6 are in `product/BACKLOG.md`. Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026 as the spec recommends. O0, O1, and O2 are on main (PRs #154, #155, #163, and the fixes through #168). O3 backend measurement (E3-1 through E3-4) is in progress: activity, transitions, segment types, alignment, and dead air. Scoring, the Screen & Flow tab, `online_flow_v1`, and the prompt guard (E3-5 through E3-8) wait on design. Do not start O4. `ONLINE_MODES_ENABLED` stays off until O4. YouTube and Vimeo link analysis stays off (OD-2).
+Phases O0–O6 are in `product/BACKLOG.md`. Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026 as the spec recommends. O0, O1, and O2 are on main (PRs #154, #155, #163, and the fixes through #168). O3 measurement is on main (PR #177). O3 scoring, the Screen & flow tab, `online_flow_v1`, the prompt guard, and the layout-review preference are in tree behind the same flag (ADR-090). Do not start O4. `ONLINE_MODES_ENABLED` stays off until O4. YouTube and Vimeo link analysis stays off (OD-2).
 
 MediaPipe 1.1.1 already runs pose on the live LION worker (libegl1 and libgles2). ADR-067 records the arm64 import spike.
 
