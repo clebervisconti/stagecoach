@@ -252,3 +252,48 @@ def test_stage_parity_against_v100_goldens(fixture_id: str) -> None:
     else:
         assert overall_110["score"] is not None
         assert abs(float(overall_110["score"]) - float(expected_overall)) <= 2.0
+
+
+def test_clean_transition_curve_interpolates() -> None:
+    engine = ScoringEngine("1.1.0")
+    scored = engine.score_metric(
+        "sf_clean_transition_ratio",
+        0.6,
+        0.9,
+        category_id="screen_flow",
+        context="keynote",
+        mode="webinar",
+    )
+    assert scored["score"] == pytest.approx(40 + (0.2 / 0.3) * 40)
+    assert scored["included"] is True
+
+
+def test_stage_opportunity_ranking_matches_v100() -> None:
+    v100 = ScoringEngine("1.0.0")
+    v110 = ScoringEngine("1.1.0")
+    categories = [
+        {"id": cat_id, "score": 40, "confidence": 0.8, "applicable": True}
+        for cat_id in v100.config["weights"]["keynote"]
+    ]
+    ranked_100 = v100.rank_opportunities(categories, "keynote")
+    ranked_110 = v110.rank_opportunities(categories, "keynote", mode="stage")
+    assert [row["category_id"] for row in ranked_100] == [row["category_id"] for row in ranked_110]
+    for left, right in zip(ranked_100, ranked_110):
+        assert left["impact"] == pytest.approx(right["impact"])
+        assert left["weight"] == pytest.approx(right["weight"])
+
+
+def test_webinar_opportunities_include_new_categories() -> None:
+    engine = ScoringEngine("1.1.0")
+    categories = [
+        {"id": "screen_flow", "score": 40, "confidence": 0.9, "applicable": True},
+        {"id": "online_engagement", "score": 50, "confidence": 0.9, "applicable": True},
+        {"id": "fluency", "score": 90, "confidence": 0.9, "applicable": True},
+    ]
+    webinar_rows = engine.rank_opportunities(categories, "keynote", mode="webinar")
+    stage_rows = engine.rank_opportunities(categories, "keynote", mode="stage")
+    webinar = {row["category_id"] for row in webinar_rows}
+    stage = {row["category_id"] for row in stage_rows}
+    assert {"screen_flow", "online_engagement"} <= webinar
+    assert "screen_flow" not in stage
+    assert "online_engagement" not in stage
