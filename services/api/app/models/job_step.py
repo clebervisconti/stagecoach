@@ -20,7 +20,7 @@ class JobStep(Base):
     stage = Column(
         String(50),
         nullable=False,
-        comment="ingest, asr, audio_features, vision, slides, content_llm, "
+        comment="ingest, asr, audio_features, vision, slides, screen_flow, content_llm, "
                 "fusion_scoring, report"
     )
     stage_version = Column(String(20), nullable=False)

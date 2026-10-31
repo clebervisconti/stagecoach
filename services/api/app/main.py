@@ -23,6 +23,7 @@ from app.routers import (
     identity,
     layout,
     chunk_uploads,
+    screens,
 )
 from app.database import engine
 
@@ -42,6 +43,7 @@ app.include_router(users.router, prefix="/api/v1", tags=["users"])
 app.include_router(sessions.router, prefix="/api/v1", tags=["sessions"])
 app.include_router(chunk_uploads.router, prefix="/api/v1", tags=["sessions"])
 app.include_router(layout.router, prefix="/api/v1", tags=["layout"])
+app.include_router(screens.router, prefix="/api/v1", tags=["screens"])
 app.include_router(progress.router, prefix="/api/v1", tags=["progress"])
 app.include_router(evidence.router, prefix="/api/v1", tags=["evidence"])
 app.include_router(exports.router, prefix="/api/v1", tags=["exports"])

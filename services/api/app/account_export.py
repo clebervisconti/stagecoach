@@ -20,6 +20,7 @@ from app.models.evidence_item import EvidenceItem
 from app.models.media_asset import MediaAsset
 from app.models.overall_score import OverallScore
 from app.models.session import Session as TalkSession
+from app.models.screen_flow import ScreenFlow
 from app.models.session_layout import SessionLayout
 from app.models.talk_plan import Goal, TalkPlan
 from app.models.transcript import Transcript
@@ -38,6 +39,7 @@ ZIP_FILES = (
     "consents.json",
     "media_links.json",
     "layouts.json",
+    "screen_flow.json",
 )
 
 
@@ -172,12 +174,19 @@ def collect_export(
     )
     assets = []
     layouts = []
+    screen_flows = []
     if session_ids:
         assets = db.query(MediaAsset).filter(MediaAsset.session_id.in_(session_ids)).all()
         layouts = (
             db.query(SessionLayout)
             .filter(SessionLayout.session_id.in_(session_ids))
             .order_by(SessionLayout.created_at.asc())
+            .all()
+        )
+        screen_flows = (
+            db.query(ScreenFlow)
+            .filter(ScreenFlow.session_id.in_(session_ids))
+            .order_by(ScreenFlow.created_at.asc())
             .all()
         )
 
@@ -374,5 +383,22 @@ def collect_export(
                 }
             )
             for row in layouts
+        ],
+        "screen_flow.json": [
+            _row(
+                {
+                    "id": row.id,
+                    "session_id": row.session_id,
+                    "job_id": row.job_id,
+                    "version": row.version,
+                    "delivery_mode": row.delivery_mode,
+                    "screen_visible_s": row.screen_visible_s,
+                    "segment_count": row.segment_count,
+                    "content_judgment": row.content_judgment,
+                    "document": row.document,
+                    "created_at": row.created_at,
+                }
+            )
+            for row in screen_flows
         ],
     }
