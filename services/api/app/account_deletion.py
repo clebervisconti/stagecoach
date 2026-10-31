@@ -24,6 +24,7 @@ from app.models.audit_log import AuditLog
 from app.models.consent import Consent
 from app.models.deletion_request import DeletionRequest
 from app.models.session import Session as TalkSession
+from app.models.screen_flow import ScreenFlow, ScreenSegment
 from app.models.session_layout import SessionLayout
 from app.models.talk_plan import Goal, TalkPlan
 from app.models.user import AuthToken, User
@@ -237,6 +238,16 @@ def _account_row_counts(db: Session, user: User) -> dict[str, int]:
         "auth_tokens": db.query(AuthToken).filter(AuthToken.user_id == user.id).count(),
         "session_layouts": (
             db.query(SessionLayout).filter(SessionLayout.session_id.in_(session_ids)).count()
+            if session_ids
+            else 0
+        ),
+        "screen_flows": (
+            db.query(ScreenFlow).filter(ScreenFlow.session_id.in_(session_ids)).count()
+            if session_ids
+            else 0
+        ),
+        "screen_segments": (
+            db.query(ScreenSegment).filter(ScreenSegment.session_id.in_(session_ids)).count()
             if session_ids
             else 0
         ),

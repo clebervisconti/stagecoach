@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Webinar, online talk, and recorded video jobs measure the screen after slides and before content analysis. The step writes `screen_flow.json` and `screen_activity.parquet`, replaces online `slides.json` scenes from those segments, and leaves `screen_flow` and `online_engagement` unscored. Stage jobs do not run it. `GET /api/v1/sessions/{id}/screens` returns the file, or `404 {"reason":"not_measured"}` when it is absent. Account export includes `screen_flow.json`. Migration `014_screen_flow` stores the document and segments and cascades on delete. Apply it with `alembic upgrade head` before the API writes those tables. This change does not deploy. See ADR-089.
+
 ### Fixed
 
 - Webinar uploads through Cloudflare no longer die on the proxy body cap and then claim the file is over 2 GB. An 819 MB recording is sent as 8 MiB chunks, a dropped chunk is retried, and Try again resumes the same upload. "File too large" is shown only when the file is over 2 GiB. A 413 or a dropped connection says the proxy or the connection rejected it. See ADR-085.

@@ -9,6 +9,7 @@ from app.models.user import AuthToken, User  # noqa: F401, E402
 from app.models.consent import Consent  # noqa: F401, E402
 from app.models.session import Session  # noqa: F401, E402
 from app.models.session_layout import SessionLayout  # noqa: F401, E402
+from app.models.screen_flow import ScreenFlow, ScreenSegment  # noqa: F401, E402
 from app.models.media_asset import MediaAsset  # noqa: F401, E402
 from app.models.analysis_job import AnalysisJob  # noqa: F401, E402
 from app.models.job_step import JobStep  # noqa: F401, E402
@@ -30,6 +31,8 @@ __all__ = [
     "Consent",
     "Session",
     "SessionLayout",
+    "ScreenFlow",
+    "ScreenSegment",
     "MediaAsset",
     "AnalysisJob",
     "JobStep",

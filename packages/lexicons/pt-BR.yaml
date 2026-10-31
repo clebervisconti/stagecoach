@@ -81,3 +81,55 @@ signposts:
   - resumindo
   - em resumo
   - o motivo é
+  - próximo
+  - vamos ver
+  - aqui vocês podem ver
+  - nesta tela
+  - passando para
+  - olhem aqui
+  - na próxima
+  - o ponto é
+  - isso significa
+  - para fechar
+  - em seguida
+  - neste slide
+
+interaction_prompts:
+  - no chat
+  - comentem
+  - me contem
+  - enquete
+  - levantem a mão
+  - perguntas
+  - ativem o microfone
+  - na pergunta
+  - escrevam no chat
+  - votem agora
+  - me digam
+  - o que vocês acham
+  - com vocês
+  - sua vez
+  - nos comentários
+  - reajam no chat
+  - mãos ao alto
+
+demo_waits:
+  - só um segundo
+  - carregando
+  - deixa carregar
+  - um momento
+  - espera um pouco
+  - ainda carregando
+  - só um instante
+  - dá um segundo
+  - quase lá
+  - um segundo
+
+content_judgment_terms:
+  - incorreto
+  - impreciso
+  - factualmente
+  - desatualizado
+  - errado
+  - enganoso
+  - erro no seu

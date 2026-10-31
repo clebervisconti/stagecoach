@@ -266,6 +266,7 @@ export const ONLINE_PIPELINE = [
   "region_crops",
   "vision",
   "slides",
+  "screen_flow",
   "content_llm",
   "fusion_scoring",
   "report",

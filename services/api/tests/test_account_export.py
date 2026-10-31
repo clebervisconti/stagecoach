@@ -67,6 +67,7 @@ def test_pack_zip_contains_spec_json_members(monkeypatch):
         "plans.json": {"talk_plans": [{"id": "plan-1"}], "goals": []},
         "consents.json": [{"purpose": "video_analysis", "granted": True}],
         "layouts.json": [],
+        "screen_flow.json": [],
         "media_links.json": [
             media_link(
                 session_id="sess-1",

@@ -55,6 +55,8 @@ def test_migration_upgrade_downgrade(test_db_url):
             "sessions",
             "users",
             "session_layouts",
+            "screen_flows",
+            "screen_segments",
         ]
         
         for table in expected_tables:
@@ -115,3 +117,5 @@ def test_migration_idempotent(test_db_url):
             )
         ]
         assert "session_layouts" in names
+        assert "screen_flows" in names
+        assert "screen_segments" in names

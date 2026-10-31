@@ -112,7 +112,14 @@ Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026, each exactly as
 
 **Blocked by:** O2 and OD-5.
 
-- [ ] E3-1 through E3-8: screen activity, transitions, segment types, alignment and dead air, `screen_flow` and `online_engagement`, Screen & Flow tab, `online_flow_v1`, content-judgment verifier.
+- [x] E3-1 Screen activity at 1 Hz. #169
+- [x] E3-2 Transitions (SSIM and PySceneDetect). #170
+- [x] E3-3 Segment types. Online `slides.json` scenes follow them. #171
+- [x] E3-4 Alignment, dead air, silent demo, ASR guard. #172
+- [ ] E3-5 Score `screen_flow` and `online_engagement`. #173
+- [ ] E3-6 Screen & Flow tab. Needs design. #174
+- [ ] E3-7 `online_flow_v1`. #175
+- [ ] E3-8 OD-5 prompt guard 1.0.1. #176
 
 ### SC-ONL-O4 — On camera, trends, release candidate
 
@@ -135,6 +142,6 @@ Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026, each exactly as
 
 ### SC-ONL-E7 — Docs that land with the phases
 
-- [ ] ADR-061 through ADR-069, indexed from `docs/DECISIONS.md`.
+- [x] ADR-061 through ADR-069, indexed from `docs/DECISIONS.md`.
 - [ ] Privacy note and consent text v1.1 (OD-4).
 - [ ] Research sources S57–S78 and the in-app research page.

@@ -50,6 +50,7 @@ from app.models.insight import Insight
 from app.models.job_step import JobStep
 from app.models.user import User
 from app.models.session import Session as SessionModel
+from app.models.screen_flow import ScreenFlow, ScreenSegment
 from app.models.session_layout import SessionLayout
 from app.online_flags import online_modes_flag, url_ingest_enabled, user_online_modes_enabled
 from app.models.media_asset import MediaAsset
@@ -1273,6 +1274,8 @@ def _session_row_counts(db: Session, session: SessionModel) -> tuple[dict[str, i
         "evidence_items": 0,
         "insights": 0,
         "session_layouts": db.query(SessionLayout).filter(SessionLayout.session_id == session.id).count(),
+        "screen_flows": db.query(ScreenFlow).filter(ScreenFlow.session_id == session.id).count(),
+        "screen_segments": db.query(ScreenSegment).filter(ScreenSegment.session_id == session.id).count(),
     }
     if job_ids:
         counts["job_steps"] = db.query(JobStep).filter(JobStep.job_id.in_(job_ids)).count()
@@ -1298,6 +1301,8 @@ def _remaining_session_rows(db: Session, session_id, job_ids: list) -> dict[str,
         "evidence_items": 0,
         "insights": 0,
         "session_layouts": db.query(SessionLayout).filter(SessionLayout.session_id == session_id).count(),
+        "screen_flows": db.query(ScreenFlow).filter(ScreenFlow.session_id == session_id).count(),
+        "screen_segments": db.query(ScreenSegment).filter(ScreenSegment.session_id == session_id).count(),
     }
     if job_ids:
         remaining["job_steps"] = db.query(JobStep).filter(JobStep.job_id.in_(job_ids)).count()
