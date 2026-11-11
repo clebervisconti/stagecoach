@@ -68,6 +68,7 @@ def test_pack_zip_contains_spec_json_members(monkeypatch):
         "consents.json": [{"purpose": "video_analysis", "granted": True}],
         "layouts.json": [],
         "screen_flow.json": [],
+        "online_flow.json": [],
         "media_links.json": [
             media_link(
                 session_id="sess-1",

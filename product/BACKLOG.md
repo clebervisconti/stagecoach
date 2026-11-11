@@ -19,7 +19,7 @@
 - [x] Persist a running job step when a stage starts, and return that step's message and error on the session.
 - [x] Show upload percent and a human status on the session list.
 - [x] Install an arm64 MediaPipe wheel, or skip vision before it throws, so pose tracking does not fail on LION.
-- [ ] Move speech recognition onto TIGER. The live default is already `small`; `ASR_MODEL` is unset on LION.
+- [ ] Move speech recognition onto TIGER. The in-code default model is `small`. Production compose and `deploy/stagecoach-run.sh` still default `ASR_MODEL` to `tiny`, and that value is not changed here. `ASR_BACKEND` defaults to `local`. An HTTP client is ready and off (ADR-091). Do not set `ASR_BACKEND=http` or a host until the owner decides.
 
 ### SC-UX-002 — Report and navigation
 
@@ -35,7 +35,7 @@
 **Owner:** product owner. Do not flip these without an explicit decision.
 
 - [ ] Run `tests/uat/mvp-flow.md` against the live host.
-- [ ] Run speech recognition on TIGER. The in-tree default model is already `small`.
+- [ ] Run speech recognition on TIGER. The HTTP client is prepared and off (ADR-091). Turning it on is this decision, not a code change.
 - [ ] Set Resend secrets and DNS (`docs/email.md`) before verification mail leaves the machine.
 - [ ] Set the four Apple secrets before Sign in with Apple is offered.
 - [ ] Counsel reviews `docs/PRIVACY.md` before a launch beyond the private beta.
@@ -106,7 +106,7 @@ Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026, each exactly as
 - [x] E2-4 Analysis-window trim, minimum 60 seconds.
 - [x] E2-5 Re-analyse without a second ASR pass when the window is unchanged.
 - [x] E2-6 Report entry back into the editor.
-- [ ] E2-7 Review-preference settings row (OD-3). Deferred with the O2 design.
+- [x] E2-7 Review-preference settings row (OD-3). Shown when online modes are on for that user.
 
 ### SC-ONL-O3 — Screen and flow
 
@@ -116,10 +116,10 @@ Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026, each exactly as
 - [x] E3-2 Transitions (SSIM and PySceneDetect). #170
 - [x] E3-3 Segment types. Online `slides.json` scenes follow them. #171
 - [x] E3-4 Alignment, dead air, silent demo, ASR guard. #172
-- [ ] E3-5 Score `screen_flow` and `online_engagement`. #173
-- [ ] E3-6 Screen & Flow tab. Needs design. #174
-- [ ] E3-7 `online_flow_v1`. #175
-- [ ] E3-8 OD-5 prompt guard 1.0.1. #176
+- [x] E3-5 Score `screen_flow` and `online_engagement`. #173
+- [x] E3-6 Screen & Flow tab. #174
+- [x] E3-7 `online_flow_v1`. #175
+- [x] E3-8 OD-5 prompt guard 1.0.1. #176
 
 ### SC-ONL-O4 — On camera, trends, release candidate
 

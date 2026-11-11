@@ -61,7 +61,7 @@ function ConfidenceChip({ label }: { label: ReportCategory["confidence_label"] }
   );
 }
 
-function CategoryCard({
+export function CategoryCard({
   category,
   report,
   onSeek,

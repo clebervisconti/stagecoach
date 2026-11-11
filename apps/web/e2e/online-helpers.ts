@@ -198,24 +198,14 @@ export function onlineSuccessReport(): AnalysisReport {
     scoredCategory("production_quality", "presence_time", 80, 4),
     scoredCategory("online_engagement", "presence_time", 73, 4),
     {
-      id: "screen_flow",
-      pillar: "visuals",
-      applicable: false,
-      na_reason: "Coming soon.",
-      na_code: "not_in_phase",
-      score: null,
-      level: null,
-      confidence: null,
-      confidence_label: null,
-      weight_used: 0,
-      top_contributors: [],
-      evidence_ids: [],
-      sources: [],
-      counterfactual: null,
+      ...scoredCategory("screen_flow", "visuals", 64, 4),
+      top_contributors: ["sf_clean_transition_ratio"],
+      counterfactual: "Changing sf_clean_transition_ratio from 0.60 toward 0.42 would move this category.",
+      evidence_ids: ["ev-1"],
     },
   ];
   report.insights = {
-    summary: "Measured score 82 ± 3 from 20 of 21 categories. 1 of 21 categories is unavailable.",
+    summary: "Measured score 82 ± 3 from the scored categories.",
     strengths: [
       {
         category_id: "time_management",
@@ -332,6 +322,7 @@ export async function mockOnlineApi(
     visionUnavailable?: boolean;
     locale?: "en" | "pt-BR";
     success?: boolean;
+    screenRunning?: boolean;
   } = {},
 ) {
   const locale = options.locale ?? "en";
@@ -357,6 +348,8 @@ export async function mockOnlineApi(
           retention_policy: "days_30",
           llm_settings: {},
           online_modes_enabled: true,
+          review_layout: "when_unsure",
+          confirmed_online_layouts: 1,
         }),
       });
     }
@@ -472,15 +465,18 @@ export async function mockOnlineApi(
             status: options.status === "failed" ? "failed" : "running",
             error: options.status === "failed" ? { message: "unreadable" } : null,
             created_at: pastIso(startedAgo),
-            steps: withLiveIngest(
-              stepsFor(
-                options.status,
-                Boolean(options.autoConfirmed),
-                Boolean(options.consentOff),
-                Boolean(options.visionUnavailable),
+            steps: [
+              ...withLiveIngest(
+                stepsFor(
+                  options.status,
+                  Boolean(options.autoConfirmed),
+                  Boolean(options.consentOff),
+                  Boolean(options.visionUnavailable),
+                ),
+                options.liveIngest,
               ),
-              options.liveIngest,
-            ),
+              ...(options.screenRunning ? [{ stage: "screen_flow", status: "running", message: "Measuring screen and flow" }] : []),
+            ],
           },
         }),
       });

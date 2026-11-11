@@ -2,12 +2,15 @@
 
 from typing import Any
 
+from .aggregation import effective_weights
+
 
 def rank_opportunities(
     categories: list[dict[str, Any]],
     context: str,
     config: dict[str, Any],
     focus_areas: list[str],
+    mode: str = "stage",
 ) -> list[dict[str, Any]]:
     """Rank improvement opportunities by impact.
 
@@ -27,11 +30,12 @@ def rank_opportunities(
         context: Presentation context
         config: Full scoring config
         focus_areas: List of category IDs to boost
+        mode: Delivery mode. Stage keeps the published context weights.
 
     Returns:
         List of opportunity dicts sorted by impact (highest first)
     """
-    context_weights = config["weights"].get(context, {})
+    context_weights = effective_weights(config, context, mode)
     opp_config = config.get("opportunities", {})
     target_lift = opp_config.get("target_lift", 25)
     tractability_boost = opp_config.get("tractability_boost", 1.25)

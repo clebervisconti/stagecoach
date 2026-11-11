@@ -1,11 +1,14 @@
 ---
 prompt_id: outline_v1
-version: 1.0.0
+version: 1.0.1
 schema: outline_v1.json
 description: Extract hierarchical outline with timestamps and signposts for structure analysis
 categories: [structure]
 languages: [en, pt-BR]
 ---
+
+Judge how ideas are communicated (structure, clarity, support offered to the audience); never judge whether they are factually correct or technically expert.
+
 
 # Task
 

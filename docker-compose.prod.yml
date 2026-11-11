@@ -80,6 +80,9 @@ services:
       REDIS_URL: redis://redis:6379
       MEDIA_ROOT: /data/stagecoach
       ASR_MODEL: ${ASR_MODEL:-tiny}
+      ASR_BACKEND: ${ASR_BACKEND:-local}
+      ASR_HTTP_URL: ${ASR_HTTP_URL:-}
+      ASR_HTTP_TOKEN: ${ASR_HTTP_TOKEN:-}
       LLM_PROVIDER: ${LLM_PROVIDER:-local}
       LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}
       XAI_API_KEY: ${XAI_API_KEY:-}

@@ -23,6 +23,7 @@ type PlayerProps = {
   captionLang?: string;
   seekRef: MutableRefObject<(tStart: number) => void>;
   timeline?: TimelinePayload | null;
+  onTime?: (time: number) => void;
 };
 
 export function ReportPlayer({
@@ -32,6 +33,7 @@ export function ReportPlayer({
   captionLang = "en",
   seekRef,
   timeline = null,
+  onTime,
 }: PlayerProps) {
   const t = useTranslations("report");
   const mediaRef = useRef<HTMLVideoElement>(null);
@@ -121,7 +123,7 @@ export function ReportPlayer({
   }
 
   return (
-    <section className="rounded-lg border bg-card p-6" aria-labelledby="player-heading">
+    <section id="report-player" className="rounded-lg border bg-card p-6" aria-labelledby="player-heading">
       <h2 id="player-heading" className="mb-3 text-xl font-semibold">
         {t("recording")}
       </h2>
@@ -152,8 +154,16 @@ export function ReportPlayer({
                 setMediaReady(true);
                 setError("");
               }}
-              onTimeUpdate={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
-              onSeeked={() => setCurrentTime(mediaRef.current?.currentTime ?? 0)}
+              onTimeUpdate={() => {
+                const time = mediaRef.current?.currentTime ?? 0;
+                setCurrentTime(time);
+                onTime?.(time);
+              }}
+              onSeeked={() => {
+                const time = mediaRef.current?.currentTime ?? 0;
+                setCurrentTime(time);
+                onTime?.(time);
+              }}
               onError={() => {
                 setMediaReady(true);
                 setError(t("playbackError"));

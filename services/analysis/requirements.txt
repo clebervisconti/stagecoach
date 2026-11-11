@@ -13,6 +13,8 @@ pyyaml==6.0.1
 
 # Task queue
 celery==5.4.0
+# kombu 5.7 requires redis-py 6.4 and exits the worker on Redis 5.2.
+kombu==5.6.2
 redis==5.2.1
 aiohttp==3.11.11
 
@@ -27,7 +29,8 @@ ffmpeg-python==0.2.0
 
 # ASR
 faster-whisper==1.0.3
-ctranslate2==4.4.0
+# 4.4.0 needs an executable stack and does not import on glibc 2.41.
+ctranslate2==4.6.3
 
 # xAI LLM client
 openai==1.54.5

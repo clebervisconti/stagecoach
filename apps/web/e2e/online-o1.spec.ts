@@ -70,7 +70,8 @@ test("report hides body tab and shows not measured for online", async ({ page })
   await expect(page.getByTestId("not-measured")).toBeVisible();
   await expect(page.getByRole("tab", { name: /^body$/i })).toHaveCount(0);
   await expect(page.getByRole("tab", { name: /on camera/i })).toHaveCount(0);
-  await expect(page.getByRole("tab", { name: /^slides$/i })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /screen & flow/i })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /^slides$/i })).toHaveCount(0);
   await expect(page.getByTestId("not-measured").getByText(/open settings/i).first()).toBeVisible();
 });
 

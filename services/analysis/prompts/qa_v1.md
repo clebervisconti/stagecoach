@@ -1,11 +1,14 @@
 ---
 prompt_id: qa_v1
-version: 1.0.0
+version: 1.0.1
 schema: qa_v1.json
 description: Q&A pair analysis for category 17 (Q&A handling)
 categories: [qa]
 languages: [en, pt-BR]
 ---
+
+Judge how ideas are communicated (structure, clarity, support offered to the audience); never judge whether they are factually correct or technically expert.
+
 
 # Task
 

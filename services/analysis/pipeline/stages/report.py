@@ -354,8 +354,11 @@ def run_report_stage(
         _ensure_scoring_path()
         from scoring import ScoringEngine
 
-        engine = ScoringEngine("1.0.0", config_path=packages / "scoring-config")
-        context = analysis.get("session", {}).get("context_type") or "keynote"
+        version = str((analysis.get("provenance") or {}).get("scoring_config_version") or "1.1.0")
+        session = analysis.get("session") or {}
+        context = session.get("context_type") or "keynote"
+        mode = str(session.get("delivery_mode") or "stage")
+        engine = ScoringEngine(version, config_path=packages / "scoring-config")
         opportunities = engine.rank_opportunities(
             [
                 {
@@ -367,6 +370,7 @@ def run_report_stage(
                 for c in analysis.get("categories") or []
             ],
             context,
+            mode=mode,
         )
     except Exception as exc:
         logger.info("Opportunity ranking skipped: %s", exc)

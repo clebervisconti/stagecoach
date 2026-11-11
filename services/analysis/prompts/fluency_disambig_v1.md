@@ -1,11 +1,14 @@
 ---
 prompt_id: fluency_disambig_v1
-version: 1.0.0
+version: 1.0.1
 schema: fluency_disambig_v1.json
 description: Disambiguate ambiguous filler word candidates in context
 categories: [fluency]
 languages: [en, pt-BR]
 ---
+
+Judge how ideas are communicated (structure, clarity, support offered to the audience); never judge whether they are factually correct or technically expert.
+
 
 # Task
 

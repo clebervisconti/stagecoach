@@ -285,7 +285,9 @@ def _system_prompt(no_think: bool = False) -> str:
         "Evaluate ONLY the transcript provided. "
         "Quote exactly (verbatim, original language). "
         "Do not judge accent or native-likeness. "
-        "Do not infer the speaker's emotions."
+        "Do not infer the speaker's emotions. "
+        "Judge how ideas are communicated (structure, clarity, support offered to the audience); "
+        "never judge whether they are factually correct or technically expert."
     )
     if no_think:
         return (

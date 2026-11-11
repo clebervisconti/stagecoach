@@ -101,7 +101,25 @@
     "email": "E-mail",
     "locale": "Idioma",
     "signOut": "Sair",
-    "changePassword": "Alterar senha"
+    "changePassword": "Alterar senha",
+    "reviewPref": {
+      "title": "Preferências de análise",
+      "sub": "Vale para webinar e palestra online.",
+      "legend": "Revisar o layout antes da análise",
+      "always": "Sempre",
+      "alwaysHint": "Perguntar todas as vezes antes de analisar.",
+      "when_unsure": "Quando houver dúvida",
+      "when_unsureHint": "Perguntar nos 3 primeiros layouts confirmados e depois quando a confiança for menor que 0,80.",
+      "default": "Padrão",
+      "meter": "{count} de 3 layouts confirmados",
+      "never": "Nunca",
+      "neverHint": "Ainda perguntamos se estivermos muito em dúvida sobre o layout.",
+      "neverNote": "Ainda perguntamos se estivermos muito em dúvida.",
+      "saving": "Salvando…",
+      "saved": "Salvo",
+      "errorTitle": "Não foi possível salvar",
+      "errorBody": "Mantivemos '{choice}'. Verifique a conexão e escolha de novo."
+    }
   },
   "accountRights": {
     "heading": "Os seus dados",
@@ -845,7 +863,8 @@
       "no_slides": "Nenhum slide foi encontrado.",
       "model_unavailable": "A etapa do modelo de linguagem não terminou.",
       "camera_coverage_low": "A câmera não ficou na tela o bastante para pontuar para onde você olha.",
-      "not_applicable": "Não medido nesta gravação."
+      "not_applicable": "Não medido nesta gravação.",
+      "screenVisibleShort": "Precisa de pelo menos 2 minutos de tela visível."
     },
     "rerunContent": "Mudar o layout e reanalisar",
     "layout": {
@@ -944,6 +963,100 @@
         "right": "à direita"
       },
       "regionAria": "{role}, {position}, {w} por {h} por cento"
+    },
+    "screenFlow": {
+      "tab": "Tela e fluxo",
+      "eyebrow": "Tela e fluxo · {mode} · {count} telas",
+      "insight": {
+        "title": "Onde o fluxo quebra",
+        "body": "Cada bloco é uma tela. Selecione uma para ouvir o que você disse enquanto ela estava no ar."
+      },
+      "kpi": {
+        "screens": "Telas",
+        "clean": "Trocas limpas",
+        "aligned": "Narração alinhada",
+        "lead": "Antecipação da narração",
+        "deadAir": "Silêncio a cada 10 min",
+        "signposted": "Sinalizadas",
+        "prompts": "Convites ao público",
+        "rushed": "Apressadas"
+      },
+      "strip": {
+        "label": "Faixa de fluxo, {count} telas",
+        "screenTime": "Fluxo · tela visível {screen} de {total}",
+        "block": "Tela {index}, {type}, {start} a {end}"
+      },
+      "legend": {
+        "screen": "Tela",
+        "selected": "Selecionada",
+        "cameraOnly": "Só câmera",
+        "talkOver": "Fala por cima",
+        "deadAir": "Silêncio",
+        "silentDemo": "Demo em silêncio",
+        "prompt": "Convite ao público"
+      },
+      "filters": {
+        "all": "Todas {count}",
+        "long": "Longas {count}",
+        "rushed": "Apressadas {count}",
+        "silent": "Silenciosas {count}",
+        "talkOver": "Fala por cima {count}",
+        "status": "{shown} de {total} telas",
+        "clear": "Limpar filtro"
+      },
+      "type": {
+        "slide": "Slide",
+        "demo": "Demo",
+        "video": "Vídeo",
+        "idle": "Ociosa",
+        "page": "Página"
+      },
+      "narration": {
+        "aligned": "Alinhada · {count} em comum",
+        "notAligned": "Não alinhada · {count} em comum",
+        "notEligible": "Não elegível"
+      },
+      "excerpt": {
+        "label": "Narração · {start}–{end}",
+        "play": "Tocar a partir de {time}",
+        "silent": "Trecho em silêncio",
+        "legend": "Mostra que a narração e a tela tratavam da mesma coisa, não se estava certo."
+      },
+      "empty": {
+        "body": "Não encontramos tela compartilhada nesta gravação.",
+        "cta": "Mudar o layout"
+      },
+      "processing": {
+        "title": "Medindo tela e fluxo",
+        "body": "Você pode sair desta página. A lista aparece quando a medição terminar."
+      },
+      "error": {
+        "title": "Não foi possível carregar a lista de telas",
+        "body": "As notas abaixo continuam disponíveis.",
+        "retry": "Tentar de novo"
+      },
+      "deckOnly": {
+        "title": "Só o deck",
+        "body": "Estas páginas não têm tempo. Precisa de pelo menos 2 minutos de tela visível."
+      },
+      "long": {
+        "overview": "Visão geral",
+        "zoomHint": "Janela de 15 min",
+        "zoomIn": "Aproximar",
+        "zoomOut": "Afastar"
+      },
+      "scoringConfig": "Configuração de nota",
+      "coaching": {
+        "title": "Orientação de fluxo",
+        "source": "Escrito só a partir das medições · online_flow_v1 · nenhuma imagem enviada",
+        "fallbackTitle": "A partir dos seus números",
+        "fallbackBody": "A partir dos seus números · Estas dicas vêm de modelos fixos com base nas suas medições.",
+        "drills": "Pratique nesta semana",
+        "drill": "Exercício {n} · {minutes} min",
+        "keep": "Continue fazendo",
+        "footer": "Orientamos como você apresenta: tempo, fluxo e como suas palavras acompanham a tela. Nunca julgamos se o conteúdo está correto.",
+        "howWeMeasure": "Como medimos"
+      }
     }
   }
 }

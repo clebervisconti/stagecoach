@@ -78,7 +78,7 @@ _PROMPT_SPECS: tuple[dict[str, Any], ...] = (
         "id": "outline_v1",
         "label": "outline",
         "field": "outline",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "kind": "chunked",
         "audience": False,
         "categories": ["structure"],
@@ -87,7 +87,7 @@ _PROMPT_SPECS: tuple[dict[str, Any], ...] = (
         "id": "message_v1",
         "label": "message",
         "field": "message",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "kind": "chunked",
         "audience": True,
         "categories": ["core_message"],
@@ -96,7 +96,7 @@ _PROMPT_SPECS: tuple[dict[str, Any], ...] = (
         "id": "story_impact_v1",
         "label": "story",
         "field": "story_impact",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "kind": "chunked",
         "audience": False,
         "categories": ["storytelling"],
@@ -105,7 +105,7 @@ _PROMPT_SPECS: tuple[dict[str, Any], ...] = (
         "id": "audience_clarity_v1",
         "label": "audience",
         "field": "audience_clarity",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "kind": "chunked",
         "audience": True,
         "categories": ["audience_adaptation"],
@@ -114,7 +114,7 @@ _PROMPT_SPECS: tuple[dict[str, Any], ...] = (
         "id": "open_close_v1",
         "label": "open_close",
         "field": "open_close",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "kind": "window",
         "audience": False,
         "categories": ["opening_close"],
@@ -998,8 +998,9 @@ def content_llm_stage(
     output = ContentLLMOutput()
     output.fluency_disambig = {"disambiguations": []}
     output.qa = {"pairs": [], "insufficient_evidence": True}
-    output.prompt_versions["fluency_disambig_v1"] = "1.0.0"
-    output.prompt_versions["qa_v1"] = "1.0.0"
+    from pipeline.prompt_versions import load_prompt_versions
+
+    output.prompt_versions.update(load_prompt_versions())
 
     def _prompt_steps(count: int) -> int:
         return count if count <= 1 else count + 1
@@ -1411,6 +1412,8 @@ EMPTY_TRANSCRIPT_REASON = (
 
 def write_unavailable_content(output_dir: Path, reason: str) -> Dict[str, Any]:
     """Persist an explicit skip so fusion does not invent content scores."""
+    from pipeline.prompt_versions import load_prompt_versions
+
     payload: Dict[str, Any] = {
         "unavailable": True,
         "unavailable_reason": reason,
@@ -1422,7 +1425,7 @@ def write_unavailable_content(output_dir: Path, reason: str) -> Dict[str, Any]:
         "fluency_disambig": None,
         "qa": {"pairs": [], "insufficient_evidence": True},
         "total_cost_usd": 0.0,
-        "prompt_versions": {},
+        "prompt_versions": load_prompt_versions(),
         "verification_summary": {"skipped": True, "reason": reason},
         "provenance": {"partial": False, "stop_reason": "unavailable"},
     }
@@ -1457,6 +1460,33 @@ def _outcome_from_stage(result: ContentLLMOutput) -> Dict[str, Any]:
     }
 
 
+def _with_online_flow(
+    outcome: Dict[str, Any],
+    *,
+    output_dir: Path,
+    delivery_mode: str,
+    language: str,
+) -> Dict[str, Any]:
+    """Coaching never blocks the job. Stage sessions do not call the model."""
+    if delivery_mode == "stage":
+        return outcome
+    try:
+        from pipeline.screen.coaching import run_online_flow
+
+        flow = run_online_flow(
+            output_dir=Path(output_dir),
+            delivery_mode=delivery_mode,
+            language=language,
+        )
+    except Exception:
+        logger.exception("online_flow failed")
+        flow = {"latency_s": 0.0, "source": "template"}
+    merged = dict(outcome)
+    merged["online_flow_latency_s"] = flow.get("latency_s")
+    merged["online_flow_source"] = flow.get("source")
+    return merged
+
+
 def run_content_llm_safe(
     transcript_path: Path,
     output_dir: Path,
@@ -1470,6 +1500,7 @@ def run_content_llm_safe(
     clock: Optional[Callable[[], float]] = None,
     on_progress: Optional[Callable[[str, float], None]] = None,
     on_partial_ready: Optional[Callable[[List[str]], None]] = None,
+    delivery_mode: str = "stage",
 ) -> Dict[str, Any]:
     """Run content analysis.
 
@@ -1481,18 +1512,28 @@ def run_content_llm_safe(
         transcript = json.loads(Path(transcript_path).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         write_unavailable_content(output_dir, EMPTY_TRANSCRIPT_REASON)
-        return {
-            "status": "skipped",
-            "reason": EMPTY_TRANSCRIPT_REASON,
-            "message": EMPTY_TRANSCRIPT_REASON,
-        }
+        return _with_online_flow(
+            {
+                "status": "skipped",
+                "reason": EMPTY_TRANSCRIPT_REASON,
+                "message": EMPTY_TRANSCRIPT_REASON,
+            },
+            output_dir=output_dir,
+            delivery_mode=delivery_mode,
+            language=language,
+        )
     if not transcript.get("segments"):
         write_unavailable_content(output_dir, EMPTY_TRANSCRIPT_REASON)
-        return {
-            "status": "skipped",
-            "reason": EMPTY_TRANSCRIPT_REASON,
-            "message": EMPTY_TRANSCRIPT_REASON,
-        }
+        return _with_online_flow(
+            {
+                "status": "skipped",
+                "reason": EMPTY_TRANSCRIPT_REASON,
+                "message": EMPTY_TRANSCRIPT_REASON,
+            },
+            output_dir=output_dir,
+            delivery_mode=delivery_mode,
+            language=language,
+        )
     try:
         result = content_llm_stage(
             transcript_path=Path(transcript_path),
@@ -1529,24 +1570,39 @@ def run_content_llm_safe(
             (Path(output_dir) / "content.json").write_text(
                 json.dumps(existing, indent=2) + "\n", encoding="utf-8"
             )
-            return {
-                "status": "succeeded",
-                "partial": True,
-                "message": provenance["notice"],
-                "cost_usd": existing.get("total_cost_usd") or 0.0,
-                "k": provenance.get("k"),
-                "chunk_count": provenance.get("chunk_count"),
-                "completed_prompts": completed,
-                "unfinished_prompts": list(provenance.get("unfinished_prompts") or []),
-                "stop_reason": "error",
-                "error_type": type(exc).__name__,
-            }
+            return _with_online_flow(
+                {
+                    "status": "succeeded",
+                    "partial": True,
+                    "message": provenance["notice"],
+                    "cost_usd": existing.get("total_cost_usd") or 0.0,
+                    "k": provenance.get("k"),
+                    "chunk_count": provenance.get("chunk_count"),
+                    "completed_prompts": completed,
+                    "unfinished_prompts": list(provenance.get("unfinished_prompts") or []),
+                    "stop_reason": "error",
+                    "error_type": type(exc).__name__,
+                },
+                output_dir=output_dir,
+                delivery_mode=delivery_mode,
+                language=language,
+            )
         logger.exception("content_llm unavailable session=%s", session_id)
         write_unavailable_content(output_dir, MODEL_UNAVAILABLE_REASON)
-        return {
-            "status": "failed",
-            "reason": MODEL_UNAVAILABLE_REASON,
-            "message": MODEL_UNAVAILABLE_REASON,
-            "error_type": type(exc).__name__,
-        }
-    return _outcome_from_stage(result)
+        return _with_online_flow(
+            {
+                "status": "failed",
+                "reason": MODEL_UNAVAILABLE_REASON,
+                "message": MODEL_UNAVAILABLE_REASON,
+                "error_type": type(exc).__name__,
+            },
+            output_dir=output_dir,
+            delivery_mode=delivery_mode,
+            language=language,
+        )
+    return _with_online_flow(
+        _outcome_from_stage(result),
+        output_dir=output_dir,
+        delivery_mode=delivery_mode,
+        language=language,
+    )

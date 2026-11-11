@@ -61,9 +61,7 @@ ONLINE_STAGE_NA = {
     "production_quality": "Production quality is not scored for on-stage sessions.",
 }
 ONLINE_NOT_IN_PHASE = {
-    "screen_flow": "Coming soon. We found your screen and kept it ready for this.",
     "on_camera_presence": "Coming soon.",
-    "online_engagement": "Coming soon.",
 }
 CORE_DELIVERY_IDS = (
     "pace_pausing",
@@ -289,6 +287,8 @@ def _min_evidence_ok(category_id: str, config: dict[str, Any], stats: dict[str, 
             if px < float(threshold):
                 return False, f"Median face height {px:.0f} px is below {threshold}."
         if key == "screen_visible_s" and float(extras.get("screen_visible_s") or 0) < float(threshold):
+            if float(threshold) >= 120:
+                return False, "Needs at least 2 minutes of visible screen."
             return False, f"Need at least {threshold}s of visible screen."
         if key == "screen_segments" and int(extras.get("screen_segments") or 0) < int(threshold):
             return False, f"Need at least {threshold} screen segments."
@@ -330,6 +330,95 @@ def _production_metrics_from_payload(
             }
         )
     return items
+
+
+def _flow_metrics_from_payload(
+    payload: Optional[dict[str, Any]],
+    config: dict[str, Any],
+    category_id: str,
+) -> list[dict[str, Any]]:
+    """Map screen_flow.json rows onto metrics that exist in the scoring config."""
+    if not payload:
+        return []
+    defs = (config.get("categories") or {}).get(category_id, {}).get("metrics") or {}
+    items: list[dict[str, Any]] = []
+    for row in payload.get("metrics") or []:
+        metric_id = row.get("id")
+        if metric_id not in defs or row.get("value") is None or row.get("applicable") is False:
+            continue
+        metric_def = defs[metric_id]
+        basis = metric_def.get("basis") if isinstance(metric_def.get("basis"), dict) else {}
+        items.append(
+            {
+                "id": metric_id,
+                "category_id": category_id,
+                "raw_value": row["value"],
+                "unit": row.get("unit") or metric_def.get("unit") or "",
+                "confidence": float(row.get("confidence") or 0.85),
+                "weight": float(metric_def.get("weight") or 0),
+                "basis": {
+                    "kind": str(basis.get("kind") or "heuristic"),
+                    "source": str(row.get("source") or basis.get("source") or "H"),
+                },
+            }
+        )
+    return items
+
+
+def _has_applicable_prefix(payload: Optional[dict[str, Any]], prefix: str) -> bool:
+    if not payload:
+        return False
+    for row in payload.get("metrics") or []:
+        if str(row.get("id") or "").startswith(prefix) and row.get("applicable") and row.get("value") is not None:
+            return True
+    return False
+
+
+def _synthetic_engagement_document(
+    transcript: dict[str, Any],
+    *,
+    delivery_mode: str,
+    language: str,
+    duration_s: float,
+) -> Optional[dict[str, Any]]:
+    """Score engagement from speech when no screen share was measured.
+
+    The document stays in memory. Writing it would make GET /screens look measured.
+    """
+    try:
+        from pipeline.screen.flow import build_screen_flow
+        from pipeline.screen.textutil import load_lexicon, words_from_transcript
+    except Exception:
+        logger.info("Engagement synthesis skipped: screen flow helpers unavailable")
+        return None
+    words = words_from_transcript(transcript)
+    if words:
+        speech = [(float(words[0]["start"]), float(words[-1]["end"]))]
+    else:
+        speech = [(0.0, duration_s)] if duration_s > 0 else []
+    try:
+        lexicon = load_lexicon(language, _packages_dir())
+    except Exception:
+        lexicon = {}
+    try:
+        return build_screen_flow(
+            delivery_mode=delivery_mode,
+            language=language or "en",
+            activity=[],
+            transitions=[],
+            segments=[],
+            words=words,
+            pauses=[],
+            speech=speech,
+            window=(0.0, max(duration_s, speech[-1][1] if speech else 0.0)),
+            screen_visible_s=0.0,
+            lexicon=lexicon if isinstance(lexicon, dict) else {},
+            vad_source="transcript" if speech else "missing",
+            vad_known=bool(speech),
+        )
+    except Exception:
+        logger.info("Engagement synthesis failed", exc_info=True)
+        return None
 
 
 def _core_delivery(categories_out: list[dict[str, Any]]) -> dict[str, Any]:
@@ -844,7 +933,13 @@ def _top_contributors(scored_metrics: list[dict[str, Any]]) -> list[str]:
     return [m["id"] for m in ranked[:2]]
 
 
-def _counterfactual(engine: Any, metrics: list[dict[str, Any]], category_id: str, context: str) -> Optional[str]:
+def _counterfactual(
+    engine: Any,
+    metrics: list[dict[str, Any]],
+    category_id: str,
+    context: str,
+    mode: str = "stage",
+) -> Optional[str]:
     if not metrics:
         return None
     weakest = min(
@@ -864,6 +959,7 @@ def _counterfactual(engine: Any, metrics: list[dict[str, Any]], category_id: str
             weakest["confidence"],
             category_id=category_id,
             context=context,
+            mode=mode,
         )["score"]
     except Exception:
         return None
@@ -1223,6 +1319,26 @@ def run_fusion_scoring(
         extras["screen_visible_s"] = extras["screen_visible_s"] or float(
             (_layout_summary(output_dir) or {}).get("screen_visible_ratio") or 0
         ) * float(((ingest or {}).get("media_info") or {}).get("duration") or 0)
+    screen_doc = _read_json(output_dir / "screen_flow.json")
+    engagement_doc = screen_doc
+    if delivery_mode != "stage" and not _has_applicable_prefix(screen_doc, "oe_"):
+        if stats["speech_seconds"] >= 120:
+            synthesized = _synthetic_engagement_document(
+                transcript,
+                delivery_mode=delivery_mode,
+                language=language,
+                duration_s=float(stats.get("duration_s") or 0),
+            )
+            if synthesized is not None:
+                engagement_doc = synthesized
+    if screen_doc:
+        extras["screen_visible_s"] = float(screen_doc.get("screen_visible_s") or extras["screen_visible_s"] or 0)
+        extras["screen_segments"] = int(len(screen_doc.get("segments") or []))
+    if delivery_mode != "stage":
+        grouped["screen_flow"].extend(_flow_metrics_from_payload(screen_doc, config, "screen_flow"))
+        grouped["online_engagement"].extend(
+            _flow_metrics_from_payload(engagement_doc, config, "online_engagement")
+        )
 
     scored_metrics: list[dict[str, Any]] = []
     categories_out: list[dict[str, Any]] = []
@@ -1235,7 +1351,7 @@ def run_fusion_scoring(
             na_reason = ONLINE_STAGE_NA[category_id]
         elif delivery_mode != "stage" and category_id in ONLINE_NOT_IN_PHASE:
             applicable = False
-            if audio_only_chosen and category_id in {"on_camera_presence", "screen_flow"}:
+            if audio_only_chosen and category_id == "on_camera_presence":
                 na_reason = "You chose to analyse audio only."
             elif category_id == "on_camera_presence":
                 consents = _read_json(output_dir / "consents.json")
@@ -1245,6 +1361,9 @@ def run_fusion_scoring(
                     na_reason = ONLINE_NOT_IN_PHASE[category_id]
             else:
                 na_reason = ONLINE_NOT_IN_PHASE[category_id]
+        elif delivery_mode != "stage" and category_id == "screen_flow" and audio_only_chosen:
+            applicable = False
+            na_reason = "You chose to analyse audio only."
         elif category_id in VIDEO_CATEGORIES:
             consents = _read_json(output_dir / "consents.json")
             expr = _read_json(output_dir / "expression_metrics.json")
@@ -1482,7 +1601,9 @@ def run_fusion_scoring(
                     "top_contributors": _top_contributors(prepared),
                     "evidence_ids": [],
                     "sources": _category_sources(config, category_id),
-                    "counterfactual": _counterfactual(engine, prepared, category_id, context_type),
+                    "counterfactual": _counterfactual(
+                        engine, prepared, category_id, context_type, mode=delivery_mode
+                    ),
                 }
             )
             for item in prepared:

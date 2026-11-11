@@ -4,7 +4,7 @@ An evidence-based presentation coaching platform that analyzes recorded presenta
 
 ## Project Status
 
-In-tree product `0.4.0`: upload → analysis (audio, consented video, slides, content coach) → report, plus talk-prep (`/prep`), trends, and account export. Sign-in is the app's own email and password or Sign in with Apple (ADR-083). Cloudflare Access may still sit in front of `https://stagecoach.cybersphere.com.br` until the cutover in `deploy/README.md`. The app does not trust Access headers. LION still runs `ASR_MODEL=tiny` until the owner cuts a release.
+In-tree product `0.4.0`: upload → analysis (audio, consented video, slides, content coach) → report, plus talk-prep (`/prep`), trends, and account export. Sign-in is the app's own email and password or Sign in with Apple (ADR-083). Cloudflare Access may still sit in front of `https://stagecoach.cybersphere.com.br` until the cutover in `deploy/README.md`. The app does not trust Access headers. Speech recognition stays on the worker (`ASR_BACKEND=local`). Production compose still defaults `ASR_MODEL` to `tiny` until the owner cuts a release. An HTTP client exists and is off (ADR-091).
 
 Recordings upload in 8 MiB chunks (ADR-085), so a file up to 2 GiB can pass Cloudflare's proxied body cap on the LION hostname. A dropped chunk retries, and Try again resumes. "File too large" is only for a file over 2 GiB.
 
@@ -93,16 +93,22 @@ The application will be available at:
 
 ## Phase Roadmap
 
+Matches `product/ROADMAP.md` and `product/BACKLOG.md`. `ONLINE_MODES_ENABLED` stays off until O4. Do not start O4.
+
 - ✅ **Phase 0**: Foundations - monorepo, DB, config, scoring engine
 - ✅ **Phase 1**: Audio + text report - ASR, fusion scoring, evidence-linked report, delete
 - ✅ **Phase 2**: Video + slides - consents, CPU MediaPipe, categories 8 and 12–15, timeline, Body and Slides tabs, PDF, retention, local LLM default
-- ✅ **Phase 3 (in tree)**: Talk-prep generators on the live job, objectives panel, trends, goals, personal-baseline badge after 3 sessions, account export/deletion
-- 📅 **Phase O0 (in tree)**: Online-session foundations — scoring 1.1.0, YuNet, migration 011, synthetic fixtures. Flag off. See `docs/online-sessions/SPEC.md`.
-- 📅 **Phase O1 (in tree)**: Walking skeleton — wizard at `/sessions/new`, `tasks.prepare_session`, read-only layout review, production quality, `na_code`, online report. Enabled only for allowlisted accounts when `ONLINE_MODES_ENABLED=true`. The linux/arm64 worker image, baked YuNet/Silero/MediaPipe/faster-whisper-small, the composite face, and espeak-ng speech are required for the LION real stack.
+- ✅ **Phase 3 (0.4, in tree)**: Talk-prep generators on the live job, objectives panel, trends, goals, personal-baseline badge after 3 sessions, account export/deletion
+- ✅ **Phase O0 (in tree)**: Online-session foundations — scoring 1.1.0, YuNet, migration 011, synthetic fixtures. Flag off. See `docs/online-sessions/SPEC.md`.
+- ✅ **Phase O1 (in tree)**: Walking skeleton — wizard at `/sessions/new`, `tasks.prepare_session`, read-only layout review, production quality, `na_code`, online report. Shown only when the service flag and that user's `online_modes` flag are both on (ADR-084). The linux/arm64 worker image, baked YuNet/Silero/MediaPipe/faster-whisper-small, the composite face, and espeak-ng speech are required for the LION real stack.
+- ✅ **Phase O2 (in tree)**: Editable layout, analysis-window trim, re-analyse without a second transcript when the window is unchanged, layout-review preference (hidden until online modes are on for that user). Flag stays off.
+- ✅ **Phase O3 (in tree)**: Screen measurement (E3-1–E3-4), scoring for screen flow and online engagement, Screen & flow tab, text-only `online_flow_v1`, factual-correctness line on prompts (E3-5–E3-8). On-camera presence is not started. Flag stays off until O4.
+- 📅 **Phase O4–O6**: Not started. Camera presence, two-track upload, and link ingest wait. YouTube and Vimeo stay off (OD-2).
+- 📅 **1.0**: Licensed-speech validation, ASR off the worker's `tiny` default, alignment on the live job, and the owner gates in `deploy/README.md`
 - 📅 **Phase 4** (v2): Practice loop - in-browser recording, live feedback, drills
 - 📅 **Phase 5** (v3): Teams - organizations, coaches, cohort analytics, benchmarks
 
-Still open before a 1.0 cut: licensed-speech validation, WhisperX alignment and diarization on the live job, moving originals to object storage (ADR-003; chunked upload to the media volume is ADR-085), ASR off the `tiny` model, and the owner gates in `deploy/README.md` (Resend DNS, Apple secrets, counsel review of `docs/PRIVACY.md`).
+Still open before a 1.0 cut: licensed-speech validation, WhisperX alignment and diarization on the live job, moving originals to object storage (ADR-003; chunked upload to the media volume is ADR-085), running speech recognition off this worker, and the owner gates in `deploy/README.md` (Resend DNS, Apple secrets, counsel review of `docs/PRIVACY.md`, KMS versus the local envelope key, live UAT). `ASR_BACKEND` stays `local`. Do not set it to `http` or point it at a host until that decision is made (ADR-091).
 
 ## Research Foundation
 
