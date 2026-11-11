@@ -223,7 +223,7 @@ On deploy:
 ## Constraints recorded here
 
 - This product currently lives in a **public** GitHub repo. Do not commit emails, passwords, or personal data. Cloudflare Access can come off only after the app-auth cutover above.
-- The worker runs CPU ASR (`ASR_MODEL=tiny`) on LION. Larger models belong on TIGER. Moving ASR is an owner decision; do not point LION at a remote ASR API until that contract exists.
+- The worker runs CPU ASR (`ASR_MODEL=tiny`, `ASR_BACKEND=local`) on LION. Larger models belong on TIGER. ADR-091 adds an HTTP client that stays off: do not set `ASR_BACKEND=http`, `ASR_HTTP_URL`, or `ASR_HTTP_TOKEN`, and do not point LION at a remote ASR API, until the owner decides. A token belongs in the host secret store, never in git.
 - The upload job runs content analysis before final scoring. If the local model on TIGER is down, categories 1–7 stay N/A. Video categories score only when `video_analysis` consent is on. Q&A stays N/A unless the session includes a Q&A segment; diarization still needs `HF_TOKEN` and is not on the live job.
 - WhisperX alignment is implemented and not called by `tasks.run_mvp_analysis`.
 - Production mail stays on the console stand-in until `RESEND_API_KEY`, `STAGECOACH_EMAIL_FROM`, and the domain DNS in `docs/email.md` are set by the owner.

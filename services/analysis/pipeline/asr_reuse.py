@@ -33,8 +33,11 @@ def asr_input_sha(
     window: Optional[dict[str, Any]],
     *,
     stage_version: str = ASR_STAGE_VERSION,
+    backend: str = "local",
 ) -> str:
     payload = {"language": language or "auto", "window": window_key(window), "stage_version": stage_version}
+    if backend not in {"", "local"}:
+        payload["backend"] = backend
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
@@ -153,7 +156,14 @@ def _stats(document: dict[str, Any]) -> tuple[str, int, float]:
     return language, count, mean
 
 
-def write_asr_marker(job_dir: Path, *, sha: str, language: str, window: Optional[dict[str, Any]]) -> None:
+def write_asr_marker(
+    job_dir: Path,
+    *,
+    sha: str,
+    language: str,
+    window: Optional[dict[str, Any]],
+    backend: str = "local",
+) -> None:
     (job_dir / "asr_input.json").write_text(
         json.dumps(
             {
@@ -161,6 +171,7 @@ def write_asr_marker(job_dir: Path, *, sha: str, language: str, window: Optional
                 "language": language,
                 "window": window,
                 "stage_version": ASR_STAGE_VERSION,
+                "backend": backend or "local",
             },
             indent=2,
         )
@@ -177,6 +188,7 @@ class AsrResolution:
     transcript_path: Path
     input_sha: str
     window_offset_s: float
+    backend: str = "local"
 
 
 def resolve_asr(
@@ -193,7 +205,10 @@ def resolve_asr(
     cut_audio: Optional[Callable[..., Path]] = None,
 ) -> AsrResolution:
     """Transcribe, or copy a previous transcript when the window and language match."""
-    sha = asr_input_sha(language, window)
+    from pipeline.stages.asr_remote import resolve_asr_backend
+
+    backend = resolve_asr_backend()
+    sha = asr_input_sha(language, window, backend=backend)
     job_dir.mkdir(parents=True, exist_ok=True)
     reusable = find_reusable_transcript(session_dir, job_dir, sha, window) if allow_reuse else None
     if reusable is not None:
@@ -202,7 +217,7 @@ def resolve_asr(
             shutil.copyfile(reusable, target)
         document = json.loads(target.read_text())
         lang, count, mean = _stats(document)
-        write_asr_marker(job_dir, sha=sha, language=language, window=window)
+        write_asr_marker(job_dir, sha=sha, language=language, window=window, backend=backend)
         return AsrResolution(
             reused=True,
             language=lang,
@@ -211,6 +226,7 @@ def resolve_asr(
             transcript_path=target,
             input_sha=sha,
             window_offset_s=float(window["start_s"]) if window else 0.0,
+            backend=backend,
         )
 
     source = audio_path
@@ -237,7 +253,7 @@ def resolve_asr(
         target.write_text(json.dumps(document, indent=2) + "\n")
     document = json.loads(target.read_text())
     lang, count, mean = _stats(document)
-    write_asr_marker(job_dir, sha=sha, language=language, window=window)
+    write_asr_marker(job_dir, sha=sha, language=language, window=window, backend=backend)
     return AsrResolution(
         reused=False,
         language=lang,
@@ -246,4 +262,5 @@ def resolve_asr(
         transcript_path=target,
         input_sha=sha,
         window_offset_s=offset,
+        backend=backend,
     )

@@ -1367,6 +1367,7 @@ def run_mvp_analysis_task(
                 "mean_word_probability": transcript.mean_word_probability,
                 "reused": resolution.reused,
                 "input_sha": resolution.input_sha,
+                "backend": resolution.backend,
             },
         )
         emit_progress(job_id, "asr", "succeeded", pct=60, message="Transcript ready")

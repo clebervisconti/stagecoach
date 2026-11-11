@@ -26,4 +26,5 @@ large-v3, GPU, or live-overlay inference on LION.
 
 - Private-beta transcripts are lower quality than production `large-v3`.
 - A later release must move ASR to TIGER or a licensed remote API and keep
-  LION as the web/BFF host only.
+  LION as the web/BFF host only. ADR-091 prepares that HTTP path and leaves
+  it off. This decision still runs recognition on LION.

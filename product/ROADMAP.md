@@ -10,13 +10,13 @@ Consent-gated vision and slides, content coach on the upload job, talk-prep gene
 
 ## 1.0 — MVP release
 
-Licensed-speech validation, ASR moved off the `tiny` model, alignment on the live job, owner gates closed (Resend DNS, Apple secrets, counsel review), and a recorded live UAT of upload → report → delete.
+Licensed-speech validation, ASR moved off the `tiny` model (the HTTP client in ADR-091 stays off until the owner points it at a host), alignment on the live job, owner gates closed (Resend DNS, Apple secrets, counsel review, KMS versus the local key), and a recorded live UAT of upload → report → delete.
 
 ## 0.6 — Online and recorded sessions
 
 Spec: `docs/online-sessions/SPEC.md`. Delivery mode is orthogonal to context type: stage, webinar, online talk, recorded video. Stage mode stays identical. The flag `ONLINE_MODES_ENABLED` stays off until O4.
 
-Phases O0–O6 are in `product/BACKLOG.md`. Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026 as the spec recommends. O0, O1, and O2 are on main (PRs #154, #155, #163, and the fixes through #168). O3 measurement is on main (PR #177). O3 scoring, the Screen & flow tab, `online_flow_v1`, the prompt guard, and the layout-review preference are in tree behind the same flag (ADR-090). Do not start O4. `ONLINE_MODES_ENABLED` stays off until O4. YouTube and Vimeo link analysis stays off (OD-2).
+Phases O0–O6 are in `product/BACKLOG.md`. Owner decisions OD-1 through OD-10 were approved on 22 Oct 2026 as the spec recommends. O0, O1, and O2 are on main (PRs #154, #155, #163, and the fixes through #168). O3 measurement is on main (PR #177). O3 scoring, the Screen & flow tab, `online_flow_v1`, the prompt guard, and the layout-review preference are in tree behind the same flag (ADR-090). Do not start O4. `ONLINE_MODES_ENABLED` stays off until O4. YouTube and Vimeo link analysis stays off (OD-2). Speech recognition stays on the worker; `ASR_BACKEND=http` is prepared and unset (ADR-091).
 
 MediaPipe 1.1.1 already runs pose on the live LION worker (libegl1 and libgles2). ADR-067 records the arm64 import spike.
 

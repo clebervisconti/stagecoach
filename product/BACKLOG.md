@@ -19,7 +19,7 @@
 - [x] Persist a running job step when a stage starts, and return that step's message and error on the session.
 - [x] Show upload percent and a human status on the session list.
 - [x] Install an arm64 MediaPipe wheel, or skip vision before it throws, so pose tracking does not fail on LION.
-- [ ] Move speech recognition onto TIGER. The live default is already `small`; `ASR_MODEL` is unset on LION.
+- [ ] Move speech recognition onto TIGER. The in-code default model is `small`. Production compose and `deploy/stagecoach-run.sh` still default `ASR_MODEL` to `tiny`, and that value is not changed here. `ASR_BACKEND` defaults to `local`. An HTTP client is ready and off (ADR-091). Do not set `ASR_BACKEND=http` or a host until the owner decides.
 
 ### SC-UX-002 — Report and navigation
 
@@ -35,7 +35,7 @@
 **Owner:** product owner. Do not flip these without an explicit decision.
 
 - [ ] Run `tests/uat/mvp-flow.md` against the live host.
-- [ ] Run speech recognition on TIGER. The in-tree default model is already `small`.
+- [ ] Run speech recognition on TIGER. The HTTP client is prepared and off (ADR-091). Turning it on is this decision, not a code change.
 - [ ] Set Resend secrets and DNS (`docs/email.md`) before verification mail leaves the machine.
 - [ ] Set the four Apple secrets before Sign in with Apple is offered.
 - [ ] Counsel reviews `docs/PRIVACY.md` before a launch beyond the private beta.

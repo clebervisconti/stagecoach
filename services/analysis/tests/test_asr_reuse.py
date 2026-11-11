@@ -126,6 +126,37 @@ def test_changed_window_transcribes_the_cut_and_shifts(tmp_path: Path):
     assert "old" not in (fresh / "transcript.json").read_text()
 
 
+def test_local_sha_ignores_backend_and_http_does_not(tmp_path: Path, monkeypatch):
+    local = asr_input_sha("en", None)
+    assert asr_input_sha("en", None, backend="local") == local
+    assert asr_input_sha("en", None, backend="http") != local
+    previous = tmp_path / "job-a"
+    previous.mkdir()
+    (previous / "transcript.json").write_text(json.dumps(_transcript("local", 1)))
+    (previous / "asr_input.json").write_text(json.dumps({"sha": local, "window": None, "backend": "local"}))
+    monkeypatch.setenv("ASR_BACKEND", "http")
+    calls = {"n": 0}
+
+    def transcribe(**kwargs):
+        calls["n"] += 1
+        (kwargs["output_dir"] / "transcript.json").write_text(json.dumps(_transcript("remote", 1)))
+
+    resolution = resolve_asr(
+        session_dir=tmp_path,
+        job_dir=tmp_path / "job-b",
+        language="en",
+        asr_language="en",
+        window=None,
+        audio_path=tmp_path / "audio.wav",
+        session_id="sess",
+        allow_reuse=True,
+        transcribe=transcribe,
+    )
+    assert resolution.reused is False
+    assert resolution.backend == "http"
+    assert calls["n"] == 1
+
+
 def test_fallback_reuses_a_job_that_never_wrote_a_marker(tmp_path: Path):
     previous = tmp_path / "job-a"
     previous.mkdir()

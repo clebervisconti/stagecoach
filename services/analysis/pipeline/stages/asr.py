@@ -88,12 +88,14 @@ class TranscriptOutput:
     duration: float
     word_count: int
     mean_word_probability: float
+    backend: str = "local"
     
     def to_dict(self) -> Dict[str, Any]:
         return {
             "language": self.language,
             "language_probability": self.language_probability,
             "model": self.model,
+            "backend": self.backend,
             "segments": [s.to_dict() for s in self.segments],
             "duration": self.duration,
             "word_count": self.word_count,
@@ -194,6 +196,17 @@ def transcribe_audio(
     Returns:
         TranscriptOutput with segments and words
     """
+    from pipeline.stages.asr_remote import resolve_asr_backend, transcribe_http
+
+    if resolve_asr_backend() == "http":
+        return transcribe_http(
+            audio_path=audio_path,
+            output_dir=output_dir,
+            session_id=session_id,
+            language=language,
+            model_name=model_name,
+        )
+
     if model_name is None:
         model_name = get_model_name()
     
