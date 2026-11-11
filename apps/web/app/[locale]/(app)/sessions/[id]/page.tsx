@@ -565,6 +565,7 @@ export default function SessionPage() {
                 deckSlides={slides?.slides}
                 playhead={playhead}
                 sessionId={params.id}
+                layoutHref={`${sessionsPath}/${params.id}/layout`}
                 onSeek={(time) => {
                   setPlayhead(time);
                   seekRef.current(time);

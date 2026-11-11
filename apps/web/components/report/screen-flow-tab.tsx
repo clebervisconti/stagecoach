@@ -38,6 +38,7 @@ type Props = {
   deckSlides?: SlideCard[];
   playhead: number;
   sessionId: string;
+  layoutHref?: string;
   onSeek: (time: number) => void;
   onRetry: () => void;
 };
@@ -87,7 +88,7 @@ export function ScreenFlowTab(props: Props) {
       {view === "empty" && (
         <div data-testid="screen-flow-empty" className="rounded-md border p-6 text-center">
           <p>{t("screenFlow.empty.body")}</p>
-          <a className="mt-3 inline-block underline" href={`/sessions/${props.sessionId}/layout`}>
+          <a className="mt-3 inline-block underline" href={props.layoutHref || `/sessions/${props.sessionId}/layout`}>
             {t("screenFlow.empty.cta")}
           </a>
         </div>
