@@ -122,6 +122,42 @@ def test_good_answer_is_one_call_and_cached(tmp_path):
     assert document["latency_s"] >= 0
 
 
+def test_narration_stays_inside_the_word_budget():
+    text = " ".join(["word"] * 1000)
+    segments = [{"id": f"s{index}", "t_start": index * 10, "t_end": index * 10 + 9, "type": "SLIDE"} for index in range(12)]
+    payload = build_online_flow_payload(
+        delivery_mode="webinar",
+        language="en",
+        screen_doc={"segments": segments, "metrics": [], "events": []},
+        transcript={"duration": 120, "segments": [{"id": "t", "start": 0, "end": 119, "text": text}]},
+    )
+    total = sum(len(row["text"].split()) for screen in payload["screens"] for row in screen["narration"])
+    assert 0 < total <= 6000
+    assert all(len(" ".join(row["text"] for row in screen["narration"]).split()) <= 600 for screen in payload["screens"])
+
+
+def test_invented_evidence_id_is_dropped(tmp_path):
+    (tmp_path / "screen_flow.json").write_text(
+        json.dumps(
+            {
+                "segments": [{"id": "scr_001", "t_start": 0, "t_end": 30, "type": "SLIDE"}],
+                "events": [{"id": "ev_1", "kind": "dead_air", "t": 4, "dur_s": 6}],
+                "metrics": [{"id": "sf_clean_transition_ratio", "value": 0.4, "applicable": True}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    invented = _good()
+    for row in invented["observations"] + invented["strengths"]:
+        row["evidence_ids"] = ["not-a-screen"]
+    stub = Stub([invented, invented])
+    result = run_online_flow(output_dir=tmp_path, delivery_mode="webinar", language="en", client=stub)
+    document = json.loads((tmp_path / "online_flow.json").read_text(encoding="utf-8"))
+    assert result["fallback"] is True
+    assert "not-a-screen" not in json.dumps(document)
+    assert len(stub.calls) == 2
+
+
 def test_model_failure_still_records_latency(tmp_path):
     class Down:
         provider_name = "local"

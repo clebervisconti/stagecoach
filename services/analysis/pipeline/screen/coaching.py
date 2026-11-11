@@ -20,6 +20,7 @@ PROMPT_VERSION = "1.0.1"
 IMAGE_KEYS = {"image", "frame", "keyframe", "thumbnail", "base64"}
 _MAX_SCREENS = 40
 _MAX_WORDS = 600
+_MAX_NARRATION_WORDS = 6000
 
 
 def image_keys(value: Any, prefix: str = "") -> list[str]:
@@ -54,7 +55,13 @@ def _words(text: str, limit: int) -> str:
     return " ".join(parts[:limit])
 
 
-def _narration_for(segment: dict[str, Any], transcript: Optional[dict[str, Any]]) -> list[dict[str, Any]]:
+def _narration_for(
+    segment: dict[str, Any],
+    transcript: Optional[dict[str, Any]],
+    limit: int,
+) -> list[dict[str, Any]]:
+    if limit <= 0:
+        return []
     start = float(segment.get("t_start") or 0)
     end = float(segment.get("t_end") or start)
     rows: list[dict[str, Any]] = []
@@ -64,7 +71,7 @@ def _narration_for(segment: dict[str, Any], transcript: Optional[dict[str, Any]]
         seg_end = float(segment_row.get("end") or seg_start)
         if seg_end < start or seg_start > end:
             continue
-        text = _words(str(segment_row.get("text") or ""), _MAX_WORDS - words)
+        text = _words(str(segment_row.get("text") or ""), limit - words)
         if not text:
             continue
         words += len(text.split())
@@ -75,7 +82,7 @@ def _narration_for(segment: dict[str, Any], transcript: Optional[dict[str, Any]]
                 "text": text,
             }
         )
-        if words >= _MAX_WORDS:
+        if words >= limit:
             break
     return rows
 
@@ -124,8 +131,11 @@ def build_online_flow_payload(
         if row.get("applicable") and row.get("value") is not None:
             metrics[str(row.get("id"))] = row.get("value")
     screens = []
+    narration_left = _MAX_NARRATION_WORDS
     for segment in select_screens(list(document.get("segments") or [])):
         shared = ((segment.get("narration") or {}).get("shared_terms")) or []
+        narration = _narration_for(segment, transcript, min(_MAX_WORDS, narration_left))
+        narration_left -= sum(len(str(row.get("text") or "").split()) for row in narration)
         screens.append(
             {
                 "id": segment.get("id"),
@@ -136,7 +146,7 @@ def build_online_flow_payload(
                 "ocr_word_count": segment.get("ocr_word_count"),
                 "flags": list(segment.get("flags") or []),
                 "on_screen_terms": list(shared)[:12],
-                "narration": _narration_for(segment, transcript),
+                "narration": narration,
             }
         )
     events = []
@@ -204,7 +214,28 @@ def _judged(text: str, language: str) -> bool:
     return emotion
 
 
-def _keep_items(items: Any, language: str) -> tuple[list[dict[str, Any]], int]:
+def known_evidence_ids(payload: dict[str, Any]) -> set[str]:
+    found: set[str] = set()
+    for row in list(payload.get("screens") or []) + list(payload.get("events") or []):
+        if isinstance(row, dict) and row.get("id"):
+            found.add(str(row["id"]))
+    return found
+
+
+def _cites(item: dict[str, Any], known: set[str]) -> bool:
+    if not known:
+        return True
+    refs = [str(value) for value in (item.get("evidence_ids") or []) if value]
+    return any(ref in known for ref in refs)
+
+
+def _keep_items(
+    items: Any,
+    language: str,
+    known: set[str],
+    *,
+    require_ids: bool,
+) -> tuple[list[dict[str, Any]], int]:
     kept: list[dict[str, Any]] = []
     dropped = 0
     if not isinstance(items, list):
@@ -214,6 +245,10 @@ def _keep_items(items: Any, language: str) -> tuple[list[dict[str, Any]], int]:
             dropped += 1
             continue
         if _judged(_item_text(item), language):
+            logger.warning("content_judgment online_flow_v1")
+            dropped += 1
+            continue
+        if require_ids and not _cites(item, known):
             dropped += 1
             continue
         kept.append(item)
@@ -262,20 +297,25 @@ def _normalize(data: dict[str, Any]) -> dict[str, Any]:
     return {"observations": observations, "drills": drills, "strengths": strengths}
 
 
-def _filter_model(data: Any, language: str) -> tuple[Optional[dict[str, Any]], int, int]:
+def _filter_model(
+    data: Any,
+    language: str,
+    known: Optional[set[str]] = None,
+) -> tuple[Optional[dict[str, Any]], int, int]:
+    ids = known or set()
     if not isinstance(data, dict):
         text = data if isinstance(data, str) else ""
-        dropped = 1 if text else 1
+        dropped = 1
         if text and _judged(text, language):
             logger.warning("content_judgment online_flow_v1 dropped_items=%s", 1)
         return None, dropped, dropped
-    observations, dropped_o = _keep_items(data.get("observations"), language)
-    drills, dropped_d = _keep_items(data.get("drills"), language)
-    strengths, dropped_s = _keep_items(data.get("strengths"), language)
+    observations, dropped_o = _keep_items(data.get("observations"), language, ids, require_ids=True)
+    drills, dropped_d = _keep_items(data.get("drills"), language, ids, require_ids=False)
+    strengths, dropped_s = _keep_items(data.get("strengths"), language, ids, require_ids=True)
     dropped = dropped_o + dropped_d + dropped_s
     original = dropped + len(observations) + len(drills) + len(strengths)
     if dropped:
-        logger.warning("content_judgment online_flow_v1 dropped_items=%s", dropped)
+        logger.warning("online_flow_v1 dropped_items=%s", dropped)
     if original and dropped / original > 0.5:
         return None, dropped, original
     normalized = _normalize({"observations": observations, "drills": drills, "strengths": strengths})
@@ -338,6 +378,7 @@ def run_online_flow(
             "events": [],
         }
     digest = _hash(payload)
+    known_ids = known_evidence_ids(payload)
     existing = _read_json(output_dir / "online_flow.json")
     if existing and existing.get("input_hash") == digest and existing.get("observations"):
         return {
@@ -377,7 +418,7 @@ def run_online_flow(
     def accept(data: Any) -> bool:
         """True when the answer was dropped or incomplete and should be asked once more."""
         nonlocal body, source, fallback
-        kept, _dropped, _original = _filter_model(data, language)
+        kept, _dropped, _original = _filter_model(data, language, known_ids)
         if kept is None:
             return True
         body = kept
