@@ -70,9 +70,27 @@ List what is actually wired. Paid / unchosen vendors stay flagged.
 | Email (verification, deletion confirmation) | Auth + compliance | Resend (D10, free tier) when `RESEND_API_KEY` is set; otherwise console. Password reset is an admin-set temporary password; the app does not email a reset link. | Yes — Resend |
 | Sign in with Apple | OIDC (D9, 2026-10-15) | Disabled until `APPLE_*` secrets exist | Yes — Apple (private relay possible) |
 | Error tracking | Sentry or none | `STAGECOACH_ERROR_TRACKING=none`. **No Sentry SDK** | Yes — SaaS / self-hosted / none |
+| Splunk Real User Monitoring (browser) | Page-load telemetry | Wired in the web app. Off while the token is empty. Session replay is not loaded | Yes — token inject at deploy, only after an explicit go |
 | Antivirus / deck scan | Upload safety | Local sandbox | — |
 
 Never send raw video to third-party LLMs in MVP. Configure the LLM provider for zero data retention / no training where available.
+
+### 6.1 Browser RUM
+
+On 11 Nov 2026 Cleber accepted moderate CVE-2026-54285 and asked for Splunk browser RUM on Stagecoach, with the privacy corrections in this section. The public notice is `/privacy` (English and pt-BR). There is no consent banner. Starting RUM does not ask for an acceptance click. A browser Do Not Track or Global Privacy Control signal skips initialization.
+
+The agent is `@splunk/otel-web` 3.2.0, bundled with the web app. `applicationName` is `stagecoach`, the same `service.name` the API, worker, and web process already send to the Cyberlabs collector. Realm is `us1`. `deployment.environment` is `production`. The beacon is `https://rum-ingest.us1.signalfx.com/v1/rumotlp`. Export is OTLP. Persistence is `localStorage`.
+
+What the notice tells a visitor, and what the agent does:
+
+- The session id is stored in localStorage. There is no Splunk cookie and no anonymous user id (`user.trackingMode` is `noTracking`). `enduser.id` and `user.id` are not set.
+- Geolocation is derived at ingestion as a country code. The raw IP is not kept for Splunk Observability or dashboards.
+- Session replay is off and is not loaded. Forms and user IDs are not captured. `privacy.maskAllText` is true.
+- Telemetry does not include the transcript, the media path, or the raw URL. Query strings and fragments are removed, and email addresses are redacted, before a span is exported.
+
+The committed token is empty. A missing token skips initialization and does not break the page. Tony injects `NEXT_PUBLIC_SPLUNK_RUM_TOKEN` at image build time only when Cleber says go. This document does not contain that token.
+
+`@opentelemetry/core` 1.30.1, which this 3.2.0 package bundles, is inside moderate CVE-2026-54285 (fixed in core 2.8.0). There is no supported 3.2.x upgrade that moves the package onto core 2.8.0. CI runs `npm audit --omit=dev --audit-level=high`. High and critical findings fail. This moderate finding stays visible and does not fail that gate. Do not force-downgrade the package to clear it.
 
 ## 7. DPIA notes (engineering checklist, not a finished DPIA)
 
