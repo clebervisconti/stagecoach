@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Committed files use placeholders for home paths and clearly fake test fixtures. `deploy/com.cyberlabs.stagecoach.plist` is a template (`/Users/YOUR_USERNAME`); substitute the real home directory locally before `launchctl bootstrap`. CI scans the current tree for home paths and credential-looking strings and does not read git history.
 - API rate limits key the per-user bucket on the verified user id. A token that does not verify is keyed by a hash of the whole token, not the JWT header prefix, which is the same for every HS256 session. `GET /api/v1/me`, the session document, and the session event stream do not spend the user bucket. The per-IP limit remains. Defaults are 8 requests/s per user (burst 120) and 16/s per IP (burst 240). 429 responses include `Retry-After`, and the web proxy forwards it. See ADR-086.
 
 - App sign-in no longer depends on Cloudflare Access. Email and password sit beside Sign in with Apple. Sessions are httpOnly SameSite=Lax cookies, argon2id hashes, login lockout that does not reveal whether an account exists, Origin checks on BFF mutations, and a session version that dies on password, role, and disable changes. See ADR-083 and ADR-084.

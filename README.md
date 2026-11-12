@@ -74,6 +74,18 @@ The application will be available at:
 - API docs: http://localhost:8000/docs
 - MinIO console: http://localhost:9001
 
+### Public repository
+
+Do not commit personal emails, local usernames, home paths, or credential-looking strings.
+
+- Placeholders: `YOUR_USERNAME`, `example@example.com`, `/Users/YOUR_USERNAME/...`.
+- A test fixture that needs a password uses a clearly fake value (`password` or `REDACTED`).
+- `.env.example` stays empty or interpolated. Do not put a placeholder password that looks real.
+- Use your GitHub noreply address as the git author. Do not use a personal mailbox.
+- A URL may include userinfo only when the password is `password`, `REDACTED`, the same as the username, or an interpolated variable such as `${POSTGRES_PASSWORD}`.
+
+Before pushing, run `python3 scripts/scan_public_tree.py`. That script reads tracked files in the current tree and does not read git history. CI runs the same script, then `gitleaks detect --no-git --redact --config .gitleaks.toml` with gitleaks 8.24.3 (the version that reads this repo's `[allowlist]` table). Install that release locally if you want the generic scan as well: https://github.com/gitleaks/gitleaks/releases/tag/v8.24.3
+
 ## Project Principles
 
 1. **Research-grounded**: Every scoring claim traces to published research or is labeled as heuristic
@@ -88,7 +100,7 @@ The application will be available at:
 - **Setup**: See [docs/SETUP.md](docs/SETUP.md) for detailed installation instructions
 - **Architecture**: See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for system design
 - **API**: See [docs/API.md](docs/API.md) or http://localhost:8000/docs for API reference
-- **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines
+- **Contributing**: See [Public repository](#public-repository) for what must not be committed
 - **Privacy**: See [docs/PRIVACY.md](docs/PRIVACY.md) for data handling and compliance
 
 ## Phase Roadmap
