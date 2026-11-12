@@ -27,6 +27,7 @@ const COPY = {
     registered: "Check the console email stand-in for a verification token.",
     verified: "Email verified. You can sign in.",
     resetSent: "Password resets are issued by an administrator. Ask an admin to set a temporary password.",
+    privacy: "Privacy",
   },
   "pt-BR": {
     heading: "Entrar",
@@ -50,6 +51,7 @@ const COPY = {
     registered: "Veja o stand-in de e-mail no console para o token de verificação.",
     verified: "E-mail verificado. Pode entrar.",
     resetSent: "A redefinição de senha é feita por um administrador. Peça uma senha temporária.",
+    privacy: "Privacidade",
   },
 } as const;
 
@@ -286,6 +288,15 @@ export function SignInForm() {
           {error}
         </p>
       ) : null}
+      <p className="text-sm">
+        <a
+          href={locale === "pt-BR" ? "/pt-BR/privacy" : "/privacy"}
+          className="underline"
+          data-testid="privacy-link"
+        >
+          {t.privacy}
+        </a>
+      </p>
     </div>
   );
 }

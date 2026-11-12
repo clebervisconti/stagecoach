@@ -4,6 +4,7 @@
 
 ### Added
 
+- Browser RUM is wired with `@splunk/otel-web` 3.2.0 and stays off. The committed token is empty. URL, title, session id, media path, email, and transcript text are redacted before export. Session replay is not loaded. The public privacy notice at `/privacy` describes this. There is no consent banner. See ADR-092.
 - Speech recognition stays on the worker. An HTTP backend is in the tree and off (`ASR_BACKEND=local`, ADR-091). No host is configured.
 - Screen flow and online engagement are scored for webinar, online talk, and recorded video (E3-5). The Screen & flow tab, text-only flow coaching, and the factual-correctness line on existing prompts are in (E3-6 through E3-8). Settings can say when to review a layout (E2-7, OD-3). Stage mode is unchanged. `ONLINE_MODES_ENABLED` stays off. See ADR-090.
 - Online sessions measure screen activity, slide changes, segment type, narration alignment, and dead air (E3-1 through E3-4). Stage mode is unchanged. `ONLINE_MODES_ENABLED` stays off. See ADR-089.
