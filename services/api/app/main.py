@@ -21,6 +21,7 @@ from app.routers import (
     trends,
     goals,
     identity,
+    practice,
     layout,
     chunk_uploads,
     screens,
@@ -54,6 +55,7 @@ app.include_router(clarify.router, prefix="/api/v1", tags=["plans"])
 app.include_router(trends.router, prefix="/api/v1", tags=["trends"])
 app.include_router(goals.router, prefix="/api/v1", tags=["goals"])
 app.include_router(identity.router, prefix="/api/v1", tags=["auth"])
+app.include_router(practice.router, prefix="/api/v1", tags=["practice"])
 
 
 @app.get("/")

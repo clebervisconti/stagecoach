@@ -26,6 +26,7 @@ function themeSnapshot() {
 const LINKS = [
   { key: "sessions", href: "/sessions", testId: "nav-sessions" },
   { key: "prep", href: "/prep", testId: "nav-prep" },
+  { key: "practice", href: "/practice", testId: "nav-practice" },
   { key: "trends", href: "/trends", testId: "nav-trends" },
   { key: "research", href: "/research", testId: "nav-research" },
   { key: "settings", href: "/settings", testId: "nav-settings" },

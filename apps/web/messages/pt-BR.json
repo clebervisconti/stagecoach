@@ -18,6 +18,7 @@
     "settings": "Configurações",
     "research": "Referências",
     "prep": "Preparação",
+    "practice": "Prática",
     "themeToLight": "Claro",
     "themeToDark": "Escuro",
     "themeToLightAria": "Usar tema claro",
@@ -203,6 +204,9 @@
   },
   "report": {
     "loadError": "Não foi possível carregar esta sessão.",
+    "correctTranscript": "Corrigir a transcrição",
+    "saveCorrection": "Salvar correção",
+    "correctionNote": "Esta correção fica ao lado da análise original.",
     "back": "Sessões",
     "partial": "Pontuação parcial",
     "partialHint": "A cobertura está abaixo de 60%, então o overall é uma pontuação parcial. Pilares indisponíveis aparecem como lacunas, não como zero.",
@@ -1058,5 +1062,28 @@
         "howWeMeasure": "Como medimos"
       }
     }
+  },
+  "practice": {
+    "heading": "Prática",
+    "intro": "Exercícios curtos para uma habilidade. A nota do relatório continua sendo a nota da população.",
+    "week": "Esta semana",
+    "emptyWeek": "Envie uma palestra para receber um plano semanal.",
+    "deck": "Revisão do deck",
+    "deckHelp": "Envie um arquivo PowerPoint. Isto olha o texto e a densidade. Não julga se o conteúdo é verdadeiro.",
+    "textSave": "Avaliar este texto",
+    "record": "Gravar",
+    "stop": "Parar",
+    "saved": "Salvo.",
+    "loadError": "Não foi possível carregar a prática.",
+    "series": "Série de ensaio",
+    "seriesEmpty": "São necessárias duas tomadas avaliadas desta palestra para comparar."
+  },
+  "usage": {
+    "heading": "Uso",
+    "storage": "Armazenamento",
+    "minutes": "Minutos neste mês",
+    "jobs": "Análises em andamento",
+    "readiness": "Portões de lançamento",
+    "loadError": "Não foi possível carregar o uso."
   }
 }

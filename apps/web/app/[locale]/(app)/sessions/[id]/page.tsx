@@ -17,6 +17,7 @@ import { SlidesTab } from "@/components/report/slides-tab";
 import { ScreenFlowTab } from "@/components/report/screen-flow-tab";
 import type { ScreenDocument } from "@/lib/screen-flow";
 import { TranscriptTab } from "@/components/report/transcript-tab";
+import { TranscriptCorrection } from "@/components/report/transcript-correction";
 import { VoiceTab } from "@/components/report/voice-tab";
 import type { BodyPayload, SlidesPayload } from "@/lib/body-slides";
 import { exportFileUrl, exportStatusUrl, exportUrl } from "@/lib/pdf-export";
@@ -590,7 +591,10 @@ export default function SessionPage() {
               />
             )}
             {tab === "transcript" && (
-              <TranscriptTab payload={transcript} onSeek={(time) => seekRef.current(time)} />
+              <>
+                <TranscriptTab payload={transcript} onSeek={(time) => seekRef.current(time)} />
+                <TranscriptCorrection sessionId={params.id} />
+              </>
             )}
             {tab === "voice" && (
               <VoiceTab

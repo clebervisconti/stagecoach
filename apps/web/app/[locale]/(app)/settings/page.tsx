@@ -7,6 +7,7 @@ import { RetentionPanel } from "@/components/settings/retention-panel";
 import { AiProvidersPanel } from "@/components/settings/ai-providers-panel";
 import { ReviewPreferencePanel } from "@/components/settings/review-preference-panel";
 import { AccountRightsPanel } from "@/components/settings/account-rights-panel";
+import { AccountUsagePanel } from "@/components/settings/account-usage-panel";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -32,6 +33,8 @@ export default async function SettingsPage() {
             </Link>
           </div>
         </div>
+
+        <AccountUsagePanel />
 
         <ConsentPanel />
 
