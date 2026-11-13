@@ -1,5 +1,9 @@
 # Extend the default rules. Allow only this public model checksum, not the file.
-# gitleaks-action@v2 ships 8.24.3, which still reads the singular [allowlist] table.
+# gitleaks 8.24.3 still reads the singular [allowlist] table.
+# CI runs `gitleaks detect --no-git` on the current tree, not git history.
+# Home paths are checked by scripts/scan_public_tree.py. The default gitleaks
+# allowlist treats /Users/ and /home/ paths as non-secrets, so this file does not
+# try to re-implement that check.
 title = "stagecoach"
 
 [extend]

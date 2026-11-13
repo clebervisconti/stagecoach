@@ -367,14 +367,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      - name: Home paths and URL credentials
+        run: python3 scripts/scan_public_tree.py
+
+      # Current tree only. gitleaks-action@v2 scans commits, including
+      # deletions in the pull request, and a full history scan is out of scope.
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          version=8.24.3
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz" \
+            | tar -xz -C /tmp gitleaks
+          sudo install -m 0755 /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Gitleaks on the current tree
+        run: gitleaks detect --no-git --redact --config .gitleaks.toml --verbose --exit-code 1
 
   compose-smoke:
     name: Docker Compose Smoke Test

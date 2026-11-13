@@ -33,8 +33,8 @@ def test_endpoint_rejects_secrets_and_appends_the_openai_path():
     assert transcription_endpoint("https://asr.test") == "https://asr.test/v1/audio/transcriptions"
     assert transcription_endpoint("http://asr.test/custom") == "http://asr.test/custom"
     with pytest.raises(AsrConfigError) as userinfo:
-        transcription_endpoint("http://user:secret@asr.test/v1")
-    assert "secret" not in str(userinfo.value)
+        transcription_endpoint("http://user:REDACTED@asr.test/v1")
+    assert "REDACTED" not in str(userinfo.value)
     with pytest.raises(AsrConfigError) as query:
         transcription_endpoint("http://asr.test/v1?token=secret")
     assert "secret" not in str(query.value)

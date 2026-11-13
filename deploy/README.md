@@ -127,6 +127,8 @@ install happen in the logged-in GUI session.
 
 ## Install
 
+`deploy/com.cyberlabs.stagecoach.plist` is a template. Substitute the real home directory for `/Users/YOUR_USERNAME` in the LaunchAgent copy before `launchctl bootstrap` (launchd does not expand `$HOME`).
+
 One command, in a logged-in Terminal on LION (not SSH):
 
 ```bash

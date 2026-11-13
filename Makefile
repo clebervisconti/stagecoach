@@ -1,4 +1,4 @@
-.PHONY: help install dev down logs test lint type clean migrate generate-types check-generated lion-build lion-config lion-up
+.PHONY: help install dev down logs test lint type clean migrate generate-types check-generated scan lion-build lion-config lion-up
 
 # LION (OrbStack / linux/arm64). The lab checkout uses a compose project name,
 # an env file, and sometimes a local loopback override that is not in git.
@@ -24,6 +24,7 @@ help:
 	@echo "  make generate-types  - Generate types from JSON schemas"
 	@echo "  make check-generated - Check if generated code is up to date (CI)"
 	@echo "  make test            - Run all tests"
+	@echo "  make scan            - Scan tracked files for home paths and URL credentials"
 	@echo "  make lint            - Run linters"
 	@echo "  make type            - Run type checkers"
 	@echo "  make clean           - Clean build artifacts"
@@ -82,6 +83,9 @@ generate-types:
 check-generated:
 	@echo "Checking generated code..."
 	bash scripts/check_generated.sh
+
+scan:
+	python3 scripts/scan_public_tree.py
 
 lion-build:
 	@echo "Building LION images (web=node server.js, API no reload, worker torch for this arch)..."
