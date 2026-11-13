@@ -654,6 +654,13 @@ def finalize_stored_upload(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"This recording is longer than {limit_min} minutes.",
         )
+    from app.quotas import decide_upload
+
+    reserved = int(duration if duration is not None else (session.slot_min or 10) * 60)
+    decision = decide_upload(db, current_user, incoming_bytes=total, reserved_seconds=reserved)
+    if not decision["allowed"]:
+        stored_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=decision["reason"])
 
     policy = normalize_retention_policy(getattr(current_user, "retention_policy", None))
     retention_until = retention_until_for(policy, datetime.utcnow(), event="upload")

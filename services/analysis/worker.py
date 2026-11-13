@@ -75,6 +75,7 @@ app.conf.update(
         "tasks.export_pdf": {"queue": "cpu"},
         "tasks.retention_sweeper": {"queue": "cpu"},
         "tasks.prep_llm": {"queue": "llm"},
+        "tasks.score_drill": {"queue": "cpu"},
     },
     beat_schedule={
         "retention-sweeper-nightly": {
@@ -2050,4 +2051,79 @@ def content_llm_task(
         logger.error(f"content_llm failed for {session_id}: {exc}")
         # Retry with exponential backoff: 4s, 16s, 64s
         raise self.retry(exc=exc, countdown=4 ** self.request.retries)
+
+
+def _ensure_scoring_path() -> None:
+    import sys
+
+    for candidate in (
+        Path("/packages/scoring"),
+        Path(__file__).resolve().parents[2] / "packages" / "scoring",
+    ):
+        if candidate.exists() and str(candidate) not in sys.path:
+            sys.path.insert(0, str(candidate))
+            return
+
+
+def _finish_drill(attempt_id: str, status: str, result: dict) -> None:
+    if not DATABASE_URL:
+        return
+    engine = create_engine(DATABASE_URL)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                UPDATE drill_attempts
+                SET status = :status, result = CAST(:result AS jsonb)
+                WHERE id = :id
+                """
+            ),
+            {"status": status, "result": json.dumps(result), "id": attempt_id},
+        )
+
+
+@app.task(name="tasks.score_drill", bind=True, max_retries=0)
+def score_drill_task(
+    self,
+    *,
+    attempt_id: str,
+    drill_id: str,
+    media_path: str,
+    language: str = "en",
+):
+    """Transcribe a short drill take and score the target signals. Accent is not scored."""
+    del self
+    _ensure_scoring_path()
+    from scoring.practice import score_transcript_drill
+
+    destination = Path(media_path).parent
+    transcript_text = ""
+    duration_s = None
+    try:
+        from pipeline.stages.asr import transcribe_audio
+
+        transcript = transcribe_audio(
+            audio_path=Path(media_path),
+            output_dir=destination,
+            session_id=attempt_id,
+            language="pt" if str(language).startswith("pt") else language,
+        )
+        payload = transcript.to_dict() if hasattr(transcript, "to_dict") else {}
+        segments = payload.get("segments") or []
+        transcript_text = " ".join(str(segment.get("text") or "") for segment in segments).strip()
+        duration_s = payload.get("duration")
+    except Exception as exc:
+        _finish_drill(
+            attempt_id,
+            "failed",
+            {"applicable": False, "na_reason": "Transcription is unavailable for this take.", "error": str(exc)[:200]},
+        )
+        return {"status": "failed"}
+    scored = score_transcript_drill(
+        drill_id,
+        transcript_text,
+        duration_s if isinstance(duration_s, (int, float)) else None,
+    )
+    _finish_drill(attempt_id, "ready" if scored.get("applicable") else "failed", scored)
+    return {"status": "ready", "attempt_id": attempt_id}
 

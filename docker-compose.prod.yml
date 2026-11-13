@@ -60,6 +60,7 @@ services:
         condition: service_healthy
     volumes:
       - media_data:/data/stagecoach
+      - ./packages:/packages:ro
     command: >
       sh -c "alembic upgrade head &&
              opentelemetry-instrument uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"

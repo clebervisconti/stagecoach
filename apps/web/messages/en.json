@@ -18,6 +18,7 @@
     "settings": "Settings",
     "research": "References",
     "prep": "Talk Prep",
+    "practice": "Practice",
     "themeToLight": "Light",
     "themeToDark": "Dark",
     "themeToLightAria": "Switch to light theme",
@@ -203,6 +204,9 @@
   },
   "report": {
     "loadError": "Could not load this session.",
+    "correctTranscript": "Correct the transcript",
+    "saveCorrection": "Save correction",
+    "correctionNote": "This correction is saved beside the original analysis.",
     "back": "Sessions",
     "partial": "Partial score",
     "partialHint": "Coverage is below 60%, so this overall is a partial score. Unavailable pillars are listed as gaps, not zeros.",
@@ -1058,5 +1062,28 @@
         "howWeMeasure": "How we measure"
       }
     }
+  },
+  "practice": {
+    "heading": "Practice",
+    "intro": "Short drills for one skill. The session report score stays the population score.",
+    "week": "This week",
+    "emptyWeek": "Upload a talk to get a weekly plan.",
+    "deck": "Deck review",
+    "deckHelp": "Upload a PowerPoint file. This checks wording and density. It does not judge whether the content is true.",
+    "textSave": "Score this text",
+    "record": "Record",
+    "stop": "Stop",
+    "saved": "Saved.",
+    "loadError": "Could not load practice.",
+    "series": "Rehearsal series",
+    "seriesEmpty": "Two scored takes of this talk are needed before a comparison."
+  },
+  "usage": {
+    "heading": "Usage",
+    "storage": "Storage",
+    "minutes": "Minutes this month",
+    "jobs": "Running analyses",
+    "readiness": "Launch gates",
+    "loadError": "Could not load usage."
   }
 }

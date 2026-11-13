@@ -23,6 +23,7 @@ from app.models.insight import Insight  # noqa: F401, E402
 from app.models.audit_log import AuditLog  # noqa: F401, E402
 from app.models.deletion_request import DeletionRequest  # noqa: F401, E402
 from app.models.talk_plan import Goal, ObjectiveScore, TalkPlan  # noqa: F401, E402
+from app.models.practice import DrillAttempt, TranscriptRevision  # noqa: F401, E402
 
 __all__ = [
     "Base",
@@ -48,4 +49,6 @@ __all__ = [
     "TalkPlan",
     "Goal",
     "ObjectiveScore",
+    "DrillAttempt",
+    "TranscriptRevision",
 ]
