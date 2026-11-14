@@ -437,7 +437,9 @@ jobs:
       
       - name: Start services (core + worker)
         run: docker compose --profile workers up -d --wait
-        timeout-minutes: 8
+        # Image export can use most of this window. The containers were healthy
+        # when an 8 minute limit fired during unpack.
+        timeout-minutes: 15
       
       - name: Run migrations
         run: |
