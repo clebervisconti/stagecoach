@@ -21,9 +21,11 @@ const COPY = {
 export function AuthFrame({
   children,
   width = "form",
+  horizon = false,
 }: {
   children: ReactNode;
   width?: "form" | "prose";
+  horizon?: boolean;
 }) {
   const locale = useLocale();
   const t = COPY[locale === "pt-BR" ? "pt-BR" : "en"];
@@ -33,11 +35,13 @@ export function AuthFrame({
       <a href="#main" className="cs-skip">
         {t.skip}
       </a>
-      <main id="main" className="min-h-screen px-6 py-8 md:px-16 md:py-12">
-        <div className={width === "form" ? "max-w-md" : "max-w-3xl"}>
+      <main id="main" className={horizon ? "s-sign cs-horizon cs-horizon-breathe" : "min-h-screen px-6 py-8 md:px-16 md:py-12"}>
+        <div className={horizon ? "s-sign-card" : width === "form" ? "max-w-md" : "max-w-3xl"}>
           <BrandLockup />
-          <p className="mt-4 max-w-prose text-base leading-[26px] text-[color:var(--text-secondary)]">{t.promise}</p>
-          <div className="mt-10">{children}</div>
+          {horizon ? null : (
+            <p className="mt-4 max-w-prose text-base leading-[26px] text-[color:var(--text-secondary)]">{t.promise}</p>
+          )}
+          <div className={horizon ? undefined : "mt-10"}>{children}</div>
           <footer className="mt-16 border-t border-[color:var(--line)] pt-6">
             <Link href={`${prefix}/privacy`} className="cs-text-link">
               {t.privacy}

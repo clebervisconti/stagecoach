@@ -49,7 +49,7 @@ test("trends goals panel creates and lists progress", async ({ page }) => {
   await expect(page.getByTestId("goal-row")).toContainText("✓");
 });
 
-test("session radar draws a dashed goal polygon", async ({ page }) => {
+test("session category bars mark a goal", async ({ page }) => {
   await mockStagecoachApi(page, { language: "en", title: "Goals radar talk" });
   await page.route("**/api/stagecoach/goals**", async (route) => {
     return route.fulfill({
@@ -62,6 +62,6 @@ test("session radar draws a dashed goal polygon", async ({ page }) => {
   });
   await page.goto(`/sessions/${SESSION_ID}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("report")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId("goal-polygon")).toBeAttached();
-  await expect(page.getByTestId("goal-vertex").first()).toBeVisible();
+  await expect(page.getByTestId("category-bars")).toBeVisible();
+  await expect(page.getByTestId("goal-mark").first()).toBeVisible();
 });

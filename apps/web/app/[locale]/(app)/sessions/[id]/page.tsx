@@ -9,7 +9,7 @@ import { CategoryCards } from "@/components/report/category-cards";
 import { InsightsPanel } from "@/components/report/insights-panel";
 import { KeyMetrics } from "@/components/report/key-metrics";
 import { ReportPlayer } from "@/components/report/player";
-import { RadarChart } from "@/components/report/radar-chart";
+import { CategoryBars } from "@/components/report/category-bars";
 import { SummaryCard } from "@/components/report/summary-card";
 import { BodyTab } from "@/components/report/body-tab";
 import { ObjectivesTab, type CoachingPayload } from "@/components/report/objectives-tab";
@@ -37,7 +37,7 @@ import {
   type SessionLoadResult,
 } from "@/lib/session-refresh";
 import { Globe, Mic, Play, Users } from "lucide-react";
-import { goalRadarPoints, radarPoints, type GoalLike } from "@/lib/report-view";
+import { type GoalLike } from "@/lib/report-view";
 import { exportVtt, type TranscriptPayload } from "@/lib/transcript";
 import type { TimelinePayload } from "@/lib/timeline";
 import type { SeriesPayload } from "@/lib/voice-charts";
@@ -81,6 +81,7 @@ function isReport(value: unknown): value is AnalysisReport {
 
 export default function SessionPage() {
   const t = useTranslations("report");
+  const signal = useTranslations("signal");
   const tOnline = useTranslations("online");
   const locale = useLocale();
   const router = useRouter();
@@ -317,6 +318,25 @@ export default function SessionPage() {
     session?.status === "ready" ||
     session?.status === "partial";
 
+  if (error && !session) {
+    return (
+      <section className="cs-alert cs-alert-critical" role="alert" data-testid="report-load-error">
+        <div className="cs-alert-body">
+          <h1 className="cs-alert-title">{signal("loadReportTitle")}</h1>
+          <p>{error || signal("loadReportBody")}</p>
+          <div className="k-row">
+            <button type="button" className="cs-button cs-button-primary" onClick={() => window.location.reload()}>
+              {signal("tryAgain")}
+            </button>
+            <button type="button" className="cs-button cs-button-ghost" onClick={() => router.push(sessionsPath)}>
+              {signal("backToSessions")}
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <div className="container mx-auto space-y-8 px-4 py-8">
       {session?.delivery_mode && session.delivery_mode !== "stage" && (showPrepare || session.status === "processing") && (
@@ -488,12 +508,7 @@ export default function SessionPage() {
           )}
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
             <SummaryCard report={report} />
-            <section className="rounded-lg border bg-card p-6">
-              <RadarChart
-                points={radarPoints(report)}
-                goalPoints={goalRadarPoints(radarPoints(report), goals)}
-              />
-            </section>
+            <CategoryBars report={report} goals={goals} />
           </div>
           <InsightsPanel report={report} onSeek={(time) => seekRef.current(time)} />
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
@@ -517,7 +532,7 @@ export default function SessionPage() {
             }
           />
           <div>
-            <div role="tablist" aria-label={t("tabs")} className="mb-4 flex flex-wrap gap-2">
+            <div role="tablist" aria-label={t("tabs")} className="cs-tabs mb-4">
               {(session?.delivery_mode && session.delivery_mode !== "stage"
                 ? (["categories", "screen_flow", "transcript", "voice", "timeline", "objectives"] as const)
                 : (["categories", "transcript", "voice", "timeline", "body", "slides", "objectives"] as const)
@@ -528,9 +543,7 @@ export default function SessionPage() {
                   role="tab"
                   aria-selected={tab === id}
                   onClick={() => setTab(id)}
-                  className={`border-b-2 bg-transparent px-3 py-2 text-xs tracking-[0.08em] ${
-                    tab === id ? "border-current text-foreground" : "border-transparent text-muted-foreground"
-                  }`}
+                  className="cs-tab"
                 >
                   {id === "screen_flow"
                     ? tOnline("screenFlow.tab")

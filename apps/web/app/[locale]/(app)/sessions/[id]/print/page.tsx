@@ -6,11 +6,10 @@ import { useTranslations } from "next-intl";
 import { CategoryCards } from "@/components/report/category-cards";
 import { InsightsPanel } from "@/components/report/insights-panel";
 import { KeyMetrics } from "@/components/report/key-metrics";
-import { RadarChart } from "@/components/report/radar-chart";
+import { CategoryBars } from "@/components/report/category-bars";
 import { SummaryCard } from "@/components/report/summary-card";
 import { TranscriptTab } from "@/components/report/transcript-tab";
 import type { AnalysisReport } from "@/lib/report-types";
-import { radarPoints } from "@/lib/report-view";
 import { formatTimestamp } from "@/lib/player";
 import type { TranscriptPayload } from "@/lib/transcript";
 
@@ -64,7 +63,7 @@ export default function PrintReportPage() {
       <section data-section="cover">
         <p className="text-sm text-muted-foreground">Stage Coach</p>
         <SummaryCard report={report} />
-        <RadarChart points={radarPoints(report)} />
+        <CategoryBars report={report} />
         <KeyMetrics report={report} />
       </section>
       <section data-section="opportunities">

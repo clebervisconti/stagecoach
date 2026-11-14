@@ -44,8 +44,8 @@ export function WizardStepper({
   }
   const currentIndex = steps.findIndex((step) => step.id === current);
   return (
-    <nav aria-label={t("stepper.progress")} className="mb-8">
-      <ol className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.12em] text-[color:var(--text-tertiary)]">
+    <nav aria-label={t("stepper.progress")} className="s-steps mb-8">
+      <ol className="flex flex-wrap items-center gap-2">
         {steps.map((step, index) => {
           const currentStep = step.id === current;
           const done = index < currentIndex || (step.id === "layout" && Boolean(layoutDone || consentOff));
@@ -61,7 +61,7 @@ export function WizardStepper({
                 <button
                   type="button"
                   data-testid={`stepper-${step.id}`}
-                  className="uppercase tracking-[0.12em]"
+                  className=""
                   onClick={() => onSelect?.(step.id)}
                 >
                   <span className="sr-only">{t("stepper.stepOf", { n: String(step.n), of: String(steps.length), label })}</span>

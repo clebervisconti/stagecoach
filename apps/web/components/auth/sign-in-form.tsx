@@ -9,13 +9,20 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { PasswordField } from "@/components/auth/password-field";
+import { AppleSignInButton } from "@/components/auth/apple-button";
 
 const COPY = {
   en: {
     login: "Sign in",
     register: "Create your account",
     forgot: "Reset your password",
-    loginIntro: "Use the email and password for your account.",
+    loginIntro: "Upload or record a talk. Get research-backed feedback on how you deliver it.",
+    accountTab: "I have an account",
+    inviteTab: "I have an invite",
+    orEmail: "or with email",
+    newAccounts: "New accounts need an invite.",
+    privacy: "Privacy",
+    startHow: "How do you want to start",
     registerIntro: "Choose a password for the invited email address.",
     inviteOnly: "Ask an administrator for an invite.",
     forgotIntro: "Password resets are issued by an administrator.",
@@ -43,7 +50,13 @@ const COPY = {
     login: "Entrar",
     register: "Crie sua conta",
     forgot: "Redefina sua senha",
-    loginIntro: "Use o e-mail e a senha da sua conta.",
+    loginIntro: "Envie ou grave uma palestra. Receba um retorno baseado em pesquisa sobre como você a entrega.",
+    accountTab: "Tenho uma conta",
+    inviteTab: "Tenho um convite",
+    orEmail: "ou com e-mail",
+    newAccounts: "Novas contas precisam de um convite.",
+    privacy: "Privacidade",
+    startHow: "Como você quer começar",
     registerIntro: "Escolha uma senha para o e-mail do convite.",
     inviteOnly: "Peça um convite a um administrador.",
     forgotIntro: "A redefinição de senha é feita por um administrador.",
@@ -226,11 +239,23 @@ export function SignInForm() {
   const showForm = mode !== "register" || Boolean(invite);
 
   return (
-    <div data-testid="sign-in-form" data-mode={mode} data-state={phase} aria-busy={phase === "loading"}>
-      <h1 className="text-3xl">{heading}</h1>
-      <p className="mt-3 text-base leading-[26px] text-[color:var(--text-secondary)]">{intro}</p>
+    <div data-testid="sign-in-form" data-mode={mode} data-state={phase} aria-busy={phase === "loading"} className="grid gap-4">
+      <div className="k-col" style={{ gap: 10 }}>
+        <h1>{heading}</h1>
+        <p className="k-sec">{mode === "login" ? t.loginIntro : intro}</p>
+      </div>
+      <div className="cs-tabs" role="tablist" aria-label={t.startHow}>
+        <button type="button" className="cs-tab" role="tab" aria-selected={mode !== "register"} onClick={() => switchMode("login")}>
+          {t.accountTab}
+        </button>
+        <button type="button" className="cs-tab" role="tab" aria-selected={mode === "register"} onClick={() => switchMode("register")}>
+          {t.inviteTab}
+        </button>
+      </div>
+      {appleEnabled && mode !== "forgot" ? <AppleSignInButton label={t.apple} onClick={() => void startApple()} /> : null}
       {showForm ? (
-        <form onSubmit={(event) => void onSubmit(event)} className="mt-8 space-y-4">
+        <form onSubmit={(event) => void onSubmit(event)} className="grid gap-4">
+          {mode !== "forgot" ? <div className="s-or">{t.orEmail}</div> : null}
           <Field label={t.email} htmlFor="auth-email">
             <Input id="auth-email" name="email" type="email" required autoComplete="username" data-testid="auth-email" />
           </Field>
@@ -249,12 +274,7 @@ export function SignInForm() {
           </Button>
         </form>
       ) : null}
-      {appleEnabled && mode === "login" ? (
-        <Button type="button" variant="ghost" data-testid="apple-signin" className="mt-3 w-full" onClick={() => void startApple()}>
-          {t.apple}
-        </Button>
-      ) : null}
-      <nav aria-label={t.account} className="mt-6 flex flex-col items-start gap-1">
+      <nav aria-label={t.account} className="flex flex-col items-start gap-1">
         {mode !== "login" ? (
           <button type="button" className="cs-text-link" onClick={() => switchMode("login")}>
             {t.back}
@@ -271,10 +291,14 @@ export function SignInForm() {
           </button>
         ) : null}
       </nav>
-      <p className="mt-8">
+      <p>
         <Link href={`${prefix}/verify-request`} className="cs-text-link text-[color:var(--text-tertiary)]">
           {t.tokenLink}
         </Link>
+      </p>
+      <p className="k-note">
+        {t.newAccounts}{" "}
+        <Link href={`${prefix}/privacy`}>{t.privacy}</Link>
       </p>
       {notice ? (
         <p className="mt-4 text-sm" data-testid="auth-success">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BrandLockup } from "@/components/brand/brand-lockup";
 import "./globals.css";
+import "./v3.css";
 
 const themeScript = `(function(){try{var saved=localStorage.getItem("cs-theme");var theme=saved==="light"||saved==="dark"?saved:(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.dataset.theme=theme;}catch(e){document.documentElement.dataset.theme="dark";}})();`;
 

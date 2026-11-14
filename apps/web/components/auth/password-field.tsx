@@ -47,7 +47,7 @@ export function PasswordField({
 
   return (
     <Field label={label} htmlFor={id} hint={showRules ? t.rules : undefined} hintId={showRules ? hintId : undefined} error={error}>
-      <div className="flex items-stretch gap-2">
+      <div className="s-pw">
         <Input
           id={id}
           name={name}

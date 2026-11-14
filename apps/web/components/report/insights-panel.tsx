@@ -100,10 +100,12 @@ export function InsightsPanel({ report, onSeek }: InsightsPanelProps) {
   const opportunityIds = new Set(opportunities.slice(0, 3).map((item) => item.category_id));
   const shownStrengths = strengths.filter((item) => !opportunityIds.has(item.category_id));
 
+  const signal = useTranslations("signal");
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border bg-card p-6" aria-labelledby="opportunities-heading">
-        <h2 id="opportunities-heading" className="text-xl font-semibold">
+      <section className="cs-ai" aria-labelledby="opportunities-heading">
+        <p className="cs-ai-label">{signal("coachingLabel")}</p>
+        <h2 id="opportunities-heading" className="cs-panel-title">
           {t("opportunities")}
         </h2>
         <div className="mt-4">

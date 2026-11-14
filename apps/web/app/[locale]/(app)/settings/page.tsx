@@ -13,6 +13,7 @@ import { AiProvidersPanel } from "@/components/settings/ai-providers-panel";
 import { ReviewPreferencePanel } from "@/components/settings/review-preference-panel";
 import { AccountRightsPanel } from "@/components/settings/account-rights-panel";
 import { AccountUsagePanel } from "@/components/settings/account-usage-panel";
+import { AppearancePanel } from "@/components/settings/appearance-panel";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -22,11 +23,12 @@ export default async function SettingsPage() {
   const email = session?.user?.email;
 
   return (
-    <div className="container mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-8 text-3xl font-bold">{t("heading")}</h1>
+    <div className="mx-auto grid max-w-3xl gap-4">
+      <h1>{t("heading")}</h1>
 
-      <div className="space-y-6">
-        <div className="rounded-lg border bg-card p-6">
+      <div className="grid gap-4">
+        <AppearancePanel />
+        <div className="cs-panel">
           <h2 className="mb-4 text-lg font-semibold">{t("account")}</h2>
           <div className="space-y-2">
             <div className="flex justify-between gap-4">

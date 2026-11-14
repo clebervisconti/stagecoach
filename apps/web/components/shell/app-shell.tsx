@@ -1,11 +1,14 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { BrandLockup } from "@/components/brand/brand-lockup";
+import { ChartLine, Dumbbell, FileText, LayoutList, Settings, Sparkles, Users } from "lucide-react";
+import { CompactMark } from "@/components/brand/brand-lockup";
 import { SessionWatch } from "@/components/shell/session-watch";
+import { CommandPalette, useCommandShortcut, type PaletteAction } from "@/components/shell/command-palette";
+import { useTheme } from "@/components/shell/use-theme";
 
 type AppShellProps = {
   locale: string;
@@ -14,112 +17,144 @@ type AppShellProps = {
   children: React.ReactNode;
 };
 
-function subscribeTheme(onChange: () => void) {
-  const observer = new MutationObserver(onChange);
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  return () => observer.disconnect();
-}
-
-function themeSnapshot() {
-  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
-}
-
-const LINKS = [
-  { key: "sessions", href: "/sessions", testId: "nav-sessions" },
-  { key: "prep", href: "/prep", testId: "nav-prep" },
-  { key: "practice", href: "/practice", testId: "nav-practice" },
-  { key: "trends", href: "/trends", testId: "nav-trends" },
-  { key: "research", href: "/research", testId: "nav-research" },
-  { key: "settings", href: "/settings", testId: "nav-settings" },
+const RAIL = [
+  { key: "sessions", href: "/sessions", testId: "nav-sessions", icon: LayoutList },
+  { key: "practice", href: "/practice", testId: "nav-practice", icon: Dumbbell },
+  { key: "prep", href: "/prep", testId: "nav-prep", icon: FileText },
+  { key: "trends", href: "/trends", testId: "nav-trends", icon: ChartLine },
 ] as const;
+
+const TABS = [
+  { key: "sessions", href: "/sessions", icon: LayoutList },
+  { key: "practice", href: "/practice", icon: Dumbbell },
+  { key: "trends", href: "/trends", icon: ChartLine },
+  { key: "settings", href: "/settings", icon: Settings },
+] as const;
+
+function initials(email?: string | null) {
+  const local = (email ?? "").split("@")[0] ?? "";
+  const parts = local.split(/[._-]+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+  return (local.slice(0, 2) || "·").toUpperCase();
+}
 
 export function AppShell({ locale, email, role, children }: AppShellProps) {
   const t = useTranslations("nav");
+  const signal = useTranslations("signal");
   const pathname = usePathname();
+  const router = useRouter();
   const prefix = locale === "en" ? "" : `/${locale}`;
-  const theme = useSyncExternalStore(subscribeTheme, themeSnapshot, () => "dark");
-  const links = role === "admin" ? [...LINKS, { key: "admin", href: "/admin/users", testId: "nav-admin" }] : [...LINKS];
+  const { applied, setTheme } = useTheme();
+  const [open, setOpen] = useState(false);
+  const toggle = useCallback(() => setOpen((value) => !value), []);
+  useCommandShortcut(toggle);
 
-  function toggleTheme() {
-    const next = theme === "dark" ? "light" : "dark";
-    document.documentElement.dataset.theme = next;
-    localStorage.setItem("cs-theme", next);
+  function active(href: string) {
+    const path = `${prefix}${href}`;
+    return pathname === path || pathname.startsWith(`${path}/`);
+  }
+
+  const actions: PaletteAction[] = [
+    { id: "ask", label: signal("askCoach"), ai: true, hint: "AI", run: () => router.push(`${prefix}/practice`) },
+    { id: "new", label: signal("actionNew"), run: () => router.push(`${prefix}/sessions/new`) },
+    { id: "sessions", label: t("sessions"), run: () => router.push(`${prefix}/sessions`) },
+    { id: "practice", label: t("practice"), run: () => router.push(`${prefix}/practice`) },
+    { id: "prep", label: t("prep"), run: () => router.push(`${prefix}/prep`) },
+    { id: "trends", label: t("trends"), run: () => router.push(`${prefix}/trends`) },
+    { id: "research", label: t("research"), run: () => router.push(`${prefix}/research`) },
+    { id: "settings", label: t("settings"), run: () => router.push(`${prefix}/settings`) },
+    {
+      id: "theme",
+      label: signal("actionTheme"),
+      run: () => setTheme(applied === "dark" ? "light" : "dark"),
+    },
+    {
+      id: "locale",
+      label: locale === "en" ? "Português" : "English",
+      run: () => router.push(locale === "en" ? "/pt-BR/sessions" : "/sessions"),
+    },
+  ];
+  if (role === "admin") {
+    actions.push(
+      { id: "admin", label: t("admin"), run: () => router.push(`${prefix}/admin/users`) },
+      { id: "costs", label: signal("actionCosts"), run: () => router.push(`${prefix}/admin/costs`) },
+    );
   }
 
   const skip = locale === "pt-BR" ? "Pular para o conteúdo" : "Skip to content";
 
   return (
-    <div className="relative flex min-h-screen flex-col">
-      <a href="#main" className="cs-skip">
-        {skip}
-      </a>
+    <div className="cs-app">
+      <a href="#main" className="cs-skip">{skip}</a>
       <SessionWatch locale={locale} />
-      <header className="flex h-14 items-center justify-between gap-4 border-b px-4 md:px-6">
-        <Link href={`${prefix}/sessions`} data-testid="brand" className="flex flex-col leading-none">
-          <BrandLockup />
+      <nav className="cs-rail" aria-label={signal("principal")}>
+        <Link href={`${prefix}/sessions`} className="k-rail-mark k-keep" aria-label="CYBERSPHERE Stage Coach" data-testid="brand">
+          <CompactMark />
         </Link>
-        <div className="flex items-center gap-3">
-          {email ? (
-            <span className="hidden max-w-[220px] truncate text-sm text-muted-foreground sm:inline">
-              {email}
-            </span>
-          ) : null}
-          <button
-            type="button"
-            data-testid="theme-toggle"
-            onClick={toggleTheme}
-            aria-label={theme === "dark" ? t("themeToLightAria") : t("themeToDarkAria")}
-            className="px-3 py-2 text-xs"
-          >
-            {theme === "dark" ? t("themeToLight") : t("themeToDark")}
-          </button>
-          <Link
-            href={locale === "en" ? "/pt-BR/sessions" : "/sessions"}
-            data-testid="locale-toggle"
-            className="cs-nav-link border-0 px-2"
-          >
-            {locale === "en" ? "PT-BR" : "EN"}
+        {RAIL.map((link) => {
+          const Icon = link.icon;
+          return (
+            <Link
+              key={link.key}
+              href={`${prefix}${link.href}`}
+              data-testid={link.testId}
+              aria-current={active(link.href) ? "page" : undefined}
+              aria-label={t(link.key)}
+              title={t(link.key)}
+            >
+              <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+            </Link>
+          );
+        })}
+        <button type="button" className="rail-item k-ai-item" aria-label={signal("askCoach")} title={signal("askCoach")} onClick={() => setOpen(true)}>
+          <Sparkles className="h-[18px] w-[18px]" aria-hidden="true" />
+        </button>
+        <Link href={`${prefix}/settings`} data-testid="nav-settings" aria-current={active("/settings") ? "page" : undefined} aria-label={t("settings")} title={t("settings")}>
+          <Settings className="h-[18px] w-[18px]" aria-hidden="true" />
+        </Link>
+        {role === "admin" ? (
+          <Link href={`${prefix}/admin/users`} data-testid="nav-admin" aria-current={active("/admin/users") ? "page" : undefined} aria-label={t("admin")} title={t("admin")}>
+            <Users className="h-[18px] w-[18px]" aria-hidden="true" />
           </Link>
+        ) : null}
+        <span className="k-rail-gap" />
+        <span className="k-avatar" aria-label={signal("account")} title={signal("account")}>{initials(email)}</span>
+      </nav>
+      <div className="cs-app-main">
+        <div className="k-app-head">
+          <button type="button" className="k-cmd" data-testid="command-button" aria-label={signal("commandLabel")} onClick={() => setOpen(true)}>
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            <span style={{ flex: 1, textAlign: "left" }}>{signal("askOrSearch")}</span>
+            <span className="cs-kbd">⌘K</span>
+          </button>
         </div>
-      </header>
-      <div className="flex min-h-0 flex-1">
-        <nav className="hidden w-60 shrink-0 flex-col border-r py-4 md:flex" aria-label={t("home")}>
-          {links.map((link) => {
-            const href = `${prefix}${link.href}`;
-            const active = pathname === href || pathname.startsWith(`${href}/`);
-            return (
-              <Link
-                key={link.key}
-                href={href}
-                data-testid={link.testId}
-                data-active={active ? "true" : "false"}
-                className="cs-nav-link"
-              >
-                {t(link.key)}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <nav className="flex flex-wrap border-b md:hidden" aria-label={t("home")}>
-            {links.map((link) => {
-              const href = `${prefix}${link.href}`;
-              const active = pathname === href || pathname.startsWith(`${href}/`);
-              return (
-                <Link
-                  key={link.key}
-                  href={href}
-                data-active={active ? "true" : "false"}
-                className="cs-nav-link border-b-2 border-l-0 px-3"
-                >
-                  {t(link.key)}
-                </Link>
-              );
-            })}
-          </nav>
-          <main id="main" className="min-w-0 flex-1">{children}</main>
-        </div>
+        <main id="main">{children}</main>
       </div>
+      <nav className="k-tabbar" aria-label={signal("principal")}>
+        {TABS.slice(0, 2).map((link) => {
+          const Icon = link.icon;
+          return (
+            <Link key={link.key} href={`${prefix}${link.href}`} aria-current={active(link.href) ? "page" : undefined}>
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              <span>{t(link.key)}</span>
+            </Link>
+          );
+        })}
+        <button type="button" className="k-ai-item" onClick={() => setOpen(true)}>
+          <Sparkles className="h-4 w-4" aria-hidden="true" />
+          <span>{signal("askShort")}</span>
+        </button>
+        {TABS.slice(2).map((link) => {
+          const Icon = link.icon;
+          return (
+            <Link key={link.key} href={`${prefix}${link.href}`} aria-current={active(link.href) ? "page" : undefined}>
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              <span>{t(link.key)}</span>
+            </Link>
+          );
+        })}
+      </nav>
+      {open ? <CommandPalette open onClose={() => setOpen(false)} actions={actions} /> : null}
     </div>
   );
 }

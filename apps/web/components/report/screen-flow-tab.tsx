@@ -77,7 +77,7 @@ export function ScreenFlowTab(props: Props) {
         </div>
       )}
       {view === "error" && (
-        <div role="alert" data-testid="screen-flow-error" className="rounded-md border border-destructive p-4">
+        <div role="alert" data-testid="screen-flow-error" className="cs-alert cs-alert-critical">
           <p className="font-medium">{t("screenFlow.error.title")}</p>
           <p className="mt-1 text-sm text-[color:var(--text-secondary)]">{t("screenFlow.error.body")}</p>
           <button type="button" className="mt-3 underline" onClick={props.onRetry}>
@@ -86,7 +86,7 @@ export function ScreenFlowTab(props: Props) {
         </div>
       )}
       {view === "empty" && (
-        <div data-testid="screen-flow-empty" className="rounded-md border p-6 text-center">
+        <div data-testid="screen-flow-empty" className="cs-alert cs-alert-neutral">
           <p>{t("screenFlow.empty.body")}</p>
           <a className="mt-3 inline-block underline" href={props.layoutHref || `/sessions/${props.sessionId}/layout`}>
             {t("screenFlow.empty.cta")}
