@@ -184,7 +184,7 @@ export function VoiceTab({
                     height={height}
                     className={item.rate === null ? "fill-muted" : "fill-primary"}
                   />
-                  <text x={index * 48 + 24} y="155" textAnchor="middle" className="fill-muted-foreground text-[10px]">
+                  <text x={index * 48 + 24} y="155" textAnchor="middle" className="fill-muted-foreground text-xs">
                     {item.label}
                   </text>
                 </g>

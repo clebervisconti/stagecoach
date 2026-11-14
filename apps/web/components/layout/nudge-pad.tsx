@@ -35,7 +35,7 @@ export function NudgePad({
           aria-label={t("layout.nudge.fine")}
           onClick={() => onFine(!fine)}
         >
-          <span className="font-mono text-[10px]">{fine ? "10" : "1"}</span>
+          <span className="font-mono text-xs">{fine ? "10" : "1"}</span>
         </button>
         <button type="button" className={cell} aria-label={t("layout.nudge.right")} data-testid="nudge-right" onClick={() => onNudge(step, 0)}>
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -46,7 +46,7 @@ export function NudgePad({
         </button>
         <span />
       </div>
-      <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">{t("layout.nudge.hint")}</p>
+      <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">{t("layout.nudge.hint")}</p>
     </div>
   );
 }

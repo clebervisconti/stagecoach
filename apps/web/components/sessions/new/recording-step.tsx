@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
 import {
   Activity,
   Camera,
@@ -526,43 +527,29 @@ export function RecordingStep({
             </p>
             <div className="mt-3 flex flex-wrap gap-3">
               {canRetry && (
-                <button type="button" onClick={onRetry} className="text-xs uppercase tracking-[0.08em]">
+                <Button type="button" variant="ghost" onClick={onRetry}>
                   {t("tryAgain")}
-                </button>
+                </Button>
               )}
-              <button type="button" onClick={() => fileInput.current?.click()} className="text-xs uppercase tracking-[0.08em]">
+              <Button type="button" variant="ghost" onClick={() => fileInput.current?.click()}>
                 {t("chooseAnother")}
-              </button>
+              </Button>
             </div>
           </div>
         )}
 
         <div className="mt-10 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            disabled={uploading}
-            onClick={onBack}
-            className="inline-flex h-11 items-center rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] px-5 text-xs uppercase tracking-[0.08em] disabled:opacity-40"
-          >
+          <Button type="button" variant="ghost" disabled={uploading} onClick={onBack}>
             {t("back")}
-          </button>
+          </Button>
           {uploading ? (
-            <button
-              type="button"
-              onClick={onCancelUpload}
-              className="inline-flex h-11 items-center rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] px-5 text-xs uppercase tracking-[0.08em]"
-            >
+            <Button type="button" variant="ghost" onClick={onCancelUpload}>
               {t("cancelUpload")}
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              data-testid="upload-continue"
-              onClick={submit}
-              className="inline-flex h-11 items-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-5 text-xs uppercase tracking-[0.08em] text-[color:var(--text-inverse)]"
-            >
+            <Button type="button" data-testid="upload-continue" onClick={submit}>
               {t("uploadContinue")}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -623,7 +610,7 @@ export function RecordingStep({
                 {t("neverFaces")}
               </li>
               <li className="flex gap-2">
-                <span className="mt-0.5 inline-block h-4 w-4 shrink-0 rounded-full border border-[color:var(--line-strong)] text-center text-[10px]" aria-hidden="true">
+                <span className="mt-0.5 inline-block h-4 w-4 shrink-0 rounded-full border border-[color:var(--line-strong)] text-center text-xs" aria-hidden="true">
                   i
                 </span>
                 {t("neverImages")}

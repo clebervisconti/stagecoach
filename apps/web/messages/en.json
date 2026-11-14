@@ -630,7 +630,7 @@
       "where": "Where",
       "recording": "Recording",
       "layout": "Layout",
-      "layoutDone": "Layout ✓",
+      "layoutDone": "Layout confirmed",
       "confirmedAuto": "Confirmed automatically",
       "skippedAudio": "Skipped · audio only",
       "stepOf": "Step {n} of {of}, {label}"

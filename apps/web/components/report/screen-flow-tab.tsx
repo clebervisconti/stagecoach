@@ -368,7 +368,7 @@ function ReadyView({
                     )}
                   </div>
                   <div role="gridcell" className="font-mono text-xs">{index + 1}</div>
-                  <div role="gridcell" className="font-mono text-[11px] uppercase">{typeLabel(t, segment.type)}</div>
+                  <div role="gridcell" className="font-mono text-xs uppercase">{typeLabel(t, segment.type)}</div>
                   <div role="gridcell" className="min-w-0">
                     <button
                       type="button"
@@ -474,7 +474,7 @@ function Kpi({ label, value }: { label: string; value: string }) {
 function FlagLine({ segment }: { segment: ScreenSegment }) {
   const flags = segment.flags ?? [];
   if (flags.length === 0) return null;
-  return <span className="mt-1 block font-mono text-[11px] uppercase">{flags.join(" · ")}</span>;
+  return <span className="mt-1 block font-mono text-xs uppercase">{flags.join(" · ")}</span>;
 }
 
 function typeLabel(t: (key: string) => string, type: string | undefined): string {

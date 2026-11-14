@@ -29,4 +29,4 @@ The API builds the authorize URL with `response_type=code`, `code_challenge_meth
 
 ## Local / CI
 
-Leave the Apple variables unset. The sign-in page shows that Apple is disabled. Unit tests mint an RSA key, build a JWKS, and sign a fake ID token — no egress to `appleid.apple.com`.
+Leave the Apple variables unset. The sign-in page hides the button until all four settings exist. It does not describe the missing settings. Unit tests mint an RSA key, build a JWKS, and sign a fake ID token — no egress to `appleid.apple.com`. A new Apple account also needs an invite (ADR-093). Linking an existing account does not.

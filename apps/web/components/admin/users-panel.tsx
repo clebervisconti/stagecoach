@@ -24,6 +24,8 @@ const COPY = {
     submit: "Create",
     saving: "Saving…",
     created: "User created. Temporary password (shown once):",
+    invite: "Create invite",
+    inviteCreated: "Invite link (shown once):",
     resetDone: "Temporary password (shown once):",
     disable: "Disable",
     enable: "Enable",
@@ -60,6 +62,8 @@ const COPY = {
     submit: "Criar",
     saving: "Salvando…",
     created: "Usuário criado. Senha temporária (mostrada uma vez):",
+    invite: "Criar convite",
+    inviteCreated: "Link do convite (mostrado uma vez):",
     resetDone: "Senha temporária (mostrada uma vez):",
     disable: "Desativar",
     enable: "Ativar",
@@ -164,6 +168,7 @@ export function AdminUsersPanel() {
       const body = (await response.json().catch(() => null)) as {
         detail?: string;
         temporary_password?: string;
+        invite?: string;
       } | null;
       if (!response.ok) {
         setError(typeof body?.detail === "string" ? body.detail : t.actionError);
@@ -176,6 +181,13 @@ export function AdminUsersPanel() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function createInvite() {
+    const body = await mutate("/api/stagecoach/admin/invites", "POST", {});
+    if (!body?.invite) return;
+    const link = `${window.location.origin}${locale === "pt-BR" ? "/pt-BR" : ""}/sign-in?mode=register&invite=${encodeURIComponent(body.invite)}`;
+    setNotice(`${t.inviteCreated} ${link}`);
   }
 
   async function onCreate(event: FormEvent<HTMLFormElement>) {
@@ -229,6 +241,9 @@ export function AdminUsersPanel() {
     >
       <h1 className="text-3xl">{t.heading}</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t.intro}</p>
+      <button type="button" className="cs-button cs-button-ghost mt-4" data-testid="admin-invite" disabled={busy} onClick={() => void createInvite()}>
+        {t.invite}
+      </button>
 
       {phase === "loading" ? (
         <p className="mt-8 text-sm" data-testid="admin-loading">

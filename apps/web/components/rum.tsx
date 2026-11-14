@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { redactRumAttributes } from "@/lib/rum-redact";
 
 /**
  * Browser RUM. The token is public by design and is injected at build time
@@ -21,6 +22,10 @@ export function Rum() {
           rumAccessToken: token,
           applicationName: "stagecoach",
           deploymentEnvironment: "production",
+          exporter: {
+            onAttributesSerializing: (attributes) =>
+              redactRumAttributes(attributes as Record<string, unknown>) as typeof attributes,
+          },
         });
       })
       .catch(() => {

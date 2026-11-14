@@ -1,2 +1,3 @@
+# One group. Every path stays disallowed. There is no Allow rule.
 User-agent: *
 Disallow: /

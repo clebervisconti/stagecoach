@@ -7,8 +7,14 @@ import "../globals.css";
 const themeScript = `(function(){try{var saved=localStorage.getItem("cs-theme");var theme=saved==="light"||saved==="dark"?saved:(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.dataset.theme=theme;}catch(e){document.documentElement.dataset.theme="dark";}})();`;
 
 export const metadata: Metadata = {
-  title: "Stage Coach - Evidence-based Presentation Coaching",
-  description: "Upload or record a talk. Get deep, research-backed feedback.",
+  metadataBase: new URL("https://stagecoach.cybersphere.com.br"),
+  title: {
+    default: "Stage Coach",
+    template: "%s · Stage Coach",
+  },
+  description: "Upload or record a talk. Get research-backed feedback.",
+  robots: { index: false, follow: false },
+  icons: { icon: "/favicon.ico", apple: "/apple-icon.png" },
 };
 
 export default async function RootLayout({

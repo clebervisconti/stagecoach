@@ -74,7 +74,7 @@ export function RadarChart({ points, goalPoints }: RadarChartProps) {
                 y={label.y}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                className="fill-foreground text-[10px]"
+                className="fill-foreground text-xs"
               >
                 {wrapLabel(t(`pillars.${point.id as PillarId}`)).map((line, lineIndex, lines) => (
                   <tspan key={line} x={label.x} dy={lineIndex === 0 ? (lines.length > 1 ? "-0.5em" : "0") : "1.1em"}>

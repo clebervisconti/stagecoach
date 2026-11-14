@@ -29,6 +29,10 @@ MIN_PASSWORD_AUTH_RATE = 0.2  # 1 per 5s sustained
 AUTH_BURST = 5
 INVALID_LOGIN = "Invalid email or password"
 APPLE_LOGIN_ERROR = "Invalid Apple ID token"
+APPLE_NO_ACCOUNT = "No account is linked to this Apple ID."
+INVITE_REQUIRED = "An invite is required"
+INVITE_INVALID = "This invite is invalid or expired."
+INVITE_TTL_DAYS = 7
 _MEMORY_AUTH_STORE = MemoryStore()
 
 
@@ -137,13 +141,44 @@ def _active_user_by_email(db: Session, email: str) -> User | None:
     return db.query(User).filter(User.email == email, User.deleted_at.is_(None)).first()
 
 
-def register_user(db: Session, email: str, password: str) -> dict[str, Any]:
+def issue_invite(db: Session, actor: User, *, ip: str | None = None) -> str:
+    """Single-use invite. The raw value is returned once and is not audited."""
+    raw = secrets.token_urlsafe(32)
+    row = AuthToken(
+        id=uuid7(),
+        user_id=None,
+        purpose="invite",
+        token_hash=_token_hash(raw),
+        expires_at=_now() + timedelta(days=INVITE_TTL_DAYS),
+    )
+    db.add(row)
+    write_audit(
+        db,
+        actor_id=actor.id,
+        action="admin.invite.create",
+        target_type="user",
+        target_id=str(actor.id),
+        ip=ip,
+        details={},
+    )
+    db.commit()
+    return raw
+
+
+def register_user(db: Session, email: str, password: str, invite: str) -> dict[str, Any]:
+    if not invite or not invite.strip():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=INVITE_REQUIRED)
     email = normalize_email(email)
     # Hash before the lookup so an existing account is not cheaper to probe.
     hashed = hash_password(password)
+    try:
+        consume_token(db, invite.strip(), "invite")
+    except HTTPException as exc:
+        raise HTTPException(status_code=exc.status_code, detail=INVITE_INVALID) from exc
     existing = _active_user_by_email(db, email)
     if existing is not None:
         # Do not attach a password to an Apple-only or existing account, and do not say which.
+        db.commit()
         return {"status": "accepted", "email": email}
     user = User(
         email=email,
@@ -344,7 +379,7 @@ def _safe_to_link(candidate: User) -> bool:
     return True
 
 
-def apply_apple_identity(db: Session, claims: dict[str, Any]) -> dict[str, Any]:
+def apply_apple_identity(db: Session, claims: dict[str, Any], invite: str | None = None) -> dict[str, Any]:
     sub = str(claims.get("sub") or "")
     email = normalize_email(str(claims.get("email") or ""))
     if not sub:
@@ -384,6 +419,21 @@ def apply_apple_identity(db: Session, claims: dict[str, Any]) -> dict[str, Any]:
             user = candidate
             linked = True
         else:
+            if not invite:
+                write_audit(
+                    db,
+                    actor_id=None,
+                    action="auth.apple.refuse",
+                    target_type="user",
+                    target_id="unknown",
+                    details={"reason": "no_account"},
+                )
+                db.commit()
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=APPLE_NO_ACCOUNT)
+            try:
+                consume_token(db, invite.strip(), "invite")
+            except HTTPException as exc:
+                raise HTTPException(status_code=exc.status_code, detail=INVITE_INVALID) from exc
             user = User(
                 email=email,
                 locale="en",
@@ -445,6 +495,7 @@ def finish_apple(
     id_token: str,
     nonce: str,
     jwks: dict[str, Any],
+    invite: str | None = None,
 ) -> dict[str, Any]:
     if not apple_configured():
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Sign in with Apple is not configured")
@@ -452,7 +503,7 @@ def finish_apple(
         claims = validate_id_token(id_token, nonce=nonce, jwks=jwks)
     except Exception as exc:  # noqa: BLE001 — map all JWT failures to 401
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=APPLE_LOGIN_ERROR) from exc
-    return apply_apple_identity(db, claims)
+    return apply_apple_identity(db, claims, invite=invite)
 
 
 def public_identity(user: User) -> dict[str, Any]:

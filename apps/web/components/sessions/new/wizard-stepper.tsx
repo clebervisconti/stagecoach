@@ -1,5 +1,6 @@
 "use client";
 
+import { CircleCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { DeliveryMode } from "@/lib/online";
 
@@ -44,7 +45,7 @@ export function WizardStepper({
   const currentIndex = steps.findIndex((step) => step.id === current);
   return (
     <nav aria-label={t("stepper.progress")} className="mb-8">
-      <ol className="flex flex-wrap items-center gap-4 text-[11px] uppercase tracking-[0.12em] text-[color:var(--text-tertiary)]">
+      <ol className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.12em] text-[color:var(--text-tertiary)]">
         {steps.map((step, index) => {
           const currentStep = step.id === current;
           const done = index < currentIndex || (step.id === "layout" && Boolean(layoutDone || consentOff));
@@ -64,12 +65,18 @@ export function WizardStepper({
                   onClick={() => onSelect?.(step.id)}
                 >
                   <span className="sr-only">{t("stepper.stepOf", { n: String(step.n), of: String(steps.length), label })}</span>
-                  <span aria-hidden="true">{`${step.n} · ${label}`}</span>
+                  <span aria-hidden="true" className="inline-flex items-center gap-1">
+                    {`${step.n} · ${label}`}
+                    {done && step.id === "layout" && step.doneLabel ? <CircleCheck className="h-4 w-4" aria-hidden="true" /> : null}
+                  </span>
                 </button>
               ) : (
                 <>
                   <span className="sr-only">{t("stepper.stepOf", { n: String(step.n), of: String(steps.length), label })}</span>
-                  <span aria-hidden="true">{`${step.n} · ${label}`}</span>
+                  <span aria-hidden="true" className="inline-flex items-center gap-1">
+                    {`${step.n} · ${label}`}
+                    {done && step.id === "layout" && step.doneLabel ? <CircleCheck className="h-4 w-4" aria-hidden="true" /> : null}
+                  </span>
                 </>
               )}
             </li>

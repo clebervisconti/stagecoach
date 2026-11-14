@@ -80,7 +80,7 @@ class AuthToken(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid7)
     user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
     )
     purpose = Column(String(32), nullable=False)
     token_hash = Column(String(64), nullable=False, unique=True, index=True)

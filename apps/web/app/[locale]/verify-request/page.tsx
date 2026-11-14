@@ -1,18 +1,18 @@
-import Link from "next/link";
+import { Suspense } from "react";
+import { AuthFrame } from "@/components/auth/auth-frame";
+import { VerifyForm } from "@/components/auth/verify-form";
+import { titled } from "@/lib/titles";
+
+export function generateMetadata() {
+  return titled("Confirm your email", "Confirme seu e-mail");
+}
 
 export default function VerifyRequestPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="max-w-md space-y-3 text-center">
-        <h1 className="text-2xl font-bold">Magic links are retired</h1>
-        <p className="text-sm text-muted-foreground">
-          Sign in with email and password, or Sign in with Apple. Verification and reset
-          tokens arrive through the email stand-in until a production provider (D10) is chosen.
-        </p>
-        <Link href="/sign-in" className="text-sm underline">
-          Back to sign in
-        </Link>
-      </div>
-    </div>
+    <AuthFrame>
+      <Suspense fallback={<p className="text-base">Loading</p>}>
+        <VerifyForm />
+      </Suspense>
+    </AuthFrame>
   );
 }

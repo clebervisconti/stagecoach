@@ -1,4 +1,9 @@
 import { auth, signOut } from "@/auth";
+import { titled } from "@/lib/titles";
+
+export function generateMetadata() {
+  return titled("Settings", "Ajustes");
+}
 import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { ConsentPanel } from "@/components/consents/consent-panel";
