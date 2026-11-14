@@ -121,7 +121,9 @@
 .s-pw .cs-field { width: 100%; padding-right: 56px; }
 .s-pw .cs-button { position: absolute; right: 4px; top: 2px; width: 44px; min-height: 44px; padding: 0; background: transparent; border-color: transparent; }
 .s-steps { display: flex; gap: 8px; flex-wrap: wrap; }
-.s-steps button, .s-steps span { font-size: 13px; color: var(--text-tertiary); padding: 0 12px; min-height: 44px; display: inline-flex; align-items: center; border-radius: 99px; border: 1px solid var(--line); background: transparent; letter-spacing: 0; text-transform: none; font-weight: 500; }
+.s-steps button,
+.s-steps > ol > li > span { font-size: 13px; color: var(--text-secondary); padding: 0 12px; min-height: 44px; display: inline-flex; align-items: center; border-radius: 99px; border: 1px solid var(--sc-control-edge); background: transparent; letter-spacing: 0; text-transform: none; font-weight: 500; }
+.s-steps button span { color: inherit; border: 0; background: transparent; min-height: 0; padding: 0; }
 .s-steps [aria-current="step"] button,
 .s-steps [aria-current="step"] > span { color: var(--text-inverse); background: var(--bg-inverse); border-color: transparent; }
 .s-bar { display: grid; grid-template-columns: minmax(110px, 150px) 1fr 52px; gap: 12px; align-items: center; font-size: 14px; min-height: 32px; }
