@@ -244,17 +244,42 @@
   color: var(--text-strong);
 }
 
-.cs-brand-lockup {
+.cs-brand-lockup,
+.cs-brand-mark {
   display: block;
-  width: 182px;
-  height: 28px;
   flex: 0 0 auto;
   background-color: var(--spectral);
-  -webkit-mask: url("/brand/lockup-horizontal-on-dark.svg") center / contain no-repeat;
-  mask: url("/brand/lockup-horizontal-on-dark.svg") center / contain no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
 }
 
-:root[data-theme="light"] .cs-brand-lockup {
+.cs-brand-lockup {
+  width: 156px;
+  height: 24px;
+  -webkit-mask-image: url("/brand/lockup-horizontal-on-dark.svg");
+  mask-image: url("/brand/lockup-horizontal-on-dark.svg");
+}
+
+.cs-brand-mark {
+  width: 28px;
+  height: 28px;
+  -webkit-mask-image: url("/brand/mark-compact-on-dark.svg");
+  mask-image: url("/brand/mark-compact-on-dark.svg");
+}
+
+@media (min-width: 768px) {
+  .cs-brand-lockup {
+    width: 182px;
+    height: 28px;
+  }
+}
+
+:root[data-theme="light"] .cs-brand-lockup,
+:root[data-theme="light"] .cs-brand-mark {
   background-color: #000000;
 }
 

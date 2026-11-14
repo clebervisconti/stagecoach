@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime
-from typing import Any
+from typing import Any, cast
 
 DELIVERY_MODES = ("stage", "webinar", "online_talk", "recorded_video")
 FILLER_TOKENS = ("um", "uh", "erm", "like", "tipo", "né", "ne", "ahh", "éh")
@@ -729,7 +729,7 @@ def online_report(
     The population overall is not in this payload.
     """
     mode = delivery_mode if delivery_mode in DELIVERY_MODES else "stage"
-    base = {
+    base: dict[str, Any] = {
         "delivery_mode": mode,
         "config_version": "1.1.0",
         "basis": "H",
@@ -832,9 +832,15 @@ def _role_box(layout: dict[str, Any], role: str) -> dict[str, Any] | None:
     segments = layout.get("segments") or []
     if not segments:
         return None
-    for region in segments[0].get("regions") or []:
-        if region.get("role") == role:
-            return region
+    first = segments[0]
+    if not isinstance(first, dict):
+        return None
+    regions = first.get("regions") or []
+    if not isinstance(regions, list):
+        return None
+    for region in regions:
+        if isinstance(region, dict) and region.get("role") == role:
+            return cast(dict[str, Any], region)
     return None
 
 
