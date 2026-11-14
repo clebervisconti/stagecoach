@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Settings stays mounted when account usage cannot be loaded. Upload quotas treat the in-memory test stand-in as no stored media, and a database error still fails the request instead of allowing the upload.
 - The worker boots again on current GitHub runners. `kombu` is pinned to 5.6.2 so Celery can use the Redis 5 client, and `ctranslate2` is 4.6.3 so speech recognition imports on glibc 2.41.
 - Webinar uploads through Cloudflare no longer die on the proxy body cap and then claim the file is over 2 GB. An 819 MB recording is sent as 8 MiB chunks, a dropped chunk is retried, and Try again resumes the same upload. "File too large" is shown only when the file is over 2 GiB. A 413 or a dropped connection says the proxy or the connection rejected it. See ADR-085.
 

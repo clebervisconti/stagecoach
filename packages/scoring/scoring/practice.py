@@ -281,7 +281,11 @@ def score_text_drill(drill_id: str, text: str) -> dict[str, Any]:
     if drill is None:
         return {"applicable": False, "na_reason": "Unknown drill.", "score": None}
     if not cleaned:
-        return {"applicable": False, "na_reason": "Write the drill before it can be scored.", "score": None}
+        return {
+            "applicable": False,
+            "na_reason": "Write the drill before it can be scored.",
+            "score": None,
+        }
     words = _words(cleaned)
     lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
     metrics: dict[str, Any] = {"words": len(words), "lines": len(lines)}
@@ -326,7 +330,11 @@ def score_answer(text: str) -> dict[str, Any]:
     """Answer-first shape: the answer is the first sentence, then a reason."""
     cleaned = text.strip()
     if not cleaned:
-        return {"applicable": False, "na_reason": "Write an answer before it can be scored.", "score": None}
+        return {
+            "applicable": False,
+            "na_reason": "Write an answer before it can be scored.",
+            "score": None,
+        }
     lowered = cleaned.lower()
     throat = any(phrase in lowered[:80] for phrase in THROAT_CLEARING)
     first = re.split(r"[.!?]", cleaned, maxsplit=1)[0]
@@ -348,7 +356,9 @@ def score_answer(text: str) -> dict[str, Any]:
     }
 
 
-def score_transcript_drill(drill_id: str, transcript: str, duration_s: float | None) -> dict[str, Any]:
+def score_transcript_drill(
+    drill_id: str, transcript: str, duration_s: float | None
+) -> dict[str, Any]:
     """Score an audio drill from a transcript. No transcript stays N/A."""
     drill = drill_by_id(drill_id)
     if drill is None:
@@ -386,7 +396,9 @@ def score_transcript_drill(drill_id: str, transcript: str, duration_s: float | N
     }
 
 
-def attempt_delta(current: float | None, previous: float | None, better_when: str) -> dict[str, Any] | None:
+def attempt_delta(
+    current: float | None, previous: float | None, better_when: str
+) -> dict[str, Any] | None:
     if current is None or previous is None:
         return None
     delta = float(current) - float(previous)
@@ -516,7 +528,9 @@ def series_compare(rows: list[dict[str, Any]]) -> dict[str, Any]:
         if isinstance(a, (int, float)) and isinstance(b, (int, float)):
             deltas[key] = round(float(b) - float(a), 2)
     overall_delta = None
-    if isinstance(first.get("overall"), (int, float)) and isinstance(last.get("overall"), (int, float)):
+    if isinstance(first.get("overall"), (int, float)) and isinstance(
+        last.get("overall"), (int, float)
+    ):
         overall_delta = round(float(last["overall"]) - float(first["overall"]), 2)
     return {
         "ready": True,
@@ -572,7 +586,9 @@ def deck_review(slides: list[dict[str, Any]]) -> dict[str, Any]:
     assertions = 0
     for title in titles:
         n = len(_words(title))
-        if 4 <= n <= 12 and not title.lower().startswith(("overview", "agenda", "sumário", "visão geral")):
+        if 4 <= n <= 12 and not title.lower().startswith(
+            ("overview", "agenda", "sumário", "visão geral")
+        ):
             assertions += 1
     ratio = assertions / len(titles)
     return {
@@ -632,7 +648,9 @@ def propose_layout(delivery_mode: str, camera_setup: str) -> dict[str, Any]:
     }
 
 
-def _segment_layout(mode: str, kind: str, confidence: float, review: bool, *, camera_full: bool) -> dict[str, Any]:
+def _segment_layout(
+    mode: str, kind: str, confidence: float, review: bool, *, camera_full: bool
+) -> dict[str, Any]:
     if camera_full:
         regions = [{"role": "camera", "x": 0, "y": 0, "w": 1, "h": 1}]
     else:
@@ -719,7 +737,11 @@ def online_report(
         "note": "These signals describe camera, screen, and silence. They do not judge whether the content is true.",
     }
     if mode == "stage":
-        na = {"applicable": False, "score": None, "na_reason": "Stage delivery uses the existing report."}
+        na = {
+            "applicable": False,
+            "score": None,
+            "na_reason": "Stage delivery uses the existing report.",
+        }
         base["signals"] = {
             "screen_flow": na,
             "camera_presence": na,
@@ -727,7 +749,9 @@ def online_report(
             "audience_prompts": na,
         }
         return base
-    duration = float(duration_s) if isinstance(duration_s, (int, float)) and duration_s > 0 else None
+    duration = (
+        float(duration_s) if isinstance(duration_s, (int, float)) and duration_s > 0 else None
+    )
     layout = layout or {}
     kind = layout.get("kind")
     camera = _role_box(layout, "camera")
@@ -834,7 +858,10 @@ def evaluate_quota(
 ) -> dict[str, Any]:
     """Allow an upload when storage, concurrency, and the minutes cap all fit."""
     if active_jobs >= active_limit:
-        return {"allowed": False, "reason": "An analysis is already running. Wait for it to finish."}
+        return {
+            "allowed": False,
+            "reason": "An analysis is already running. Wait for it to finish.",
+        }
     if storage_bytes + incoming_bytes > storage_limit:
         return {"allowed": False, "reason": "This account is at its storage limit."}
     if monthly_seconds + reserved_seconds > monthly_limit:
