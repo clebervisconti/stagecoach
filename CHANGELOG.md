@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Settings stays mounted when account usage cannot be loaded. Upload quotas treat the in-memory test stand-in as no stored media, and a database error still fails the request instead of allowing the upload.
+- An invite is spent by one conditional update (`used_at` still empty and not expired), so two overlapping requests cannot both use it.
+- Sign-in uses the Cybersphere lockup, with Stage Coach beside it. The app header uses the compact mark so a 390px page does not scroll sideways. The favicon and share image use that mark.
+- Sign in with Apple is also on the invite form when Apple is configured, and it still creates an account only with a valid invite. A baked Apple key set is refused unless `ENV` or `ENVIRONMENT` is explicitly `development`, `test`, or `ci`. `deployment.environment=production` counts as production, including when `ENV` is unset. `docker-compose.prod.yml` sets `ENV=production` on the API.
 - The worker boots again on current GitHub runners. `kombu` is pinned to 5.6.2 so Celery can use the Redis 5 client, and `ctranslate2` is 4.6.3 so speech recognition imports on glibc 2.41.
 - Webinar uploads through Cloudflare no longer die on the proxy body cap and then claim the file is over 2 GB. An 819 MB recording is sent as 8 MiB chunks, a dropped chunk is retried, and Try again resumes the same upload. "File too large" is shown only when the file is over 2 GiB. A 413 or a dropped connection says the proxy or the connection rejected it. See ADR-085.
 
@@ -31,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- The dependency audit passes `--ignore-vuln CVE-2026-126360` only while the UTC date is on or before 2026-12-31. `splunk-opentelemetry` 2.13.1 is pinned, and Splunk 2.13.3 still requires `opentelemetry-api` 1.45.1. Remove the ignore when Splunk allows 1.45.2. Tracking: https://github.com/clebervisconti/stagecoach/issues/184
 - Browser RUM, when a build-time token is present, redacts `/sessions/<id>` and `/prep/<id>` from exported URLs and drops query strings. Session replay stays off. The token is not committed.
 - API rate limits key the per-user bucket on the verified user id. A token that does not verify is keyed by a hash of the whole token, not the JWT header prefix, which is the same for every HS256 session. `GET /api/v1/me`, the session document, and the session event stream do not spend the user bucket. The per-IP limit remains. Defaults are 8 requests/s per user (burst 120) and 16/s per IP (burst 240). 429 responses include `Retry-After`, and the web proxy forwards it. See ADR-086.
 

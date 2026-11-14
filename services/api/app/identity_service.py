@@ -11,6 +11,7 @@ from typing import Any
 
 import jwt
 from fastapi import HTTPException, status
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.apple_oidc import apple_configured, validate_id_token
@@ -125,15 +126,44 @@ def issue_token(db: Session, user: User, purpose: str) -> str:
     return raw
 
 
+def _invalid_token() -> HTTPException:
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired token")
+
+
 def consume_token(db: Session, raw: str, purpose: str) -> AuthToken:
-    row = (
-        db.query(AuthToken)
-        .filter(AuthToken.token_hash == _token_hash(raw), AuthToken.purpose == purpose)
-        .first()
+    """Mark a single-use token spent.
+
+    Postgres takes one conditional UPDATE so two requests cannot both pass
+    the unused check. The in-memory test stand-in has no row lock; it keeps
+    the check-and-set used by the auth tests.
+    """
+    digest = _token_hash(raw)
+    now = _now()
+    probe = db.query(AuthToken).filter(AuthToken.token_hash == digest, AuthToken.purpose == purpose)
+    if not hasattr(probe, "with_for_update"):
+        row = probe.first()
+        if row is None or row.used_at is not None or row.expires_at < now:
+            raise _invalid_token()
+        row.used_at = now
+        return row
+    spent = (
+        update(AuthToken)
+        .where(
+            AuthToken.token_hash == digest,
+            AuthToken.purpose == purpose,
+            AuthToken.used_at.is_(None),
+            AuthToken.expires_at > now,
+        )
+        .values(used_at=now)
+        .returning(AuthToken.id)
     )
-    if row is None or row.used_at is not None or row.expires_at < _now():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired token")
-    row.used_at = _now()
+    matched = db.execute(spent).first()
+    if matched is None:
+        raise _invalid_token()
+    row = probe.first()
+    if row is None:
+        raise _invalid_token()
+    row.used_at = now
     return row
 
 

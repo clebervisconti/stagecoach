@@ -24,10 +24,17 @@ export function AccountUsagePanel() {
 
   useEffect(() => {
     void Promise.all([
-      fetch("/api/stagecoach/account/usage", { cache: "no-store" }).then((response) => response.json()),
-      fetch("/api/stagecoach/account/readiness", { cache: "no-store" }).then((response) => response.json()),
+      fetch("/api/stagecoach/account/usage", { cache: "no-store" }).then(async (response) => {
+        if (!response.ok) throw new Error("usage");
+        return response.json();
+      }),
+      fetch("/api/stagecoach/account/readiness", { cache: "no-store" }).then(async (response) => {
+        if (!response.ok) return null;
+        return response.json();
+      }),
     ])
       .then(([usageBody, readyBody]) => {
+        if (!usageBody?.limits || typeof usageBody.storage_bytes !== "number") return;
         setUsage(usageBody);
         setReady(readyBody);
       })
@@ -35,7 +42,7 @@ export function AccountUsagePanel() {
   }, [t]);
 
   if (error) return <p className="text-sm text-destructive">{error}</p>;
-  if (!usage) return null;
+  if (!usage?.limits) return null;
   const storageGb = (usage.storage_bytes / 1024 ** 3).toFixed(2);
   const storageLimit = (usage.limits.storage_bytes / 1024 ** 3).toFixed(0);
   return (

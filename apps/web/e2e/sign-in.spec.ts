@@ -75,6 +75,12 @@ test("Sign in with Apple button appears when the API says enabled", async ({ pag
 
   await page.goto("/sign-in", { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("apple-signin")).toBeVisible();
+
+  await page.goto("/sign-in?mode=register", { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("apple-signin")).toHaveCount(0);
+
+  await page.goto("/sign-in?mode=register&invite=example-invite", { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("apple-signin")).toBeVisible();
 });
 
 test("Apple callback explains a cancellation without internal detail", async ({ page }) => {
