@@ -26,6 +26,47 @@ JwksFetcher = Callable[[], dict[str, Any]]
 TokenExchanger = Callable[[dict[str, str]], dict[str, Any]]
 
 
+_NON_PRODUCTION_ENVS = frozenset({"development", "test", "ci"})
+
+
+def _named_environments() -> list[str]:
+    values: list[str] = []
+    for name in ("ENV", "ENVIRONMENT"):
+        value = (os.getenv(name) or "").strip().lower()
+        if value:
+            values.append(value)
+    return values
+
+
+def _otel_deployment_environment() -> str:
+    raw = os.getenv("OTEL_RESOURCE_ATTRIBUTES", "")
+    for part in raw.split(","):
+        key, separator, value = part.partition("=")
+        if separator and key.strip() == "deployment.environment":
+            return value.strip().lower()
+    return ""
+
+
+def refuse_static_jwks_in_production() -> None:
+    """A baked JWKS document skips Apple's key rotation.
+
+    Fail closed. The document is allowed only when ENV or ENVIRONMENT is
+    explicitly development, test, or ci, and OpenTelemetry does not say
+    deployment.environment=production. An unset ENV is not development.
+    """
+    if not os.getenv("APPLE_JWKS_JSON", "").strip():
+        return
+    named = _named_environments()
+    deployment = _otel_deployment_environment()
+    allowed = bool(named) and all(value in _NON_PRODUCTION_ENVS for value in named)
+    if deployment == "production" or not allowed:
+        raise RuntimeError(
+            "APPLE_JWKS_JSON is set and this process is not an explicit "
+            "development, test, or ci environment. Production must fetch "
+            "Apple's keys from appleid.apple.com."
+        )
+
+
 def apple_configured() -> bool:
     return all(
         [

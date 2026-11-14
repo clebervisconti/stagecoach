@@ -55,8 +55,8 @@ export function AppShell({ locale, email, role, children }: AppShellProps) {
       </a>
       <SessionWatch locale={locale} />
       <header className="flex h-14 items-center justify-between gap-4 border-b px-4 md:px-6">
-        <Link href={`${prefix}/sessions`} data-testid="brand" className="flex flex-col leading-none">
-          <BrandLockup />
+        <Link href={`${prefix}/sessions`} data-testid="brand" className="flex min-w-0 flex-col leading-none">
+          <BrandLockup compact />
         </Link>
         <div className="flex items-center gap-3">
           {email ? (

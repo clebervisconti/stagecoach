@@ -27,8 +27,10 @@ from app.routers import (
     screens,
 )
 from app.database import engine
+from app.apple_oidc import refuse_static_jwks_in_production
 
 init_api_otel()
+refuse_static_jwks_in_production()
 
 app = FastAPI(
     title="Stage Coach API",
