@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Settings no longer crashes when account usage is unavailable. Upload quota checks treat the in-memory test database, which has no join, as zero stored media.
 - The worker boots again on current GitHub runners. `kombu` is pinned to 5.6.2 so Celery can use the Redis 5 client, and `ctranslate2` is 4.6.3 so speech recognition imports on glibc 2.41.
 - Webinar uploads through Cloudflare no longer die on the proxy body cap and then claim the file is over 2 GB. An 819 MB recording is sent as 8 MiB chunks, a dropped chunk is retried, and Try again resumes the same upload. "File too large" is shown only when the file is over 2 GiB. A 413 or a dropped connection says the proxy or the connection rejected it. See ADR-085.
 
@@ -32,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - Browser RUM, when a build-time token is present, redacts `/sessions/<id>` and `/prep/<id>` from exported URLs and drops query strings. Session replay stays off. The token is not committed.
+- Dependency audit ignores CVE-2026-126360. `splunk-opentelemetry` 2.13.3 still requires `opentelemetry-api` 1.45.1, and 1.45.2 is the fix for quadratic traceparent parsing. Remove the ignore when a Splunk release allows 1.45.2.
 - API rate limits key the per-user bucket on the verified user id. A token that does not verify is keyed by a hash of the whole token, not the JWT header prefix, which is the same for every HS256 session. `GET /api/v1/me`, the session document, and the session event stream do not spend the user bucket. The per-IP limit remains. Defaults are 8 requests/s per user (burst 120) and 16/s per IP (burst 240). 429 responses include `Retry-After`, and the web proxy forwards it. See ADR-086.
 
 - App sign-in no longer depends on Cloudflare Access. Email and password sit beside Sign in with Apple. Sessions are httpOnly SameSite=Lax cookies, argon2id hashes, login lockout that does not reveal whether an account exists, Origin checks on BFF mutations, and a session version that dies on password, role, and disable changes. See ADR-083 and ADR-084.

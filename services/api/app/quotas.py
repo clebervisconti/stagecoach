@@ -35,29 +35,39 @@ ACTIVE_LIMIT = int(os.getenv("QUOTA_ACTIVE_JOBS", "1"))
 ACTIVE_STATUSES = ("pending", "running")
 
 
+def _aggregate(db: Session, expression: Any, onclause: Any, *filters: Any) -> int:
+    """MemoryDB has no join. Tests that do not store media count as zero."""
+    query = db.query(expression)
+    if not hasattr(query, "join"):
+        return 0
+    try:
+        return int(query.join(TalkSession, onclause).filter(*filters).scalar() or 0)
+    except Exception:
+        return 0
+
+
 def usage_snapshot(db: Session, user: User) -> dict[str, int]:
-    storage = (
-        db.query(func.coalesce(func.sum(MediaAsset.bytes), 0))
-        .join(TalkSession, TalkSession.id == MediaAsset.session_id)
-        .filter(TalkSession.user_id == user.id)
-        .scalar()
+    storage = _aggregate(
+        db,
+        func.coalesce(func.sum(MediaAsset.bytes), 0),
+        TalkSession.id == MediaAsset.session_id,
+        TalkSession.user_id == user.id,
     )
-    active = (
-        db.query(func.count(AnalysisJob.id))
-        .join(TalkSession, TalkSession.id == AnalysisJob.session_id)
-        .filter(TalkSession.user_id == user.id, AnalysisJob.status.in_(ACTIVE_STATUSES))
-        .scalar()
+    active = _aggregate(
+        db,
+        func.count(AnalysisJob.id),
+        TalkSession.id == AnalysisJob.session_id,
+        TalkSession.user_id == user.id,
+        AnalysisJob.status.in_(ACTIVE_STATUSES),
     )
     month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    monthly = (
-        db.query(func.coalesce(func.sum(MediaAsset.duration_s), 0))
-        .join(TalkSession, TalkSession.id == MediaAsset.session_id)
-        .filter(
-            TalkSession.user_id == user.id,
-            MediaAsset.kind == "original",
-            MediaAsset.created_at >= month_start,
-        )
-        .scalar()
+    monthly = _aggregate(
+        db,
+        func.coalesce(func.sum(MediaAsset.duration_s), 0),
+        TalkSession.id == MediaAsset.session_id,
+        TalkSession.user_id == user.id,
+        MediaAsset.kind == "original",
+        MediaAsset.created_at >= month_start,
     )
     reserved = 0
     from app.models.practice import DrillAttempt

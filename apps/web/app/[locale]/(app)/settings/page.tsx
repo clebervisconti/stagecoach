@@ -1,9 +1,5 @@
 import { auth, signOut } from "@/auth";
 import { titled } from "@/lib/titles";
-
-export function generateMetadata() {
-  return titled("Settings", "Ajustes");
-}
 import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { ConsentPanel } from "@/components/consents/consent-panel";
@@ -13,6 +9,10 @@ import { AiProvidersPanel } from "@/components/settings/ai-providers-panel";
 import { ReviewPreferencePanel } from "@/components/settings/review-preference-panel";
 import { AccountRightsPanel } from "@/components/settings/account-rights-panel";
 import { AccountUsagePanel } from "@/components/settings/account-usage-panel";
+
+export function generateMetadata() {
+  return titled("Settings", "Ajustes");
+}
 
 export default async function SettingsPage() {
   const session = await auth();

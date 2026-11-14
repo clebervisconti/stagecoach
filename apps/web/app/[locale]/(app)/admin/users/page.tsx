@@ -1,12 +1,12 @@
 import { auth } from "@/auth";
+import { AdminUsersPanel } from "@/components/admin/users-panel";
 import { titled } from "@/lib/titles";
+import { getLocale } from "next-intl/server";
+import { redirect } from "next/navigation";
 
 export function generateMetadata() {
   return titled("Users", "Usuários");
 }
-import { AdminUsersPanel } from "@/components/admin/users-panel";
-import { getLocale } from "next-intl/server";
-import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 

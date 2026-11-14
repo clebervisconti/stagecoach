@@ -1,11 +1,11 @@
 import { getLocale, getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { titled } from "@/lib/titles";
+import { loadSourcesFromRepo } from "@/lib/load-sources";
 
 export function generateMetadata() {
   return titled("References", "Referências");
 }
-import Link from "next/link";
-import { loadSourcesFromRepo } from "@/lib/load-sources";
 
 export default async function ReferencesPage() {
   const t = await getTranslations("research");
