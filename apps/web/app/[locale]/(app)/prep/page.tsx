@@ -1,4 +1,9 @@
 import { getTranslations } from "next-intl/server";
+import { titled } from "@/lib/titles";
+
+export function generateMetadata() {
+  return titled("Talk prep", "Preparação");
+}
 import { PlanForm } from "@/components/prep/plan-form";
 
 export default async function PrepPage() {

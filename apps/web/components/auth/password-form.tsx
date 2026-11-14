@@ -5,12 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { signIn, signOut } from "next-auth/react";
+import { AuthFrame } from "@/components/auth/auth-frame";
+import { PasswordField } from "@/components/auth/password-field";
+import { Button } from "@/components/ui/button";
 
 const COPY = {
   en: {
     heading: "Change password",
     forced: "Choose a new password before continuing. Nothing else is available until you do.",
-    hint: "At least 10 characters, and not a common breached password.",
+    hint: "At least 10 characters, at most 200, and not a commonly breached password.",
     current: "Current password",
     next: "New password",
     confirm: "Confirm new password",
@@ -25,7 +28,7 @@ const COPY = {
   "pt-BR": {
     heading: "Alterar senha",
     forced: "Escolha uma nova senha antes de continuar. Nada mais fica disponível até lá.",
-    hint: "No mínimo 10 caracteres, e não uma senha comum de vazamentos.",
+    hint: "No mínimo 10 caracteres, no máximo 200, e não uma senha comum de vazamentos.",
     current: "Senha atual",
     next: "Nova senha",
     confirm: "Confirmar nova senha",
@@ -100,60 +103,43 @@ export function PasswordForm({ forced }: { forced: boolean }) {
   }
 
   return (
+    <AuthFrame>
     <div
-      className="mx-auto w-full min-w-0 max-w-md space-y-6 border bg-card p-6"
       data-testid="password-change"
       data-state={phase}
       aria-busy={phase === "loading"}
     >
       <div>
-        <h1 className="text-2xl">{t.heading}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{forced ? t.forced : t.hint}</p>
-        {forced ? <p className="mt-2 text-sm text-muted-foreground">{t.hint}</p> : null}
+        <h1 className="text-3xl">{t.heading}</h1>
+        <p className="mt-3 text-base leading-[26px] text-[color:var(--text-secondary)]">{forced ? t.forced : t.hint}</p>
+        {forced ? <p className="mt-2 text-sm text-[color:var(--text-tertiary)]">{t.hint}</p> : null}
       </div>
-      <form onSubmit={(event) => void onSubmit(event)} className="space-y-3">
-        <label className="block text-sm font-medium">
-          {t.current}
-          <input
-            name="current"
-            type="password"
-            autoComplete="current-password"
-            className="mt-1 w-full px-3 py-2"
-            data-testid="password-current"
-          />
-        </label>
-        <label className="block text-sm font-medium">
-          {t.next}
-          <input
-            name="next"
-            type="password"
-            required
-            minLength={10}
-            autoComplete="new-password"
-            className="mt-1 w-full px-3 py-2"
-            data-testid="password-new"
-          />
-        </label>
-        <label className="block text-sm font-medium">
-          {t.confirm}
-          <input
-            name="confirm"
-            type="password"
-            required
-            minLength={10}
-            autoComplete="new-password"
-            className="mt-1 w-full px-3 py-2"
-            data-testid="password-confirm"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={phase === "loading"}
-          data-testid="password-submit"
-          className="w-full bg-primary px-3 py-2 text-sm text-primary-foreground"
-        >
+      <form onSubmit={(event) => void onSubmit(event)} className="mt-8 space-y-4">
+        <PasswordField
+          name="current"
+          label={t.current}
+          autoComplete="current-password"
+          testId="password-current"
+        />
+        <PasswordField
+          name="next"
+          label={t.next}
+          autoComplete="new-password"
+          testId="password-new"
+          required
+          showRules
+        />
+        <PasswordField
+          name="confirm"
+          label={t.confirm}
+          autoComplete="new-password"
+          testId="password-confirm"
+          required
+          showRules
+        />
+        <Button type="submit" disabled={phase === "loading"} data-testid="password-submit" className="w-full">
           {phase === "loading" ? t.saving : t.submit}
-        </button>
+        </Button>
       </form>
       {notice ? (
         <p className="text-sm" data-testid="password-success">
@@ -169,18 +155,19 @@ export function PasswordForm({ forced }: { forced: boolean }) {
         {forced ? (
           <span />
         ) : (
-          <Link href={`${prefix}/sessions`} className="underline">
+          <Link href={`${prefix}/sessions`} className="cs-text-link">
             {t.back}
           </Link>
         )}
         <button
           type="button"
-          className="underline"
+          className="cs-text-link"
           onClick={() => void signOut({ callbackUrl: `${prefix}/sign-in` })}
         >
           {t.signOut}
         </button>
       </div>
     </div>
+    </AuthFrame>
   );
 }

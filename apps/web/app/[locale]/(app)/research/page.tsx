@@ -1,4 +1,9 @@
 import { getLocale, getTranslations } from "next-intl/server";
+import { titled } from "@/lib/titles";
+
+export function generateMetadata() {
+  return titled("References", "Referências");
+}
 import Link from "next/link";
 import { loadSourcesFromRepo } from "@/lib/load-sources";
 

@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { BrandLockup } from "@/components/brand/brand-lockup";
 import { SessionWatch } from "@/components/shell/session-watch";
 
 type AppShellProps = {
@@ -45,13 +46,17 @@ export function AppShell({ locale, email, role, children }: AppShellProps) {
     localStorage.setItem("cs-theme", next);
   }
 
+  const skip = locale === "pt-BR" ? "Pular para o conteúdo" : "Skip to content";
+
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="relative flex min-h-screen flex-col">
+      <a href="#main" className="cs-skip">
+        {skip}
+      </a>
       <SessionWatch locale={locale} />
       <header className="flex h-14 items-center justify-between gap-4 border-b px-4 md:px-6">
         <Link href={`${prefix}/sessions`} data-testid="brand" className="flex flex-col leading-none">
-          <span className="cs-eyebrow">Cybersphere</span>
-          <span className="cs-product">Stage Coach</span>
+          <BrandLockup />
         </Link>
         <div className="flex items-center gap-3">
           {email ? (
@@ -112,7 +117,7 @@ export function AppShell({ locale, email, role, children }: AppShellProps) {
               );
             })}
           </nav>
-          <main className="min-w-0 flex-1">{children}</main>
+          <main id="main" className="min-w-0 flex-1">{children}</main>
         </div>
       </div>
     </div>

@@ -173,8 +173,8 @@
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-sans);
-    font-size: 15px;
-    line-height: 22px;
+    font-size: 16px;
+    line-height: 26px;
   }
   h1,
   h2,
@@ -227,7 +227,7 @@
 
 .cs-eyebrow {
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 16px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -286,7 +286,7 @@
 .cs-status-info {
   border-radius: 9999px;
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -476,7 +476,7 @@ button.cs-region:not(.cs-region--ignored) {
   overflow: hidden;
   background: #000;
   color: var(--text-on-media);
-  font: 700 11px/12px var(--font-display);
+  font: 700 12px/16px var(--font-display);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 4px 6px 3px;
@@ -491,8 +491,90 @@ button.cs-region:not(.cs-region--ignored) {
 }
 @media (max-width: 599px) {
   .cs-region__label {
-    font-size: 10px;
+    font-size: 12px;
     padding: 3px 5px 2px;
+  }
+}
+
+.cs-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.cs-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.cs-button-primary {
+  background: var(--action-primary);
+  color: var(--text-inverse);
+}
+.cs-button-primary:hover:not(:disabled) {
+  background: var(--action-primary-hover);
+}
+.cs-button-ghost {
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text);
+}
+.cs-button-destructive {
+  background: var(--status-critical);
+  color: var(--text-strong);
+}
+.cs-field {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  background: var(--bg-muted);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+}
+a.cs-text-link,
+button.cs-text-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 8px 0;
+  font-family: var(--font-sans);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  color: var(--text-secondary);
+}
+.cs-skip {
+  position: absolute;
+  left: 16px;
+  top: 8px;
+  z-index: 50;
+  transform: translateY(-200%);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-inverse);
+  color: var(--text-inverse);
+}
+.cs-skip:focus {
+  transform: none;
+}
+@media (pointer: coarse) {
+  .cs-button,
+  button:not(.cs-region),
+  [type="submit"] {
+    min-height: 44px;
   }
 }
 

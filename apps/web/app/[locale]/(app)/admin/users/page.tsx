@@ -1,4 +1,9 @@
 import { auth } from "@/auth";
+import { titled } from "@/lib/titles";
+
+export function generateMetadata() {
+  return titled("Users", "Usuários");
+}
 import { AdminUsersPanel } from "@/components/admin/users-panel";
 import { getLocale } from "next-intl/server";
 import { redirect } from "next/navigation";

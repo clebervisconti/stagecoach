@@ -1,69 +1,97 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
 import { signIn } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { PasswordField } from "@/components/auth/password-field";
 
 const COPY = {
   en: {
-    heading: "Sign in",
-    intro: "Email and password, or Sign in with Apple.",
+    login: "Sign in",
+    register: "Create your account",
+    forgot: "Reset your password",
+    loginIntro: "Use the email and password for your account.",
+    registerIntro: "Choose a password for the invited email address.",
+    inviteOnly: "Ask an administrator for an invite.",
+    forgotIntro: "Password resets are issued by an administrator.",
     email: "Email",
     password: "Password",
     submit: "Sign in",
     signingIn: "Signing in…",
-    register: "Create account",
-    forgot: "Forgot password",
+    registerSubmit: "Create account",
     forgotSubmit: "Request reset",
-    verify: "I have a verification token",
-    token: "Token",
-    verifySubmit: "Verify email",
+    createLink: "Create an account",
+    forgotLink: "Forgot password?",
+    back: "Back to sign in",
+    tokenLink: "I have a verification token",
     apple: "Sign in with Apple",
-    appleOff: "Sign in with Apple is disabled until Apple secrets are configured.",
     invalid: "Invalid email or password.",
     limited: "Too many sign-in attempts. Wait a moment and try again.",
     error: "Could not complete that request.",
+    appleFailed: "Sign in with Apple could not be completed.",
     signedIn: "Signed in.",
-    registered: "Check the console email stand-in for a verification token.",
-    verified: "Email verified. You can sign in.",
+    registered: "Check your inbox for a link to confirm your email.",
     resetSent: "Password resets are issued by an administrator. Ask an admin to set a temporary password.",
+    account: "Account",
   },
   "pt-BR": {
-    heading: "Entrar",
-    intro: "E-mail e senha, ou Entrar com a Apple.",
+    login: "Entrar",
+    register: "Crie sua conta",
+    forgot: "Redefina sua senha",
+    loginIntro: "Use o e-mail e a senha da sua conta.",
+    registerIntro: "Escolha uma senha para o e-mail do convite.",
+    inviteOnly: "Peça um convite a um administrador.",
+    forgotIntro: "A redefinição de senha é feita por um administrador.",
     email: "E-mail",
     password: "Senha",
     submit: "Entrar",
     signingIn: "Entrando…",
-    register: "Criar conta",
-    forgot: "Esqueci a senha",
+    registerSubmit: "Criar conta",
     forgotSubmit: "Pedir redefinição",
-    verify: "Tenho um token de verificação",
-    token: "Token",
-    verifySubmit: "Verificar e-mail",
+    createLink: "Criar uma conta",
+    forgotLink: "Esqueceu a senha?",
+    back: "Voltar para entrar",
+    tokenLink: "Tenho um token de verificação",
     apple: "Entrar com a Apple",
-    appleOff: "Entrar com a Apple fica desligado até os segredos da Apple existirem.",
     invalid: "E-mail ou senha inválidos.",
     limited: "Muitas tentativas de entrada. Espere um instante e tente de novo.",
     error: "Não foi possível concluir o pedido.",
+    appleFailed: "Não foi possível concluir a entrada com a Apple.",
     signedIn: "Sessão iniciada.",
-    registered: "Veja o stand-in de e-mail no console para o token de verificação.",
-    verified: "E-mail verificado. Pode entrar.",
+    registered: "Veja sua caixa de entrada. Enviamos um link para confirmar o e-mail.",
     resetSent: "A redefinição de senha é feita por um administrador. Peça uma senha temporária.",
+    account: "Conta",
   },
 } as const;
 
-type Mode = "login" | "register" | "forgot" | "verify";
+type Mode = "login" | "register" | "forgot";
 type Phase = "empty" | "loading" | "error" | "success";
+
+function modeFrom(value: string | null, invite: string): Mode {
+  if (value === "register" && invite) return "register";
+  if (value === "forgot") return "forgot";
+  if (value === "register") return "register";
+  return "login";
+}
 
 export function SignInForm() {
   const locale = useLocale();
   const t = COPY[locale === "pt-BR" ? "pt-BR" : "en"];
-  const [mode, setMode] = useState<Mode>("login");
+  const router = useRouter();
+  const pathname = usePathname();
+  const search = useSearchParams();
+  const invite = search.get("invite")?.trim() ?? "";
+  const mode = modeFrom(search.get("mode"), invite);
   const [phase, setPhase] = useState<Phase>("empty");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [appleEnabled, setAppleEnabled] = useState(false);
+  const prefix = locale === "pt-BR" ? "/pt-BR" : "";
 
   useEffect(() => {
     void fetch("/api/stagecoach/auth/apple/config", { cache: "no-store" })
@@ -75,11 +103,20 @@ export function SignInForm() {
       .catch(() => undefined);
   }, []);
 
+  function hrefFor(next: Mode) {
+    const params = new URLSearchParams(search.toString());
+    if (next === "login") params.delete("mode");
+    else params.set("mode", next);
+    if (!invite) params.delete("invite");
+    const query = params.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }
+
   function switchMode(next: Mode) {
-    setMode(next);
     setPhase("empty");
     setError("");
     setNotice("");
+    router.push(hrefFor(next));
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -90,8 +127,6 @@ export function SignInForm() {
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email") || "").trim();
     const password = String(form.get("password") || "");
-    const token = String(form.get("token") || "");
-    const prefix = locale === "pt-BR" ? "/pt-BR" : "";
     try {
       if (mode === "login") {
         const check = await fetch("/api/stagecoach/auth/login", {
@@ -124,33 +159,21 @@ export function SignInForm() {
         const response = await fetch("/api/stagecoach/auth/register", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email, password, invite }),
         });
         if (!response.ok) throw new Error(t.error);
         setNotice(t.registered);
         setPhase("success");
         return;
       }
-      if (mode === "forgot") {
-        const response = await fetch("/api/stagecoach/auth/forgot", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email }),
-        });
-        if (!response.ok) throw new Error(t.error);
-        setNotice(t.resetSent);
-        setPhase("success");
-        return;
-      }
-      const response = await fetch("/api/stagecoach/auth/verify-email", {
+      const response = await fetch("/api/stagecoach/auth/forgot", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ email }),
       });
       if (!response.ok) throw new Error(t.error);
-      setNotice(t.verified);
+      setNotice(t.resetSent);
       setPhase("success");
-      setMode("login");
     } catch (reason) {
       setPhase("error");
       setError(reason instanceof Error ? reason.message : t.error);
@@ -159,7 +182,7 @@ export function SignInForm() {
 
   async function startApple() {
     setError("");
-    const redirect = `${window.location.origin}${locale === "pt-BR" ? "/pt-BR" : ""}/auth/apple/callback`;
+    const redirect = `${window.location.origin}${prefix}/auth/apple/callback`;
     const response = await fetch("/api/stagecoach/auth/apple/start", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -167,7 +190,7 @@ export function SignInForm() {
     });
     if (!response.ok) {
       setPhase("error");
-      setError(t.appleOff);
+      setError(t.appleFailed);
       return;
     }
     const body = (await response.json()) as {
@@ -178,111 +201,88 @@ export function SignInForm() {
     };
     sessionStorage.setItem(
       "apple-oidc",
-      JSON.stringify({ verifier: body.verifier, nonce: body.nonce, state: body.state, redirect }),
+      JSON.stringify({
+        verifier: body.verifier,
+        nonce: body.nonce,
+        state: body.state,
+        redirect,
+        invite: invite || undefined,
+      }),
     );
     window.location.assign(body.authorize_url);
   }
 
+  const heading = mode === "register" ? t.register : mode === "forgot" ? t.forgot : t.login;
+  const intro =
+    mode === "register" ? (invite ? t.registerIntro : t.inviteOnly) : mode === "forgot" ? t.forgotIntro : t.loginIntro;
   const submitLabel =
     phase === "loading" && mode === "login"
       ? t.signingIn
-      : mode === "login"
-        ? t.submit
-        : mode === "register"
-          ? t.register
-          : mode === "forgot"
-            ? t.forgotSubmit
-            : t.verifySubmit;
+      : mode === "register"
+        ? t.registerSubmit
+        : mode === "forgot"
+          ? t.forgotSubmit
+          : t.submit;
+  const showForm = mode !== "register" || Boolean(invite);
 
   return (
-    <div
-      className="mx-auto w-full min-w-0 max-w-md space-y-6 border bg-card p-6"
-      data-testid="sign-in-form"
-      data-state={phase}
-      aria-busy={phase === "loading"}
-    >
-      <div>
-        <h1 className="text-2xl">{t.heading}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{t.intro}</p>
-      </div>
-      <form onSubmit={(event) => void onSubmit(event)} className="space-y-3">
-        {mode !== "verify" ? (
-          <label className="block text-sm font-medium">
-            {t.email}
-            <input
-              name="email"
-              type="email"
-              required
-              autoComplete="username"
-              className="mt-1 w-full px-3 py-2"
-              data-testid="auth-email"
-            />
-          </label>
-        ) : null}
-        {mode === "login" || mode === "register" ? (
-          <label className="block text-sm font-medium">
-            {t.password}
-            <input
+    <div data-testid="sign-in-form" data-mode={mode} data-state={phase} aria-busy={phase === "loading"}>
+      <h1 className="text-3xl">{heading}</h1>
+      <p className="mt-3 text-base leading-[26px] text-[color:var(--text-secondary)]">{intro}</p>
+      {showForm ? (
+        <form onSubmit={(event) => void onSubmit(event)} className="mt-8 space-y-4">
+          <Field label={t.email} htmlFor="auth-email">
+            <Input id="auth-email" name="email" type="email" required autoComplete="username" data-testid="auth-email" />
+          </Field>
+          {mode !== "forgot" ? (
+            <PasswordField
               name="password"
-              type="password"
-              required
+              label={t.password}
               autoComplete={mode === "login" ? "current-password" : "new-password"}
-              minLength={mode === "register" ? 10 : undefined}
-              className="mt-1 w-full px-3 py-2"
-              data-testid="auth-password"
+              testId="auth-password"
+              required
+              showRules={mode === "register"}
             />
-          </label>
-        ) : null}
-        {mode === "verify" ? (
-          <label className="block text-sm font-medium">
-            {t.token}
-            <input name="token" required className="mt-1 w-full px-3 py-2" data-testid="auth-token" />
-          </label>
-        ) : null}
-        <button
-          type="submit"
-          disabled={phase === "loading"}
-          data-testid="auth-submit"
-          className="w-full bg-primary px-3 py-2 text-sm text-primary-foreground"
-        >
-          {submitLabel}
-        </button>
-      </form>
-      {appleEnabled ? (
-        <button
-          type="button"
-          data-testid="apple-signin"
-          onClick={() => void startApple()}
-          className="w-full border px-3 py-2 text-sm"
-        >
+          ) : null}
+          <Button type="submit" disabled={phase === "loading"} data-testid="auth-submit" className="w-full">
+            {submitLabel}
+          </Button>
+        </form>
+      ) : null}
+      {appleEnabled && mode === "login" ? (
+        <Button type="button" variant="ghost" data-testid="apple-signin" className="mt-3 w-full" onClick={() => void startApple()}>
           {t.apple}
-        </button>
-      ) : (
-        <p className="text-sm text-muted-foreground" data-testid="apple-disabled">
-          {t.appleOff}
-        </p>
-      )}
-      <div className="flex min-w-0 flex-wrap gap-3 text-sm">
-        <button type="button" className="underline" onClick={() => switchMode("login")}>
-          {t.submit}
-        </button>
-        <button type="button" className="underline" data-testid="auth-register" onClick={() => switchMode("register")}>
-          {t.register}
-        </button>
-        <button type="button" className="underline" onClick={() => switchMode("forgot")}>
-          {t.forgot}
-        </button>
-        <button type="button" className="underline" onClick={() => switchMode("verify")}>
-          {t.verify}
-        </button>
-      </div>
+        </Button>
+      ) : null}
+      <nav aria-label={t.account} className="mt-6 flex flex-col items-start gap-1">
+        {mode !== "login" ? (
+          <button type="button" className="cs-text-link" onClick={() => switchMode("login")}>
+            {t.back}
+          </button>
+        ) : null}
+        {invite && mode !== "register" ? (
+          <button type="button" className="cs-text-link" data-testid="auth-register" onClick={() => switchMode("register")}>
+            {t.createLink}
+          </button>
+        ) : null}
+        {mode !== "forgot" ? (
+          <button type="button" className="cs-text-link" onClick={() => switchMode("forgot")}>
+            {t.forgotLink}
+          </button>
+        ) : null}
+      </nav>
+      <p className="mt-8">
+        <Link href={`${prefix}/verify-request`} className="cs-text-link text-[color:var(--text-tertiary)]">
+          {t.tokenLink}
+        </Link>
+      </p>
       {notice ? (
-        <p className="text-sm" data-testid="auth-success">
+        <p className="mt-4 text-sm" data-testid="auth-success">
           {notice}
         </p>
       ) : null}
       {error ? (
-        <p className="text-sm text-destructive" data-testid="auth-error" role="alert">
+        <p className="mt-4 text-sm text-destructive" data-testid="auth-error" role="alert">
           {error}
         </p>
       ) : null}

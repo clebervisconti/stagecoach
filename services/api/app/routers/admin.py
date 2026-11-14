@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.account_deletion import process_due_deletions
+from app.identity_service import issue_invite
 from app.admin_users import (
     create_user,
     delete_user,
@@ -74,6 +75,16 @@ def admin_list_users(
 ) -> dict:
     rows, total = list_users(db, q=q, limit=limit, offset=offset)
     return {"users": [user_view(row) for row in rows], "total": total}
+
+
+@router.post("/invites", status_code=status.HTTP_201_CREATED)
+def admin_create_invite(
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> dict:
+    raw = issue_invite(db, admin, ip=_client_ip(request))
+    return {"invite": raw, "expires_in_days": 7}
 
 
 @router.post("/users", status_code=status.HTTP_201_CREATED)

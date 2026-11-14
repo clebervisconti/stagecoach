@@ -10,6 +10,9 @@ const nextConfig = {
   devIndicators: false,
   // Auto-instrumentation patches modules at require time; bundling it breaks that.
   serverExternalPackages: ["@splunk/otel"],
+  outputFileTracingIncludes: {
+    "/*": ["./content/PRIVACY.md"],
+  },
   async headers() {
     return [
       {
@@ -33,6 +36,7 @@ const nextConfig = {
           },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",

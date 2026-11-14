@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Loader2, Plus, Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { ConsentPanel } from "@/components/consents/consent-panel";
 import { uploadRecordingChunked } from "@/lib/chunked-upload";
 import { formatBytes, MAX_UPLOAD_BYTES } from "@/lib/online";
@@ -139,7 +144,7 @@ export default function SessionsPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t("recentSessions")}</h1>
-        <button
+        <Button
           type="button"
           data-testid="new-session"
           onClick={() => {
@@ -149,11 +154,10 @@ export default function SessionsPage() {
             }
             setShowForm((value) => !value);
           }}
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4" aria-hidden="true" />
           {t("newSession")}
-        </button>
+        </Button>
       </div>
 
       {error && (
@@ -168,59 +172,50 @@ export default function SessionsPage() {
           data-testid="session-form"
           className="mb-8 grid gap-4 rounded-lg border bg-card p-6 md:grid-cols-2"
         >
-          <label className="grid gap-2 text-sm font-medium">
-            {t("title")}
-            <input name="title" required maxLength={255} className="rounded-md border bg-background px-3 py-2" />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            {t("presentationType")}
-            <select name="context_type" className="rounded-md border bg-background px-3 py-2">
+          <Field label={t("title")} htmlFor="session-title">
+            <Input id="session-title" name="title" required maxLength={255} />
+          </Field>
+          <Field label={t("presentationType")} htmlFor="session-type">
+            <Select id="session-type" name="context_type">
               <option value="keynote">{t("keynote")}</option>
               <option value="exec_briefing">{t("executiveBriefing")}</option>
               <option value="sales_pitch">{t("salesPitch")}</option>
               <option value="class_academic">{t("classAcademic")}</option>
               <option value="virtual_meeting">{t("virtualMeeting")}</option>
-            </select>
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            {t("language")}
-            <select name="language" className="rounded-md border bg-background px-3 py-2">
+            </Select>
+          </Field>
+          <Field label={t("language")} htmlFor="session-language">
+            <Select id="session-language" name="language">
               <option value="en">English</option>
               <option value="pt-BR">Português (Brasil)</option>
               <option value="auto">{t("autoDetect")}</option>
-            </select>
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            {t("slotMinutes")}
-            <input name="slot_min" type="number" min="1" max="180" className="rounded-md border bg-background px-3 py-2" />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            {t("cameraSetup")}
-            <select name="camera_setup" className="rounded-md border bg-background px-3 py-2">
+            </Select>
+          </Field>
+          <Field label={t("slotMinutes")} htmlFor="session-slot">
+            <Input id="session-slot" name="slot_min" type="number" min="1" max="180" />
+          </Field>
+          <Field label={t("cameraSetup")} htmlFor="session-camera">
+            <Select id="session-camera" name="camera_setup">
               <option value="to_camera">{t("toCamera")}</option>
               <option value="stage">{t("stage")}</option>
               <option value="screen_recording">{t("screenRecording")}</option>
               <option value="audio_only">{t("audioOnly")}</option>
-            </select>
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            {t("mediaFile")}
-            <input
+            </Select>
+          </Field>
+          <Field label={t("mediaFile")} htmlFor="session-file">
+            <Input
+              id="session-file"
               name="file"
               type="file"
               required
               data-testid="session-file"
               accept=".mp4,.mov,.webm,.mkv,.m4a,.mp3,.wav,.ogg,.flac,audio/*,video/*"
-              className="rounded-md border bg-background px-3 py-2"
             />
-          </label>
+          </Field>
           <ConsentPanel compact />
           <div className="md:col-span-2">
-            <button
-              disabled={submitting}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground disabled:opacity-50"
-            >
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Upload className="h-4 w-4" aria-hidden="true" />}
               {submitting ? (
                 <span>
                   {uploadPct === null
@@ -233,7 +228,7 @@ export default function SessionsPage() {
               ) : (
                 t("uploadAndAnalyze")
               )}
-            </button>
+            </Button>
             {submitting && (
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
                 <div
@@ -255,16 +250,14 @@ export default function SessionsPage() {
       ) : (
         <div className="grid gap-3">
           {sessions.map((session) => (
-            <button
+            <Link
               key={session.id}
-              onClick={() =>
-                router.push(
-                  session.status === "layout_review"
-                    ? `${prefix}/sessions/${session.id}/layout`
-                    : `${prefix}/sessions/${session.id}`,
-                )
+              href={
+                session.status === "layout_review"
+                  ? `${prefix}/sessions/${session.id}/layout`
+                  : `${prefix}/sessions/${session.id}`
               }
-              className="flex items-center justify-between rounded-lg border bg-card p-5 text-left hover:bg-muted"
+              className="flex min-h-11 items-center justify-between border bg-card p-5 text-left hover:bg-muted"
             >
               <div>
                 <div className="font-semibold">{session.title}</div>
@@ -282,7 +275,7 @@ export default function SessionsPage() {
                   {statusLabel(session.status, t)}
                 </span>
               </div>
-            </button>
+            </Link>
           ))}
         </div>
       )}

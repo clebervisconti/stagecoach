@@ -32,6 +32,10 @@ class PasswordBody(BaseModel):
     password: str = Field(..., min_length=1)
 
 
+class RegisterBody(PasswordBody):
+    invite: str = ""
+
+
 class TokenBody(BaseModel):
     token: str = Field(..., min_length=8)
 
@@ -65,6 +69,7 @@ class AppleFinishBody(BaseModel):
     code: Optional[str] = None
     redirect_uri: Optional[str] = None
     verifier: Optional[str] = None
+    invite: Optional[str] = None
 
 
 def _client_ip(request: Request) -> str:
@@ -82,8 +87,8 @@ def apple_config() -> dict[str, Any]:
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(body: PasswordBody, db: Session = Depends(get_db)) -> dict[str, Any]:
-    return register_user(db, body.email, body.password)
+def register(body: RegisterBody, db: Session = Depends(get_db)) -> dict[str, Any]:
+    return register_user(db, body.email, body.password, body.invite)
 
 
 @router.post("/login")
@@ -159,19 +164,22 @@ def apple_finish(body: AppleFinishBody, db: Session = Depends(get_db)) -> dict[s
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Sign in with Apple is not configured",
             )
-        token_response = exchange_code(
-            code=body.code,
-            redirect_uri=body.redirect_uri,
-            verifier=body.verifier,
-            exchanger=_live_exchanger,
-        )
+        try:
+            token_response = exchange_code(
+                code=body.code,
+                redirect_uri=body.redirect_uri,
+                verifier=body.verifier,
+                exchanger=_live_exchanger,
+            )
+        except Exception as exc:  # noqa: BLE001 — Apple's body must not reach the client
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Apple ID token") from exc
         id_token = str(token_response.get("id_token") or "")
     if not id_token:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="id_token required")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Apple ID token")
     from app.apple_oidc import APPLE_JWKS
 
     jwks = _jwks_standin() or _fetch_jwks(APPLE_JWKS)
-    return finish_apple(db, id_token=id_token, nonce=body.nonce, jwks=jwks)
+    return finish_apple(db, id_token=id_token, nonce=body.nonce, jwks=jwks, invite=body.invite)
 
 
 def _live_exchanger(fields: dict[str, str]) -> dict[str, Any]:

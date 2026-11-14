@@ -59,7 +59,7 @@ export function SegmentStrip({
           );
         })}
       </div>
-      <div className="mt-3 flex justify-between font-mono text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
+      <div className="mt-3 flex justify-between font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
         <span>{formatClock(0)}</span>
         <span className="hidden md:inline">{formatClock(duration / 2)}</span>
         <span>{formatClock(duration)}</span>

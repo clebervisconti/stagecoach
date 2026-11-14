@@ -34,7 +34,7 @@ export function RoleControl({
             disabled={disabled}
             data-testid={withTestIds ? `role-${key}` : undefined}
             onClick={() => onChange(role)}
-            className={`h-9 min-w-0 truncate px-1 text-[11px] uppercase tracking-[0.06em] disabled:opacity-40 ${
+            className={`h-9 min-w-0 truncate px-1 text-xs uppercase tracking-[0.06em] disabled:opacity-40 ${
               on
                 ? "bg-[color:var(--bg-inverse)] text-[color:var(--text-inverse)]"
                 : "border border-[color:var(--line-strong)]"

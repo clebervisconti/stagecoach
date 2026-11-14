@@ -28,6 +28,7 @@ from app.identity_service import (
     INVALID_LOGIN,
     _purpose_is,
     apply_apple_identity,
+    issue_invite,
     reset_memory_auth_store,
 )
 from app.main import app
@@ -192,7 +193,16 @@ def test_login_rate_limit_is_429_without_revealing_the_account(ctx):
     assert "@" not in _details(db)
 
 
-def test_register_does_not_clobber_and_forgot_sends_no_mail(ctx, monkeypatch: pytest.MonkeyPatch):
+def _invite(client: TestClient, db: MemoryDB, *, email: str = "admin-invite@example.com") -> str:
+    admin = _user(db, email, role="admin")
+    created = client.post("/api/v1/admin/invites", headers=_bearer(admin))
+    assert created.status_code == 201
+    invite = created.json()["invite"]
+    assert invite not in _details(db)
+    return invite
+
+
+def test_register_requires_an_invite_and_does_not_clobber(ctx, monkeypatch: pytest.MonkeyPatch):
     client, db = ctx
     user = _user(db, "member@example.com", apple_sub="apple-existing")
     sent: list[str] = []
@@ -201,25 +211,44 @@ def test_register_does_not_clobber_and_forgot_sends_no_mail(ctx, monkeypatch: py
         sent.append(str(kwargs.get("purpose")))
 
     monkeypatch.setattr("app.identity_service.send_email", record)
+    open_registration = client.post(
+        "/api/v1/auth/register",
+        json={"email": "new-person@example.com", "password": PASSWORD},
+    )
+    assert open_registration.status_code == 403
+    assert open_registration.json()["detail"] == "An invite is required"
+    assert db.query(User).filter(User.email == "new-person@example.com").first() is None
+
+    invite = _invite(client, db)
     again = client.post(
         "/api/v1/auth/register",
-        json={"email": "Member@Example.com", "password": PASSWORD},
+        json={"email": "Member@Example.com", "password": PASSWORD, "invite": invite},
     )
     assert again.status_code == 201
     assert again.json()["status"] == "accepted"
     assert user.password_hash == PASSWORD_HASH
     assert user.apple_sub == "apple-existing"
     assert sent == []
+    reused = client.post(
+        "/api/v1/auth/register",
+        json={"email": "another@example.com", "password": PASSWORD, "invite": invite},
+    )
+    assert reused.status_code == 400
     forgot = client.post("/api/v1/auth/forgot", json={"email": "member@example.com"})
     assert forgot.status_code == 200
     assert forgot.json() == {"status": "accepted", "reset": "admin"}
     assert sent == []
     created = client.post(
         "/api/v1/auth/register",
-        json={"email": "new-person@example.com", "password": PASSWORD},
+        json={"email": "new-person@example.com", "password": PASSWORD, "invite": _invite(client, db, email="admin-invite-2@example.com")},
     )
     assert created.status_code == 201
     assert sent == ["verify_email"]
+    member = client.post(
+        "/api/v1/admin/invites",
+        headers=_bearer(user),
+    )
+    assert member.status_code == 403
 
 
 def test_forced_change_blocks_the_product_until_the_password_changes(ctx):
@@ -480,9 +509,19 @@ def test_apple_links_only_a_verified_local_account():
         apply_apple_identity(db, {"sub": "apple-new", "email": "taken@example.com", "email_verified": True})
     assert taken.apple_sub == "apple-old"
 
+    with pytest.raises(HTTPException) as needs_invite:
+        apply_apple_identity(
+            db,
+            {"sub": "apple-3", "email": "new-apple@example.com", "email_verified": True, "private_relay": True},
+        )
+    assert needs_invite.value.status_code == 403
+    assert needs_invite.value.detail == "No account is linked to this Apple ID."
+    admin = _user(db, "apple-admin@example.com", role="admin")
+    invite = issue_invite(db, admin)
     created = apply_apple_identity(
         db,
         {"sub": "apple-3", "email": "new-apple@example.com", "email_verified": True, "private_relay": True},
+        invite=invite,
     )
     assert created["role"] == "member"
     created_row = db.query(User).filter(User.email == "new-apple@example.com").first()
@@ -497,7 +536,7 @@ def test_apple_links_only_a_verified_local_account():
 
 
 def test_apple_finish_route_still_returns_a_session_ticket(ctx, monkeypatch: pytest.MonkeyPatch):
-    client, _db = ctx
+    client, db = ctx
     private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     jwk = RSAAlgorithm.to_jwk(private.public_key(), as_dict=True)
     jwk["kid"] = "test-kid"
@@ -521,9 +560,21 @@ def test_apple_finish_route_still_returns_a_session_ticket(ctx, monkeypatch: pyt
     )
     monkeypatch.setenv("APPLE_PRIVATE_KEY", "test-only")
     monkeypatch.setenv("APPLE_JWKS_JSON", json.dumps({"keys": [jwk]}))
-    response = client.post(
+    refused = client.post(
         "/api/v1/auth/apple/finish",
         json={"id_token": token, "nonce": "nonce-1"},
+    )
+    assert refused.status_code == 403
+    assert refused.json()["detail"] == "No account is linked to this Apple ID."
+    mismatched = client.post(
+        "/api/v1/auth/apple/finish",
+        json={"id_token": token, "nonce": "other-nonce", "invite": _invite(client, db)},
+    )
+    assert mismatched.status_code == 401
+    assert mismatched.json()["detail"] == "Invalid Apple ID token"
+    response = client.post(
+        "/api/v1/auth/apple/finish",
+        json={"id_token": token, "nonce": "nonce-1", "invite": _invite(client, db, email="apple-finish-admin@example.com")},
     )
     assert response.status_code == 200
     body = response.json()

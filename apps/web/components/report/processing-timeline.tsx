@@ -234,13 +234,13 @@ function StageMark({ status }: { status: string }) {
     return (
       <span className="mt-0.5 inline-flex items-center gap-1 text-[color:var(--status-critical)]">
         <CircleX className="h-4 w-4 shrink-0" aria-hidden="true" />
-        <span className="text-[11px] uppercase tracking-[0.08em]">Failed</span>
+        <span className="text-xs uppercase tracking-[0.08em]">Failed</span>
       </span>
     );
   }
   if (status === "skipped") {
     return (
-      <span className="mt-0.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
+      <span className="mt-0.5 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
         —
       </span>
     );
@@ -249,7 +249,7 @@ function StageMark({ status }: { status: string }) {
     return (
       <span className="mt-0.5 inline-flex items-center gap-1 text-[color:var(--text-secondary)]">
         <span aria-hidden="true">◐</span>
-        <span className="text-[11px] uppercase tracking-[0.08em]">Waiting for you</span>
+        <span className="text-xs uppercase tracking-[0.08em]">Waiting for you</span>
       </span>
     );
   }

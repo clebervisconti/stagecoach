@@ -1,7 +1,12 @@
 import { auth } from "@/auth";
 import { PasswordForm } from "@/components/auth/password-form";
+import { titled } from "@/lib/titles";
 import { getLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
+
+export function generateMetadata() {
+  return titled("Change password", "Alterar senha");
+}
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +16,5 @@ export default async function PasswordPage() {
   const prefix = locale === "en" ? "" : `/${locale}`;
   if (!session?.user?.email) redirect(`${prefix}/sign-in`);
 
-  return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="w-full min-w-0 max-w-md">
-        <PasswordForm forced={Boolean(session.user.mustChangePassword)} />
-      </div>
-    </div>
-  );
+  return <PasswordForm forced={Boolean(session.user.mustChangePassword)} />;
 }

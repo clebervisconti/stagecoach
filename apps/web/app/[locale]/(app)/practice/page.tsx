@@ -37,7 +37,7 @@ export default function PracticePage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const focus = params.get("drill");
-    if (focus) setActive(focus);
+    if (focus) window.setTimeout(() => setActive(focus), 0);
     void Promise.all([
       fetch(`/api/stagecoach/drills?locale=${locale}`, { cache: "no-store" }).then((response) => response.json()),
       fetch(`/api/stagecoach/practice/week?locale=${locale}`, { cache: "no-store" }).then((response) => response.json()),
