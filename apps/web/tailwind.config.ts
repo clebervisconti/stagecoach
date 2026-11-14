@@ -60,11 +60,11 @@ const config = {
         },
       },
       borderRadius: {
-        lg: "4px",
-        md: "4px",
-        sm: "4px",
-        xl: "4px",
-        "2xl": "4px",
+        lg: "24px",
+        md: "16px",
+        sm: "8px",
+        xl: "24px",
+        "2xl": "24px",
       },
       boxShadow: {
         sm: "none",

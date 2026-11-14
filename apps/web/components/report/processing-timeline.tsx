@@ -119,7 +119,7 @@ export function ProcessingTimeline({
   }
 
   return (
-    <section className="rounded-[var(--radius-sm)] border bg-card p-6" data-testid="processing">
+    <section className="cs-panel" data-testid="processing" aria-live="polite">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-3">
@@ -227,34 +227,36 @@ export function ProcessingTimeline({
 }
 
 function StageMark({ status }: { status: string }) {
+  const signal = useTranslations("signal");
   if (status === "succeeded") {
-    return <Check className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--text-secondary)]" aria-hidden="true" />;
+    return (
+      <span className="inline-flex items-center gap-1 text-[color:var(--status-success)]">
+        <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
+        {signal("stageDone")}
+      </span>
+    );
   }
   if (status === "failed") {
     return (
-      <span className="mt-0.5 inline-flex items-center gap-1 text-[color:var(--status-critical)]">
+      <span className="inline-flex items-center gap-1 text-[color:var(--status-critical)]">
         <CircleX className="h-4 w-4 shrink-0" aria-hidden="true" />
-        <span className="text-xs uppercase tracking-[0.08em]">Failed</span>
+        {signal("stageFailed")}
       </span>
     );
   }
   if (status === "skipped") {
-    return (
-      <span className="mt-0.5 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
-        —
-      </span>
-    );
+    return <span className="font-mono text-xs text-[color:var(--text-tertiary)]">—</span>;
   }
   if (status === "waiting") {
+    return <span className="text-[color:var(--text-secondary)]">{signal("stageWaiting")}</span>;
+  }
+  if (status === "running") {
     return (
-      <span className="mt-0.5 inline-flex items-center gap-1 text-[color:var(--text-secondary)]">
-        <span aria-hidden="true">◐</span>
-        <span className="text-xs uppercase tracking-[0.08em]">Waiting for you</span>
+      <span className="inline-flex items-center gap-1 text-[color:var(--text-strong)]">
+        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[color:var(--text-strong)]" aria-hidden="true" />
+        {signal("stageRunning")}
       </span>
     );
   }
-  if (status === "running") {
-    return <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-[color:var(--text-strong)]" aria-hidden="true" />;
-  }
-  return <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full border border-muted-foreground/40" aria-hidden="true" />;
+  return <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-[color:var(--sc-control-edge)]" aria-hidden="true" />;
 }

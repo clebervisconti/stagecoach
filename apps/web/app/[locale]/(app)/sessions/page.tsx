@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Loader2, Plus, Upload } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,9 @@ import { ConsentPanel } from "@/components/consents/consent-panel";
 import { uploadRecordingChunked } from "@/lib/chunked-upload";
 import { formatBytes, MAX_UPLOAD_BYTES } from "@/lib/online";
 import { uploadErrorCopy } from "@/lib/upload-errors";
+import { SessionsHome } from "@/components/sessions/sessions-home";
+import type { AnalysisReport } from "@/lib/report-types";
+import { greetingPart, numericScores } from "@/lib/overview";
 
 type Session = {
   id: string;
@@ -27,6 +29,7 @@ type Session = {
 
 export default function SessionsPage() {
   const t = useTranslations("dashboard");
+  const signal = useTranslations("signal");
   const locale = useLocale();
   const router = useRouter();
   const prefix = locale === "en" ? "" : `/${locale}`;
@@ -37,6 +40,8 @@ export default function SessionsPage() {
   const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [uploadName, setUploadName] = useState("");
   const [error, setError] = useState("");
+  const [briefing, setBriefing] = useState<AnalysisReport | null>(null);
+  const [toast, setToast] = useState("");
   const [onlineModes, setOnlineModes] = useState<"unknown" | "on" | "off">("unknown");
   const online = useTranslations("online");
   const pendingRef = useRef<{ key: string; sessionId: string; uploadId: string | null } | null>(null);
@@ -45,7 +50,7 @@ export default function SessionsPage() {
     const response = await fetch("/api/stagecoach/sessions", { cache: "no-store" });
     if (!response.ok) throw new Error(t("loadError"));
     const body = await response.json();
-    setSessions(body.sessions);
+    setSessions(Array.isArray(body.sessions) ? body.sessions : []);
     setError("");
   }, [t]);
 
@@ -68,6 +73,25 @@ export default function SessionsPage() {
       window.clearInterval(timer);
     };
   }, [loadSessions]);
+
+  const latestReadyId = [...sessions]
+    .filter((session) => session.status === "ready" || session.status === "partial")
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]?.id;
+
+  useEffect(() => {
+    if (!latestReadyId) return;
+    let active = true;
+    void fetch(`/api/stagecoach/sessions/${latestReadyId}/report`, { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: AnalysisReport | null) => {
+        if (!active) return;
+        if (body?.overall && body.insights) setBriefing(body);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [latestReadyId]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -140,37 +164,39 @@ export default function SessionsPage() {
     }
   }
 
+  const part = greetingPart(new Date().getHours());
+  const greeting = part === "morning" ? signal("greetingMorning") : part === "evening" ? signal("greetingEvening") : signal("greetingAfternoon");
+  function openNew() {
+    if (onlineModes === "on") {
+      router.push(`${prefix}/sessions/new?step=where`);
+      return;
+    }
+    setShowForm((value) => !value);
+  }
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">{t("recentSessions")}</h1>
-        <Button
-          type="button"
-          data-testid="new-session"
-          onClick={() => {
-            if (onlineModes === "on") {
-              router.push(`${prefix}/sessions/new?step=where`);
-              return;
-            }
-            setShowForm((value) => !value);
-          }}
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          {t("newSession")}
-        </Button>
-      </div>
-
-      {error && (
-        <div role="alert" className="mb-6 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm">
-          {error}
-        </div>
-      )}
-
-      {showForm && (
+    <SessionsHome
+      greeting={greeting}
+      locale={locale}
+      prefix={prefix}
+      loading={loading}
+      error={error}
+      briefing={latestReadyId ? briefing : null}
+      points={numericScores(sessions)}
+      toast={toast}
+      onUndo={() => setToast("")}
+      onAdded={() => setToast(signal("addedToPractice"))}
+      onNew={openNew}
+      sessions={sessions.map((session) => ({
+        ...session,
+        href: session.status === "layout_review" ? `${prefix}/sessions/${session.id}/layout` : `${prefix}/sessions/${session.id}`,
+      }))}
+    >
+      {showForm ? (
         <form
           onSubmit={submit}
           data-testid="session-form"
-          className="mb-8 grid gap-4 rounded-lg border bg-card p-6 md:grid-cols-2"
+          className="cs-panel mb-2 grid gap-4 md:grid-cols-2"
         >
           <Field label={t("title")} htmlFor="session-title">
             <Input id="session-title" name="title" required maxLength={255} />
@@ -239,87 +265,7 @@ export default function SessionsPage() {
             )}
           </div>
         </form>
-      )}
-
-      {loading ? (
-        <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
-      ) : sessions.length === 0 ? (
-        <div className="cs-empty rounded-lg border p-8 text-center" data-testid="empty-sessions">
-          <p className="relative text-muted-foreground">{t("noSessions")}</p>
-        </div>
-      ) : (
-        <div className="grid gap-3">
-          {sessions.map((session) => (
-            <Link
-              key={session.id}
-              href={
-                session.status === "layout_review"
-                  ? `${prefix}/sessions/${session.id}/layout`
-                  : `${prefix}/sessions/${session.id}`
-              }
-              className="flex min-h-11 items-center justify-between border bg-card p-5 text-left hover:bg-muted"
-            >
-              <div>
-                <div className="font-semibold">{session.title}</div>
-                <div className="mt-1 text-sm text-muted-foreground">
-                  {session.context_type.replaceAll("_", " ")} · {session.language} ·{" "}
-                  {new Date(session.created_at).toLocaleString()}
-                </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-4">
-                {typeof session.overall === "number" && (
-                  <span className="cs-stat text-3xl tabular-nums">{session.overall}</span>
-                )}
-                <span className="text-sm text-primary">{nextAction(session.status, t)}</span>
-                <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusClass(session.status)}`}>
-                  {statusLabel(session.status, t)}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
+      ) : null}
+    </SessionsHome>
   );
-}
-
-function nextAction(
-  status: string,
-  t: (key: "openReport" | "watchProgress" | "seeFailure" | "startAnalysis" | "checkLayout") => string,
-): string {
-  if (status === "ready" || status === "partial") return t("openReport");
-  if (status === "failed") return t("seeFailure");
-  if (status === "layout_review") return t("checkLayout");
-  if (status === "processing" || status === "uploaded" || status === "preparing") return t("watchProgress");
-  return t("startAnalysis");
-}
-
-function statusClass(status: string): string {
-  if (status === "ready") return "cs-status-success px-3 py-1";
-  if (status === "failed") return "cs-status-critical px-3 py-1";
-  if (status === "partial" || status === "layout_review") return "cs-status-warning px-3 py-1";
-  if (status === "processing" || status === "uploaded" || status === "preparing") return "cs-status-info px-3 py-1";
-  return "bg-muted px-3 py-1 text-xs uppercase tracking-[0.08em] text-muted-foreground";
-}
-
-function statusLabel(
-  status: string,
-  t: (
-    key:
-      | "statusReady"
-      | "statusFailed"
-      | "statusPartial"
-      | "statusProcessing"
-      | "statusCreated"
-      | "statusPreparing"
-      | "statusLayoutReview",
-  ) => string,
-): string {
-  if (status === "ready") return t("statusReady");
-  if (status === "failed") return t("statusFailed");
-  if (status === "partial") return t("statusPartial");
-  if (status === "preparing") return t("statusPreparing");
-  if (status === "layout_review") return t("statusLayoutReview");
-  if (status === "processing" || status === "uploaded") return t("statusProcessing");
-  return t("statusCreated");
 }

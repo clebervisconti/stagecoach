@@ -9,7 +9,7 @@ export function generateMetadata() {
 
 export default function SignInPage() {
   return (
-    <AuthFrame>
+    <AuthFrame horizon>
       <Suspense fallback={<p className="text-base">Loading</p>}>
         <SignInForm />
       </Suspense>

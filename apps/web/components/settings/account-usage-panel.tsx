@@ -41,12 +41,21 @@ export function AccountUsagePanel() {
       .catch(() => setError(t("loadError")));
   }, [t]);
 
-  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (error) {
+    return (
+      <div className="cs-alert cs-alert-neutral" role="status">
+        <div className="cs-alert-body">
+          <p className="cs-alert-title">{t("heading")}</p>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
   if (!usage?.limits) return null;
   const storageGb = (usage.storage_bytes / 1024 ** 3).toFixed(2);
   const storageLimit = (usage.limits.storage_bytes / 1024 ** 3).toFixed(0);
   return (
-    <div className="rounded-lg border bg-card p-6">
+    <div className="cs-panel">
       <h2 className="mb-4 text-lg font-semibold">{t("heading")}</h2>
       <dl className="space-y-2 text-sm">
         <div className="flex justify-between">
