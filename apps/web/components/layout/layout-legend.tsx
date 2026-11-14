@@ -29,7 +29,7 @@ export function LayoutLegend({ roles }: { roles: LayoutRole[] }) {
                 }
               />
               <span>
-                <span className="block text-xs uppercase tracking-[0.08em]">{t(`chip.${key === "ignore" ? "ignored" : key}`)}</span>
+                <span className="block s-sentence">{t(`chip.${key === "ignore" ? "ignored" : key}`)}</span>
                 <span className="mt-1 block text-sm text-[color:var(--text-secondary)]">{t(`legend.${key}`)}</span>
               </span>
             </li>

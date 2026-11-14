@@ -240,7 +240,7 @@ export function RegionOverlay({
       <p id="layout-preview-desc" className="sr-only">
         {description || t("noRegions")}
       </p>
-      <figcaption className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
+      <figcaption className="mt-2 s-sentence text-[color:var(--text-tertiary)]">
         {previewT != null ? t("frameAt", { time: formatClock(previewT) }) : t("previewOnly")}
         {editable ? ` · ${t("layout.nudge.hint")}` : ""}
       </figcaption>

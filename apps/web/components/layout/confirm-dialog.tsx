@@ -64,7 +64,7 @@ export function ConfirmDialog({
               type="button"
               data-testid={`confirm-${action.id}`}
               onClick={action.onClick}
-              className={`inline-flex h-11 items-center justify-center rounded-[var(--radius-sm)] px-4 text-xs uppercase tracking-[0.08em] ${
+              className={`inline-flex h-11 items-center justify-center rounded-[var(--radius-sm)] px-4 s-sentence ${
                 action.tone === "ghost"
                   ? "border border-[color:var(--line-strong)]"
                   : action.tone === "danger"

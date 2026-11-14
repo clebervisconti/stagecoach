@@ -37,11 +37,11 @@ import { confidenceTone, segmentRoles, type LayoutRole, type LayoutView } from "
 export type LayoutHeading = { eyebrow: string; title: string; lead: string };
 
 const primaryClass =
-  "inline-flex h-11 w-full items-center justify-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-5 text-xs uppercase tracking-[0.08em] text-[color:var(--text-inverse)] disabled:opacity-40";
+  "inline-flex h-11 w-full items-center justify-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-5 s-sentence text-[color:var(--text-inverse)] disabled:opacity-40";
 const ghostClass =
-  "inline-flex h-11 w-full items-center justify-center rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] px-5 text-xs uppercase tracking-[0.08em] disabled:opacity-40";
+  "inline-flex h-11 w-full items-center justify-center rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] px-5 s-sentence disabled:opacity-40";
 const toolClass =
-  "inline-flex h-9 shrink-0 items-center justify-center border border-[color:var(--line-strong)] px-3 text-xs uppercase tracking-[0.08em] disabled:opacity-40";
+  "inline-flex h-9 shrink-0 items-center justify-center border border-[color:var(--line-strong)] px-3 s-sentence disabled:opacity-40";
 
 export function LayoutWorkspace({
   layout,
@@ -401,7 +401,7 @@ export function LayoutWorkspace({
           >
             <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <div>
-              <p className="text-xs uppercase tracking-[0.08em]">
+              <p className="s-sentence">
                 {saveError ? t("layout.status.saveFailed") : t("layout.status.unsaved")}
               </p>
               <p className="mt-1 text-sm text-[color:var(--text-secondary)]">
@@ -413,7 +413,7 @@ export function LayoutWorkspace({
         <div className={`min-w-0 ${showBanner ? "lg:col-start-1 lg:row-span-2 lg:row-start-1" : ""}`}>
           {showEditor && (
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span data-testid="editing-badge" className="inline-flex h-9 items-center gap-2 border border-[color:var(--line-strong)] px-3 text-xs uppercase tracking-[0.08em]">
+              <span data-testid="editing-badge" className="inline-flex h-9 items-center gap-2 border border-[color:var(--line-strong)] px-3 s-sentence">
                 <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--text-strong)]" aria-hidden="true" />
                 {t("layout.status.editing")}
               </span>
@@ -495,8 +495,8 @@ export function LayoutWorkspace({
             {showEditor && (
               <div className="lg:hidden">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="min-w-0 truncate text-xs uppercase tracking-[0.08em]">{summary}</p>
-                  <button type="button" data-testid="sheet-done" className="h-11 shrink-0 px-3 text-xs uppercase tracking-[0.08em]" onClick={() => setSelectedId(null)}>
+                  <p className="min-w-0 truncate s-sentence">{summary}</p>
+                  <button type="button" data-testid="sheet-done" className="h-11 shrink-0 px-3 s-sentence" onClick={() => setSelectedId(null)}>
                     {t("layout.cta.done")}
                   </button>
                 </div>

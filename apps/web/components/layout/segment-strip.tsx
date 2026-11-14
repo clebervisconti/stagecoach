@@ -18,7 +18,7 @@ export function SegmentStrip({
     <div className="mt-6">
       <div className="flex items-center justify-between gap-3">
         <p className="cs-eyebrow">{t("layoutOverTime")}</p>
-        <p className="font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
+        <p className="s-sentence text-[color:var(--text-tertiary)]">
           {t("segmentCount", { n: segments.length })}
         </p>
       </div>
@@ -48,7 +48,7 @@ export function SegmentStrip({
                 summary,
               })}
               onClick={() => onSelect(segment.index)}
-              className={`shrink-0 rounded-full px-3 py-1 font-mono text-xs uppercase tracking-[0.08em] ${
+              className={`shrink-0 rounded-full px-3 py-1 s-sentence ${
                 selectedChip
                   ? "bg-[color:var(--bg-inverse)] text-[color:var(--text-inverse)]"
                   : "border border-[color:var(--line-strong)]"
@@ -59,7 +59,7 @@ export function SegmentStrip({
           );
         })}
       </div>
-      <div className="mt-3 flex justify-between font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
+      <div className="mt-3 flex justify-between s-sentence text-[color:var(--text-tertiary)]">
         <span>{formatClock(0)}</span>
         <span className="hidden md:inline">{formatClock(duration / 2)}</span>
         <span>{formatClock(duration)}</span>

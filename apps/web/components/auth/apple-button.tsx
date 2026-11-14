@@ -3,8 +3,8 @@
 /**
  * Sign in with Apple, following Apple's Human Interface Guidelines:
  * official logo, solid black button on light and solid white button on dark,
- * 44px height, 6px corner radius, logo inset at the left, label centered.
- * This is not the pill placeholder from the v3 mock.
+ * 44px height, the same pill radius as the other buttons, logo inset at the left,
+ * label centered in -apple-system. Apple's logo artwork is unchanged.
  * The button stays unmounted until Apple sign-in is configured.
  */
 export function AppleSignInButton({

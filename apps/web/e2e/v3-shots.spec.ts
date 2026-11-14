@@ -12,7 +12,7 @@ test.describe("v3 signal screenshots", () => {
     mkdirSync(OUT, { recursive: true });
     page.on("pageerror", (error) => console.log("PAGEERROR", error.message));
     let list: "empty" | "filled" = "empty";
-    let sessionMode: "mock" | "processing" = "mock";
+    let sessionMode: "mock" | "processing" | "preparing" = "mock";
 
     await mockStagecoachApi(page, { language: "en", title: "Quarterly product update (example)" });
     await page.route("**/api/stagecoach/**", async (route) => {
@@ -36,25 +36,28 @@ test.describe("v3 signal screenshots", () => {
       }
       if (method === "GET" && path === `/sessions/${SESSION_ID}`) {
         const processing = sessionMode === "processing";
+        const preparing = sessionMode === "preparing";
         return json(route, {
           id: SESSION_ID,
           title: "Quarterly product update (example)",
-          status: processing ? "processing" : "ready",
+          status: preparing ? "preparing" : processing ? "processing" : "ready",
           context_type: "webinar",
           delivery_mode: "webinar",
           language: "en",
           created_at: "2026-11-12T15:00:00Z",
           job: {
-            status: processing ? "running" : "succeeded",
+            status: preparing || processing ? "running" : "succeeded",
             error: null,
-            created_at: "2026-11-12T15:00:00Z",
-            steps: [
-              { stage: "ingest", status: "succeeded" },
-              { stage: "asr", status: "succeeded" },
-              { stage: "audio_features", status: processing ? "running" : "succeeded" },
-              { stage: "fusion_scoring", status: processing ? "pending" : "succeeded" },
-              { stage: "report", status: processing ? "pending" : "succeeded" },
-            ],
+            created_at: preparing ? new Date(Date.now() - 20_000).toISOString() : "2026-11-12T15:00:00Z",
+            steps: preparing
+              ? [{ stage: "ingest", status: "running", message: "ingest_audio" }]
+              : [
+                  { stage: "ingest", status: "succeeded" },
+                  { stage: "asr", status: "succeeded" },
+                  { stage: "audio_features", status: processing ? "running" : "succeeded" },
+                  { stage: "fusion_scoring", status: processing ? "pending" : "succeeded" },
+                  { stage: "report", status: processing ? "pending" : "succeeded" },
+                ],
           },
         });
       }
@@ -109,6 +112,10 @@ test.describe("v3 signal screenshots", () => {
         await shot(page, "06-report-processing", theme, width, `/sessions/${SESSION_ID}`, () => page.getByTestId("processing"));
         sessionMode = "mock";
         await shot(page, "07-layout-editor", theme, width, `/sessions/${SESSION_ID}/layout`, () => page.locator("#layout-title"));
+        await shot(page, "12-recording", theme, width, "/sessions/new?step=recording&mode=webinar", () => page.getByRole("heading", { name: /add your recording/i }));
+        sessionMode = "preparing";
+        await shot(page, "13-preparing", theme, width, `/sessions/${SESSION_ID}`, () => page.getByTestId("preparing"));
+        sessionMode = "mock";
         await shot(page, "09-settings", theme, width, "/settings", () => page.getByRole("heading", { name: /settings|ajustes/i }));
         await shot(page, "10-error-states", theme, width, "/sessions/33333333-3333-4333-8333-333333333333", () => page.getByTestId("report-load-error"));
 

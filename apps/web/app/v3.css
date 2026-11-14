@@ -138,7 +138,7 @@
 .s-bar .v { font-family: var(--font-mono); text-align: right; color: var(--text-strong); white-space: nowrap; }
 .s-bar .goal { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text-strong); }
 .s-set-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: center; padding: 18px 0; border-bottom: 1px solid var(--line-subtle); }
-.apple-signin { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 44px; min-height: 44px; padding: 0 16px 0 44px; border: 0; border-radius: 6px; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; font-size: 17px; font-weight: 500; letter-spacing: -0.01em; line-height: 1; cursor: pointer; text-transform: none; }
+button.apple-signin { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 44px; min-height: 44px; padding: 0 16px 0 44px; border: 0; border-radius: var(--radius-pill); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; font-size: 17px; font-weight: 500; letter-spacing: -0.01em; line-height: 1; cursor: pointer; text-transform: none; }
 .apple-signin svg { position: absolute; left: 16px; top: 13px; width: 18px; height: 18px; overflow: visible; }
 :root[data-theme="dark"] .apple-signin, :root:not([data-theme="light"]) .apple-signin { background: #ffffff; color: #000000; }
 :root[data-theme="light"] .apple-signin { background: #000000; color: #ffffff; }
@@ -149,6 +149,7 @@ input[type="file"].cs-field { border-radius: var(--radius-md); padding: 10px 16p
 .s-stage[data-status="running"] { background: var(--bg-muted); }
 .s-stage-status { white-space: nowrap; font-size: 13px; font-weight: 500; line-height: 20px; }
 .s-label { font-family: var(--font-sans); font-weight: 500; font-size: 13px; line-height: 18px; letter-spacing: 0; text-transform: none; color: var(--text-secondary); }
+.s-sentence { font-family: var(--font-sans); font-weight: 500; font-size: 13px; line-height: 18px; letter-spacing: 0; text-transform: none; }
 .s-title-16 { font-family: var(--font-sans); font-weight: 600; font-size: 16px; line-height: 22px; letter-spacing: 0; text-transform: none; color: var(--text-strong); }
 .cs-session-head, .cs-session-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto 24px; gap: 12px 16px; align-items: center; }
 .cs-session-head { padding: 0 4px 8px; border-bottom: 1px solid var(--sc-control-edge); font-size: 13px; font-weight: 500; color: var(--text-secondary); }

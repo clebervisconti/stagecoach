@@ -799,7 +799,7 @@
     "detectAutomatically": "Detectar automaticamente",
     "slotLength": "Duração do slot",
     "targetLength": "Duração alvo",
-    "min": "Min",
+    "min": "min",
     "slotLengthHelp": "O tempo que você tinha. Comparamos com quanto você falou.",
     "targetLengthHelp": "Deixe vazio e não pontuamos o tempo.",
     "qaIncluded": "Houve perguntas",

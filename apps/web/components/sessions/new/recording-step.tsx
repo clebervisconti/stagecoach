@@ -229,7 +229,7 @@ export function RecordingStep({
               <div className="mt-2 rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] bg-[color:var(--bg-subtle)] p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h2 ref={progressRef} tabIndex={-1} className="flex items-center gap-2 text-xs uppercase tracking-[0.12em] outline-none">
+                    <h2 ref={progressRef} tabIndex={-1} className="flex items-center gap-2 s-sentence outline-none">
                       <span className="h-2 w-2 rounded-full bg-[color:var(--text-strong)]" aria-hidden="true" />
                       {t("uploading")}
                     </h2>
@@ -246,7 +246,7 @@ export function RecordingStep({
                     eta: telemetry.eta != null ? spokenDuration(telemetry.eta) : t("calculating"),
                   })}
                 />
-                <p className="mt-3 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">
+                <p className="mt-3 s-sentence text-[color:var(--text-secondary)]">
                   {t("uploadTelemetry", {
                     loaded: formatBytes(telemetry.loaded),
                     total: formatBytes(telemetry.total),
@@ -267,7 +267,7 @@ export function RecordingStep({
                   <p className="file-name overflow-hidden text-ellipsis whitespace-nowrap" title={media.file.name}>
                     {media.file.name}
                   </p>
-                  <p className="mt-1 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">
+                  <p className="mt-1 s-sentence text-[color:var(--text-secondary)]">
                     {[
                       formatBytes(media.file.size),
                       media.duration != null ? formatClockSafe(media.duration) : null,
@@ -281,7 +281,7 @@ export function RecordingStep({
                   type="button"
                   disabled={readOnly}
                   onClick={() => fileInput.current?.click()}
-                  className="shrink-0 text-xs uppercase tracking-[0.08em]"
+                  className="shrink-0 s-sentence"
                 >
                   {t("replace")}
                 </button>
@@ -301,7 +301,7 @@ export function RecordingStep({
                 <Upload className="h-5 w-5" aria-hidden="true" />
                 <p className="mt-3 text-sm">
                   {t("dropHere")}{" "}
-                  <span className="uppercase tracking-[0.08em]">{t("browseFiles")}</span>
+                  <span className="s-sentence">{t("browseFiles")}</span>
                 </p>
                 <p className="mt-1 text-sm text-[color:var(--text-secondary)]">{t("fileHint", { limit: "2 GB" })}</p>
               </label>
@@ -392,7 +392,7 @@ export function RecordingStep({
                   onChange={(event) => setDraft((current) => ({ ...current, slot_min: event.target.value }))}
                   className="h-11 w-full rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] bg-[color:var(--bg-subtle)] px-3 font-mono"
                 />
-                <span className="font-mono text-xs uppercase">{t("min")}</span>
+                <span className="s-sentence">{t("min")}</span>
               </span>
               <span className="text-[color:var(--text-secondary)]">{t("targetLengthHelp")}</span>
             </label>
@@ -410,7 +410,7 @@ export function RecordingStep({
                   onChange={(event) => setDraft((current) => ({ ...current, slot_min: event.target.value }))}
                   className="h-11 w-full rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] bg-[color:var(--bg-subtle)] px-3 font-mono"
                 />
-                <span className="font-mono text-xs uppercase">{t("min")}</span>
+                <span className="s-sentence">{t("min")}</span>
               </span>
               <span className="text-[color:var(--text-secondary)]">{t("slotLengthHelp")}</span>
             </label>
@@ -473,7 +473,7 @@ export function RecordingStep({
               type="button"
               disabled={readOnly}
               onClick={() => setShowDeck(true)}
-              className="text-xs uppercase tracking-[0.08em]"
+              className="s-sentence"
             >
               {t("addSlides")}
             </button>
@@ -516,7 +516,7 @@ export function RecordingStep({
             <p className="flex items-start gap-2 text-sm">
               <X className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-critical)]" aria-hidden="true" />
               <span>
-                <span className="font-display text-xs font-bold uppercase tracking-[0.08em] text-[color:var(--status-critical)]">
+                <span className="s-sentence text-[color:var(--status-critical)]">
                   {tooLarge ? t("fileTooLargeWord") : t("uploadFailedWord")}
                 </span>
                 <span className="text-[color:var(--text)]">
@@ -557,7 +557,7 @@ export function RecordingStep({
       <aside className="lg:pt-16">
         <button
           type="button"
-          className="flex w-full items-center justify-between gap-2 text-xs uppercase tracking-[0.08em] lg:hidden"
+          className="flex w-full items-center justify-between gap-2 s-sentence lg:hidden"
           aria-expanded={railOpen}
           onClick={() => setRailOpen((value) => !value)}
         >
@@ -571,10 +571,10 @@ export function RecordingStep({
           <div>
             <p className="cs-eyebrow">{t("yourSession")}</p>
             <div className="mt-3 flex items-center justify-between gap-2">
-              <span className="rounded-full border border-[color:var(--line-strong)] px-3 py-1 text-xs uppercase tracking-[0.08em]">
+              <span className="rounded-full border border-[color:var(--line-strong)] px-3 py-1 s-sentence">
                 {t(`modes.${mode}.title`)}
               </span>
-              <button type="button" onClick={onChangeMode} className="text-xs uppercase tracking-[0.08em]">
+              <button type="button" onClick={onChangeMode} className="s-sentence">
                 {t("change")}
               </button>
             </div>

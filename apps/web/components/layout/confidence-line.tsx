@@ -41,7 +41,7 @@ export function ConfidenceLine({ layout, consentOff = false }: { layout: LayoutV
       data-testid="confidence-line"
       className="rounded-[var(--radius-sm)] border border-[color:var(--line)] p-4"
     >
-      <p className={`flex items-center gap-2 text-xs uppercase tracking-[0.08em] ${color}`}>
+      <p className={`flex items-center gap-2 s-sentence ${color}`}>
         <Icon className="h-4 w-4" aria-hidden="true" />
         {consentOff ? t("layout.layoutCheck") : word}
       </p>

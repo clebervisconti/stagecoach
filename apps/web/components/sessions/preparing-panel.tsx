@@ -109,7 +109,7 @@ export function PreparingPanel({
             <span className="cs-scan-line pointer-events-none absolute inset-x-0 top-0 h-px bg-[color:var(--line-strong)]" />
           )}
         </div>
-        <figcaption className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
+        <figcaption className="mt-2 s-sentence text-[color:var(--text-tertiary)]">
           {previewT != null ? t("frameAt", { time: formatClock(previewT) }) : t("previewOnly")}
         </figcaption>
       </figure>
@@ -143,7 +143,7 @@ export function PreparingPanel({
             <p className="flex items-start gap-2 text-sm">
               <X className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-critical)]" aria-hidden="true" />
               <span>
-                <span className="font-display text-xs font-bold uppercase tracking-[0.08em] text-[color:var(--status-critical)]">
+                <span className="s-sentence text-[color:var(--status-critical)]">
                   {t("couldntRead")}
                 </span>
                 <span className="text-[color:var(--text)]"> · {t("couldntReadHelp")}</span>
@@ -152,7 +152,7 @@ export function PreparingPanel({
             <a
               href={newHref}
               data-testid="upload-another"
-              className="mt-4 inline-flex h-11 items-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-5 text-xs uppercase tracking-[0.08em] text-[color:var(--text-inverse)]"
+              className="mt-4 inline-flex h-11 items-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-5 s-sentence text-[color:var(--text-inverse)]"
             >
               {t("uploadAnother")}
             </a>

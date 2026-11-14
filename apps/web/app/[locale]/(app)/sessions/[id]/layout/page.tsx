@@ -244,14 +244,14 @@ export default function LayoutReviewPage() {
       {error && !saveError && (
         <div role="alert" className="mt-6 rounded-[var(--radius-sm)] border border-[color:var(--status-critical)] p-4">
           <p className="text-sm">
-            <span className="font-display text-xs font-bold uppercase tracking-[0.08em] text-[color:var(--status-critical)]">
+            <span className="s-sentence text-[color:var(--status-critical)]">
               {t("acceptErrorWord")}
             </span>
             <span className="text-[color:var(--text)]"> · {error}</span>
           </p>
           <button
             type="button"
-            className="mt-3 text-xs uppercase tracking-[0.08em]"
+            className="mt-3 s-sentence"
             onClick={() => void accept(lastAudioOnly.current)}
           >
             {t("tryAgain")}
