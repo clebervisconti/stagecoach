@@ -37,6 +37,7 @@ services:
     environment:
       DATABASE_URL: postgresql://stagecoach:${POSTGRES_PASSWORD}@postgres:5432/stagecoach
       REDIS_URL: redis://redis:6379
+      ENV: production
       AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required}
       LLM_PROVIDER: ${LLM_PROVIDER:-local}
       LOCAL_LLM_BASE_URL: ${LOCAL_LLM_BASE_URL:-}

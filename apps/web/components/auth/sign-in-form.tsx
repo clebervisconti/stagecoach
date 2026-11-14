@@ -252,7 +252,9 @@ export function SignInForm() {
           {t.inviteTab}
         </button>
       </div>
-      {appleEnabled && mode !== "forgot" ? <AppleSignInButton label={t.apple} onClick={() => void startApple()} /> : null}
+      {appleEnabled && (mode === "login" || (mode === "register" && Boolean(invite))) ? (
+        <AppleSignInButton label={t.apple} onClick={() => void startApple()} />
+      ) : null}
       {showForm ? (
         <form onSubmit={(event) => void onSubmit(event)} className="grid gap-4">
           {mode !== "forgot" ? <div className="s-or">{t.orEmail}</div> : null}

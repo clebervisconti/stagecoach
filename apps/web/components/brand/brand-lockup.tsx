@@ -1,4 +1,4 @@
-/* Theme-swapped SVG marks. next/image does not swap these two files with the theme. */
+/* Theme-swapped v3 marks. next/image does not swap these two files with the theme. */
 /* eslint-disable @next/next/no-img-element */
 export function BrandLockup() {
   return (

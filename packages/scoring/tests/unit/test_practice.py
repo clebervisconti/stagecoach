@@ -38,7 +38,15 @@ def test_weekly_plan_uses_weakest_applicable_category():
             {"category_id": "visual_aids", "score": 90, "applicable": True},
             {"category_id": "qa", "score": None, "applicable": False},
         ],
-        goals=[{"id": "g1", "metric_id": "pp_wpm", "target": 140, "comparator": "<=", "achieved_at": None}],
+        goals=[
+            {
+                "id": "g1",
+                "metric_id": "pp_wpm",
+                "target": 140,
+                "comparator": "<=",
+                "achieved_at": None,
+            }
+        ],
         talk_date=date(2026, 11, 20),
         today=date(2026, 11, 12),
         locale="en",
@@ -50,7 +58,9 @@ def test_weekly_plan_uses_weakest_applicable_category():
 
 
 def test_series_requires_two_comparable_takes():
-    empty = series_compare([{"session_id": "a", "language": "en", "config_version": "1.0.0", "overall": 50}])
+    empty = series_compare(
+        [{"session_id": "a", "language": "en", "config_version": "1.0.0", "overall": 50}]
+    )
     assert empty["ready"] is False
     body = series_compare(
         [
@@ -76,7 +86,10 @@ def test_series_requires_two_comparable_takes():
 
 
 def test_transcript_and_deck_do_not_replace_the_session_score():
-    signals = transcript_signals("This is a short sentence. This sentence runs on and on with many extra words that push it well past the long sentence line.")
+    signals = transcript_signals(
+        "This is a short sentence. This sentence runs on and on with many extra words "
+        "that push it well past the long sentence line."
+    )
     assert signals["applicable"] is True
     assert "original analysis" in signals["note"]
     review = deck_review([{"text": "Ship the weekly digest to managers"}, {"text": "Overview"}])
@@ -152,6 +165,9 @@ def test_baseline_sentence_and_drill_catalog_locales():
     pt = list_drills("pt-BR")
     assert len(en) >= 10
     assert en[0]["title"] != pt[0]["title"]
-    joined = " ".join(drill["instructions"]["en"] + drill["instructions"]["pt-BR"] for drill in __import__("scoring.practice", fromlist=["DRILLS"]).DRILLS)
+    drills = __import__("scoring.practice", fromlist=["DRILLS"]).DRILLS
+    joined = " ".join(
+        drill["instructions"]["en"] + drill["instructions"]["pt-BR"] for drill in drills
+    )
     for banned in ("nervous", "anxious", "engagement", "authenticity", "nervoso", "engajamento"):
         assert banned not in joined.lower()

@@ -24,27 +24,34 @@ export function AccountUsagePanel() {
 
   useEffect(() => {
     void Promise.all([
-      fetch("/api/stagecoach/account/usage", { cache: "no-store" }).then((response) => response.json()),
-      fetch("/api/stagecoach/account/readiness", { cache: "no-store" }).then((response) => response.json()),
+      fetch("/api/stagecoach/account/usage", { cache: "no-store" }).then(async (response) => {
+        if (!response.ok) throw new Error("usage");
+        return response.json();
+      }),
+      fetch("/api/stagecoach/account/readiness", { cache: "no-store" }).then(async (response) => {
+        if (!response.ok) return null;
+        return response.json();
+      }),
     ])
       .then(([usageBody, readyBody]) => {
+        if (!usageBody?.limits || typeof usageBody.storage_bytes !== "number") return;
         setUsage(usageBody);
         setReady(readyBody);
       })
       .catch(() => setError(t("loadError")));
   }, [t]);
 
-  if (error || (usage && typeof usage.storage_bytes !== "number")) {
+  if (error) {
     return (
       <div className="cs-alert cs-alert-neutral" role="status">
         <div className="cs-alert-body">
           <p className="cs-alert-title">{t("heading")}</p>
-          <p>{error || t("loadError")}</p>
+          <p>{error}</p>
         </div>
       </div>
     );
   }
-  if (!usage) return null;
+  if (!usage?.limits) return null;
   const storageGb = (usage.storage_bytes / 1024 ** 3).toFixed(2);
   const storageLimit = (usage.limits.storage_bytes / 1024 ** 3).toFixed(0);
   return (
