@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- The dependency audit ignores only CVE-2026-126360 until 2026-12-31. `splunk-opentelemetry` 2.13.1 is pinned, and Splunk 2.13.3 still requires `opentelemetry-api` 1.45.1. Remove the ignore when Splunk allows 1.45.2. Tracking: https://github.com/clebervisconti/stagecoach/issues/184
 - Browser RUM, when a build-time token is present, redacts `/sessions/<id>` and `/prep/<id>` from exported URLs and drops query strings. Session replay stays off. The token is not committed.
 - API rate limits key the per-user bucket on the verified user id. A token that does not verify is keyed by a hash of the whole token, not the JWT header prefix, which is the same for every HS256 session. `GET /api/v1/me`, the session document, and the session event stream do not spend the user bucket. The per-IP limit remains. Defaults are 8 requests/s per user (burst 120) and 16/s per IP (burst 240). 429 responses include `Retry-After`, and the web proxy forwards it. See ADR-086.
 
