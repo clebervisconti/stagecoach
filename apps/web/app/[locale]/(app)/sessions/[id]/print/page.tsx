@@ -9,6 +9,7 @@ import { KeyMetrics } from "@/components/report/key-metrics";
 import { CategoryBars } from "@/components/report/category-bars";
 import { SummaryCard } from "@/components/report/summary-card";
 import { TranscriptTab } from "@/components/report/transcript-tab";
+import { drillTitle } from "@/lib/overview";
 import type { AnalysisReport } from "@/lib/report-types";
 import { formatTimestamp } from "@/lib/player";
 import type { TranscriptPayload } from "@/lib/transcript";
@@ -107,7 +108,7 @@ export default function PrintReportPage() {
           {(report.insights.opportunities ?? [])
             .flatMap((item) => item.drill_ids ?? [])
             .map((drill) => (
-              <li key={drill}>{drill}</li>
+              <li key={drill}>{drillTitle(drill)}</li>
             ))}
         </ul>
       </section>

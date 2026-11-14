@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { Check, CircleAlert, CircleX, Loader2, Minus } from "lucide-react";
+import { Check, ChevronRight, CircleAlert, CircleX, Loader2, Minus } from "lucide-react";
 import type { AnalysisReport } from "@/lib/report-types";
 import { CATEGORY_IDS } from "@/lib/report-types";
 import { averageLast, metricNumber, overallFinding, type ScorePoint } from "@/lib/overview";
@@ -51,7 +51,8 @@ export function SessionsHome({
   const signal = useTranslations("signal");
   const report = useTranslations("report");
   const scored = points;
-  const average = averageLast(scored, 3);
+  const windowCount = Math.min(3, scored.length);
+  const average = averageLast(scored, windowCount);
   const finding = overallFinding(scored);
   const pace = metricNumber(briefing?.metrics, "pp_wpm");
   const fillers = metricNumber(briefing?.metrics, "fl_filler_sounds_per_min");
@@ -71,9 +72,11 @@ export function SessionsHome({
               })
             : signal("noReportsYet")}
         </p>
-        <button type="button" className="cs-button cs-button-ghost" data-testid="new-session" onClick={onNew} style={{ width: "fit-content" }}>
-          {signal("actionNew")}
-        </button>
+        {sessions.length > 0 ? (
+          <button type="button" className="cs-button cs-button-ghost" data-testid="new-session" onClick={onNew} style={{ width: "fit-content" }}>
+            {signal("actionNew")}
+          </button>
+        ) : null}
       </div>
 
       {error ? (
@@ -84,12 +87,20 @@ export function SessionsHome({
 
       {children}
 
-      {sessions.length === 0 && !children ? (
+      {loading && sessions.length === 0 && !children ? (
+        <div className="grid gap-3" data-testid="sessions-loading" aria-busy="true">
+          <div className="k-skel" style={{ height: 96 }} />
+          <div className="k-skel" style={{ height: 56 }} />
+          <div className="k-skel" style={{ height: 56 }} />
+        </div>
+      ) : null}
+
+      {!loading && sessions.length === 0 && !children ? (
         <section className="cs-panel cs-empty" data-testid="empty-sessions">
           <h2 className="cs-panel-title">{signal("emptyTitle")}</h2>
           <p className="k-sec" style={{ maxWidth: 560 }}>{signal("emptyBody")}</p>
           <div className="k-row">
-            <button type="button" className="cs-button cs-button-primary" onClick={onNew}>{signal("emptyPrimary")}</button>
+            <button type="button" className="cs-button cs-button-primary" data-testid="new-session" onClick={onNew}>{signal("emptyPrimary")}</button>
             <Link href={`${prefix}/config/scoring`} className="cs-button cs-button-ghost">{signal("emptySecondary")}</Link>
           </div>
           <p className="k-note">{signal("emptyNote")}</p>
@@ -97,9 +108,9 @@ export function SessionsHome({
       ) : null}
 
       {summary || opportunities.length ? (
-        <section className="cs-ai" aria-labelledby="coach-brief" data-testid="coach-briefing">
+        <section className="cs-panel" aria-labelledby="coach-brief" data-testid="coach-briefing">
           <div className="k-between">
-            <span className="cs-ai-label">{signal("coachBriefing")}</span>
+            <span className="s-label">{signal("coachBriefing")}</span>
             <span className="k-mono k-ter" style={{ fontSize: 12 }}>{signal("reportsRead", { count: String(scored.length) })}</span>
           </div>
           {summary ? <h2 id="coach-brief" className="k-ai-sum">{summary}</h2> : <h2 id="coach-brief" className="cs-sr-only">{signal("coachBriefing")}</h2>}
@@ -134,12 +145,25 @@ export function SessionsHome({
       {sessions.length > 0 ? (
         <>
           <div className="k-g4">
-            <Kpi label={signal("overallLast3")} value={average === null ? "—" : String(average)} />
+            <Kpi
+              label={signal(windowCount === 1 ? "overallLastOne" : "overallLast", { count: String(windowCount) })}
+              value={average === null ? "—" : String(average)}
+            />
             <Kpi label={signal("pace")} value={pace === null ? "—" : String(Math.round(pace))} note={pace === null ? signal("notMeasured") : undefined} />
             <Kpi label={signal("fillers")} value={fillers === null ? "—" : fillers.toFixed(1)} note={fillers === null ? signal("notMeasured") : undefined} />
           </div>
           <div className="k-g2">
-            {finding ? <ScoreChart title={finding} caption={signal("chartMeta")} source={signal("chartSource")} points={scored} locale={locale} /> : null}
+            {scored.length > 0 ? (
+              <ScoreChart
+                title={finding ?? signal("trendsAfter")}
+                caption={signal("chartMeta")}
+                source={signal("chartSource")}
+                note={scored.length < 3 && finding ? signal("trendsAfter") : undefined}
+                lined={scored.length >= 3}
+                points={scored}
+                locale={locale}
+              />
+            ) : null}
             <section className="cs-panel">
               <div className="k-between">
                 <h2 className="cs-panel-title">{signal("recent")}</h2>
@@ -147,42 +171,34 @@ export function SessionsHome({
                   {signal("actionNew")}
                 </button>
               </div>
-              <div className="cs-table-wrap">
-                <table className="cs-table">
-                  <thead>
-                    <tr>
-                      <th>{t("title")}</th>
-                      <th>{locale.startsWith("pt") ? "Estado" : "Status"}</th>
-                      <th className="cs-num">{report("score")}</th>
-                      <th className="cs-num">{locale.startsWith("pt") ? "Data" : "Date"}</th>
-                      <th><span className="cs-sr-only">{signal("details")}</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sessions.map((session) => (
-                      <tr key={session.id}>
-                        <td>
-                          <span className="k-strong">{session.title}</span>
-                          <br />
-                          <span className="k-ter" style={{ fontSize: 14 }}>{session.context_type.replaceAll("_", " ")}</span>
-                        </td>
-                        <td><Status status={session.status} label={statusLabel(session.status, t)} /></td>
-                        <td className="cs-num">{typeof session.overall === "number" ? Math.round(session.overall) : "—"}</td>
-                        <td className="cs-num k-ter">{new Date(session.created_at).toLocaleDateString(locale, { month: "short", day: "numeric" })}</td>
-                        <td>
-                          <Link className="cs-button cs-button-ghost cs-btn-sm" href={session.href}>{nextAction(session.status, t)}</Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="cs-session-head" aria-hidden="true">
+                <span>{t("title")}</span>
+                <span>{locale.startsWith("pt") ? "Estado" : "Status"}</span>
+                <span>{report("score")}</span>
+                <span className="cs-session-date">{locale.startsWith("pt") ? "Data" : "Date"}</span>
+                <span />
               </div>
+              <ul className="cs-session-list">
+                {sessions.map((session) => (
+                  <li key={session.id}>
+                    <Link className="cs-session-row" href={session.href}>
+                      <span>
+                        <span className="k-strong">{session.title}</span>
+                        <br />
+                        <span className="k-ter" style={{ fontSize: 14 }}>{session.context_type.replaceAll("_", " ")}</span>
+                      </span>
+                      <span className="cs-session-status"><Status status={session.status} label={statusLabel(session.status, t)} /></span>
+                      <span className="cs-num">{typeof session.overall === "number" ? Math.round(session.overall) : "—"}</span>
+                      <span className="cs-session-date cs-num k-ter">{new Date(session.created_at).toLocaleDateString(locale, { month: "short", day: "numeric" })}</span>
+                      <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </section>
           </div>
         </>
       ) : null}
-
-      {loading ? <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" /></div> : null}
 
       {toast ? (
         <div className="k-toast" role="status">
@@ -205,7 +221,7 @@ function Kpi({ label, value, note }: { label: string; value: string; note?: stri
   );
 }
 
-function ScoreChart({ title, caption, source, points, locale }: { title: string; caption: string; source: string; points: ScorePoint[]; locale: string }) {
+function ScoreChart({ title, caption, source, note, lined, points, locale }: { title: string; caption: string; source: string; note?: string; lined: boolean; points: ScorePoint[]; locale: string }) {
   const width = 640;
   const height = 180;
   const pad = 16;
@@ -224,8 +240,13 @@ function ScoreChart({ title, caption, source, points, locale }: { title: string;
       <h2 className="cs-panel-title">{title}</h2>
       <p className="cs-panel-meta">{caption}</p>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label}>
-        <polyline fill="none" stroke="var(--data-1)" strokeWidth="2" points={coords.join(" ")} />
+        {lined ? <polyline fill="none" stroke="var(--data-1)" strokeWidth="2" points={coords.join(" ")} /> : null}
+        {coords.map((coord, index) => {
+          const [x, y] = coord.split(",");
+          return <circle key={points[index]?.at ?? coord} cx={x} cy={y} r={lined ? 0 : 4} fill="var(--data-1)" />;
+        })}
       </svg>
+      {note ? <p className="cs-panel-meta">{note}</p> : null}
       <div className="k-between k-mono k-ter" style={{ fontSize: 11 }}>
         <span>{new Date(points[0].at).toLocaleDateString(locale, { month: "short", day: "numeric" })}</span>
         <span>{new Date(points[points.length - 1].at).toLocaleDateString(locale, { month: "short", day: "numeric" })}</span>
@@ -257,17 +278,6 @@ function relativeWhen(iso: string, locale: string) {
   if (days <= 0) return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(0, "day");
   if (days < 30) return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(-days, "day");
   return date.toLocaleDateString(locale, { month: "short", day: "numeric" });
-}
-
-function nextAction(
-  status: string,
-  t: (key: "openReport" | "watchProgress" | "seeFailure" | "startAnalysis" | "checkLayout") => string,
-): string {
-  if (status === "ready" || status === "partial") return t("openReport");
-  if (status === "failed") return t("seeFailure");
-  if (status === "layout_review") return t("checkLayout");
-  if (status === "processing" || status === "uploaded" || status === "preparing") return t("watchProgress");
-  return t("startAnalysis");
 }
 
 function statusLabel(

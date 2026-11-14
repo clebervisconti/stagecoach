@@ -34,6 +34,13 @@ export function overallFinding(points: ScorePoint[]): string | null {
   return `Overall held at ${last} across ${count} sessions`;
 }
 
+/** Sentence-case title for a drill id. The id stays the key; the screen shows the title. */
+export function drillTitle(id: string): string {
+  const words = id.replaceAll(/[-_]+/g, " ").replaceAll(/\s+/g, " ").trim();
+  if (!words) return id;
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export function metricNumber(metrics: { id: string; raw_value: number | string | boolean | null }[] | undefined, id: string): number | null {
   const raw = metrics?.find((metric) => metric.id === id)?.raw_value;
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;

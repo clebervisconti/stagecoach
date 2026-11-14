@@ -102,6 +102,17 @@ export function elapsedClock(startedAt: string | null | undefined, now = Date.no
   return formatClock((now - start) / 1000);
 }
 
+/** Relative phrase once a run is older than an hour. Null keeps the clock. */
+export function startedAgo(startedAt: string | null | undefined, now = Date.now(), locale = "en"): string | null {
+  const start = parseServerInstant(startedAt);
+  if (start == null) return null;
+  const seconds = (now - start) / 1000;
+  if (seconds < 3600) return null;
+  const format = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  if (seconds < 86_400) return format.format(-Math.max(1, Math.round(seconds / 3600)), "hour");
+  return format.format(-Math.max(1, Math.round(seconds / 86_400)), "day");
+}
+
 export function formatClock(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(total / 3600);

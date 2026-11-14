@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { averageLast, greetingPart, numericScores, overallFinding } from "./overview.ts";
+import { averageLast, drillTitle, greetingPart, numericScores, overallFinding } from "./overview.ts";
 
 test("greeting follows the hour", () => {
   assert.equal(greetingPart(8), "morning");
@@ -19,6 +19,11 @@ test("scores ignore gaps and stay in date order", () => {
     [61, 74],
   );
   assert.equal(averageLast(points, 3), 68);
+});
+
+test("a drill id becomes its title", () => {
+  assert.equal(drillTitle("pause-instead-of-um"), "Pause instead of um");
+  assert.equal(drillTitle("pace_ladder"), "Pace ladder");
 });
 
 test("finding text is measured and carries no private fields", () => {

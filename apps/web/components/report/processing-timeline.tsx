@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, CircleX, Info } from "lucide-react";
-import { elapsedClock, parseServerInstant } from "@/lib/online";
+import { elapsedClock, parseServerInstant, startedAgo } from "@/lib/online";
 import {
   pipelineTimeline,
   type StageProgressEvent,
@@ -75,6 +75,7 @@ export function ProcessingTimeline({
   consentOff?: boolean;
 }) {
   const t = useTranslations("report");
+  const signal = useTranslations("signal");
   const tOnline = useTranslations("online");
   const locale = useLocale();
   const settingsHref = `${locale === "en" ? "" : `/${locale}`}/settings#video-analysis`;
@@ -94,6 +95,7 @@ export function ProcessingTimeline({
   const current = stages.find((stage) => stage.status === "running" || stage.status === "waiting");
   const startedMs = parseServerInstant(startedAt);
   const elapsed = startedMs != null ? elapsedClock(startedAt, now) : null;
+  const ago = startedAgo(startedAt, now, locale);
   const slow = Boolean(current && startedMs != null && now - startedMs > 90_000);
   const problems = stages.filter(
     (stage) => stage.status === "failed" || (stage.status === "skipped" && stage.problem !== "consent_video_off"),
@@ -137,21 +139,23 @@ export function ProcessingTimeline({
             <p className="mt-2 text-sm text-[color:var(--text-secondary)]">{t("layoutAuto")}</p>
           )}
         </div>
-        {elapsed && (
+        {ago ? (
+          <p data-testid="elapsed" className="text-sm">{signal("startedAgo", { when: ago })}</p>
+        ) : elapsed ? (
           <p data-testid="elapsed" className="font-mono text-sm tabular-nums">
             {t("elapsed", { time: elapsed })}
           </p>
-        )}
+        ) : null}
       </div>
 
-      {slow && <p className="mt-4 font-mono text-sm text-muted-foreground">{t("stillWorking")}</p>}
+      {slow && <p className="mt-4 text-sm text-muted-foreground">{t("stillWorking")}</p>}
 
       {consentOff && (
         <p data-testid="consent-off" className="mt-4 flex items-start gap-2 text-sm text-[color:var(--text-secondary)]">
           <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
             {t("consentOffLine")}{" "}
-            <Link href={settingsHref} className="uppercase tracking-[0.08em]">
+            <Link href={settingsHref} className="s-label">
               {t("openSettings")}
             </Link>
           </span>
@@ -182,18 +186,11 @@ export function ProcessingTimeline({
                 })
               : plainDetail;
           return (
-            <li
-              key={stage.stage}
-              className={`flex items-start gap-3 rounded-[var(--radius-sm)] px-3 py-2 text-sm ${
-                stage.status === "running" ? "bg-[color:var(--bg-muted)]" : ""
-              }`}
-              data-stage={stage.stage}
-              data-status={stage.status}
-            >
-              <span className="inline-flex w-4 shrink-0 justify-center">
+            <li key={stage.stage} className="s-stage text-sm" data-stage={stage.stage} data-status={stage.status}>
+              <span className="inline-flex h-5 w-6 items-center justify-center">
                 <StageMark status={stage.status} />
               </span>
-              <div>
+              <div className="min-w-0">
                 <div className={stage.status === "pending" ? "text-muted-foreground" : "font-medium"}>
                   {label}
                 </div>
@@ -201,6 +198,7 @@ export function ProcessingTimeline({
                   <p className="mt-0.5 text-muted-foreground">{detail}</p>
                 )}
               </div>
+              <StageWord status={stage.status} />
             </li>
           );
         })}
@@ -227,36 +225,19 @@ export function ProcessingTimeline({
 }
 
 function StageMark({ status }: { status: string }) {
+  if (status === "succeeded") return <Check className="h-4 w-4 text-[color:var(--status-success)]" aria-hidden="true" />;
+  if (status === "failed") return <CircleX className="h-4 w-4 text-[color:var(--status-critical)]" aria-hidden="true" />;
+  if (status === "skipped") return <span className="text-xs text-[color:var(--text-tertiary)]">—</span>;
+  if (status === "running") return <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--text-strong)]" aria-hidden="true" />;
+  if (status === "waiting") return <span className="h-2.5 w-2.5 rounded-full border border-[color:var(--text-secondary)]" aria-hidden="true" />;
+  return <span className="h-2.5 w-2.5 rounded-full border border-[color:var(--sc-control-edge)]" aria-hidden="true" />;
+}
+
+function StageWord({ status }: { status: string }) {
   const signal = useTranslations("signal");
-  if (status === "succeeded") {
-    return (
-      <span className="inline-flex items-center gap-1 text-[color:var(--status-success)]">
-        <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
-        {signal("stageDone")}
-      </span>
-    );
-  }
-  if (status === "failed") {
-    return (
-      <span className="inline-flex items-center gap-1 text-[color:var(--status-critical)]">
-        <CircleX className="h-4 w-4 shrink-0" aria-hidden="true" />
-        {signal("stageFailed")}
-      </span>
-    );
-  }
-  if (status === "skipped") {
-    return <span className="font-mono text-xs text-[color:var(--text-tertiary)]">—</span>;
-  }
-  if (status === "waiting") {
-    return <span className="text-[color:var(--text-secondary)]">{signal("stageWaiting")}</span>;
-  }
-  if (status === "running") {
-    return (
-      <span className="inline-flex items-center gap-1 text-[color:var(--text-strong)]">
-        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[color:var(--text-strong)]" aria-hidden="true" />
-        {signal("stageRunning")}
-      </span>
-    );
-  }
-  return <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-[color:var(--sc-control-edge)]" aria-hidden="true" />;
+  if (status === "succeeded") return <span className="s-stage-status text-[color:var(--status-success)]">{signal("stageDone")}</span>;
+  if (status === "failed") return <span className="s-stage-status text-[color:var(--status-critical)]">{signal("stageFailed")}</span>;
+  if (status === "running") return <span className="s-stage-status">{signal("stageRunning")}</span>;
+  if (status === "waiting") return <span className="s-stage-status text-[color:var(--text-secondary)]">{signal("stageWaiting")}</span>;
+  return <span className="s-stage-status" />;
 }

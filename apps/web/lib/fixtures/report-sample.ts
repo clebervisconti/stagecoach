@@ -170,7 +170,7 @@ export const sampleReport: AnalysisReport = {
   ],
   insights: {
     summary:
-      "Overall score 71 ± 4 from 8 scored categories (coverage 0.42, scoring-config 1.0.0). 9 categories are unavailable.",
+      "Overall score 71 ± 4 from 8 scored categories. 9 categories are unavailable.",
     strengths: [
       {
         category_id: "pace_pausing",
@@ -195,7 +195,7 @@ export const sampleReport: AnalysisReport = {
       {
         category_id: "fluency",
         title: "Practice fluency",
-        body: "fluency is at 48. A target near 73 is the next practice band from the scoring config.",
+        body: "Fluency is at 48. A target near 73 is the next practice band.",
         fix: "Use the attached drill, then re-analyze the same talk.",
         drill_ids: ["pause-instead-of-um"],
         evidence_ids: ["ev-1"],

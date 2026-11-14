@@ -48,3 +48,7 @@ def test_strength_skips_a_top_opportunity(tmp_path: Path):
     assert "measured strength" not in strengths[0]["title"]
     assert report["insights"]["opportunities"][0]["title"] == "Practice visual aids"
     assert "visual_aids" not in report["insights"]["opportunities"][0]["title"]
+    assert "scoring-config" not in report["insights"]["summary"]
+    assert "coverage" not in report["insights"]["summary"]
+    assert "scoring config" not in report["insights"]["opportunities"][0]["body"]
+    assert "scoring-config" not in strengths[0]["body"]

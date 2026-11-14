@@ -226,10 +226,7 @@ def build_report(
             and len(strengths) < 3
             and category["id"] not in opportunity_ids
         ):
-            body = (
-                f"{_label(category['id'])} scored {score} at level {level}. "
-                f"This uses scoring-config {facts['scoring_config_version']}."
-            )
+            body = f"{_label(category['id'])} scored {score} at level {level}."
             _assert_numbers_from_facts(body, facts)
             strengths.append(
                 _insight(
@@ -277,10 +274,7 @@ def build_report(
         attached = []
         for mid in metric_ids:
             attached.extend(drills.get(mid) or [])
-        body = (
-            f"{_label(cid)} is at {score}. "
-            f"A target near {target} is the next practice band from the scoring config."
-        )
+        body = f"{_label(cid)} is at {score}. A target near {target} is the next practice band."
         _assert_numbers_from_facts(body, facts)
         opportunities.append(
             _insight(
@@ -307,9 +301,7 @@ def build_report(
         band = overall.get("display_band")
         summary = (
             f"Overall score {int(overall['score'])} ± {int(band)} "
-            f"from {scored} scored categories "
-            f"(coverage {float(overall.get('coverage') or 0):.2f}, "
-            f"scoring-config {facts['scoring_config_version']}). "
+            f"from {scored} scored categories. "
             f"{unavailable} categories are unavailable."
         )
     _assert_numbers_from_facts(summary, facts)

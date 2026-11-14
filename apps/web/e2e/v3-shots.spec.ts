@@ -19,6 +19,9 @@ test.describe("v3 signal screenshots", () => {
       const url = new URL(route.request().url());
       const path = url.pathname.replace(/^\/api\/stagecoach/, "");
       const method = route.request().method();
+      if (method === "GET" && path === "/auth/apple/config") {
+        return json(route, { enabled: true });
+      }
       if (method === "GET" && path === "/sessions") {
         const sessions = list === "filled"
           ? [
@@ -91,7 +94,7 @@ test.describe("v3 signal screenshots", () => {
 
         list = "empty";
         sessionMode = "mock";
-        await shot(page, "01-sign-in", theme, width, "/sign-in");
+        await shot(page, "01-sign-in", theme, width, "/sign-in", () => page.getByTestId("apple-signin"));
         await shot(page, "03-sessions-empty", theme, width, "/sessions", () => page.getByTestId("empty-sessions"));
 
         list = "filled";

@@ -117,8 +117,9 @@ export function ScreenFlowTab(props: Props) {
       )}
       {view !== "loading" && view !== "hidden" && (
         <section className="grid gap-3 md:grid-cols-2">
-          <p className="md:col-span-2 text-right font-mono text-xs text-[color:var(--text-tertiary)]">
-            {t("screenFlow.scoringConfig")} {props.report.provenance?.scoring_config_version ?? "1.1.0"}
+          <p className="s-label md:col-span-2 text-right">
+            {t("screenFlow.scoringConfig")}{" "}
+            <span className="font-mono">{props.report.provenance?.scoring_config_version ?? "1.1.0"}</span>
           </p>
           {cards.map((category) => (
             <CategoryCard key={category.id} category={category} report={props.report} onSeek={props.onSeek} />
@@ -189,7 +190,7 @@ function ReadyView({
   return (
     <div data-testid="screen-flow-ready" className="grid gap-5">
       <header>
-        <p className="font-mono text-xs uppercase tracking-wide text-[color:var(--text-tertiary)]">
+        <p className="s-label">
           {t("screenFlow.eyebrow", { mode, count: segments.length })}
         </p>
         <h2 className="mt-2 text-xl font-semibold">{t("screenFlow.insight.title")}</h2>
@@ -207,7 +208,7 @@ function ReadyView({
         <Kpi label={t("screenFlow.kpi.deadAir")} value={number(metricValue(document.metrics, "sf_dead_air_per_10min"))} />
       </dl>
       <div data-testid="flow-strip" role="group" aria-label={t("screenFlow.strip.label", { count: segments.length })}>
-        <p className="mb-2 font-mono text-xs text-[color:var(--text-secondary)]">
+        <p className="mb-2 text-sm text-[color:var(--text-secondary)]">
           {t("screenFlow.strip.screenTime", {
             screen: formatTimestamp(screenTime(document)),
             total: formatTimestamp(duration),
@@ -293,7 +294,7 @@ function ReadyView({
             <button type="button" className="h-9 w-11 border" onClick={() => setZoomWidth(stepZoom(zoomWidth, 1))} aria-label={t("screenFlow.long.zoomIn")}>
               +
             </button>
-            <span className="font-mono text-xs">{t("screenFlow.long.zoomHint")}</span>
+            <span className="s-label">{t("screenFlow.long.zoomHint")}</span>
           </div>
         )}
       </div>
@@ -368,7 +369,7 @@ function ReadyView({
                     )}
                   </div>
                   <div role="gridcell" className="font-mono text-xs">{index + 1}</div>
-                  <div role="gridcell" className="font-mono text-xs uppercase">{typeLabel(t, segment.type)}</div>
+                  <div role="gridcell" className="s-label">{typeLabel(t, segment.type)}</div>
                   <div role="gridcell" className="min-w-0">
                     <button
                       type="button"
@@ -387,7 +388,7 @@ function ReadyView({
                     </button>
                     {open === segment.id && (
                       <div className="pb-2 text-sm">
-                        <p className="font-mono text-xs">
+                        <p className="text-sm">
                           {t("screenFlow.excerpt.label", {
                             start: formatTimestamp(segment.t_start),
                             end: formatTimestamp(segment.t_end),
@@ -425,7 +426,7 @@ function Coaching({ document, onSeek }: { document: ScreenDocument | null; onSee
           {t("screenFlow.coaching.fallbackBody")}
         </p>
       ) : (
-        <p className="font-mono text-xs text-[color:var(--text-tertiary)]">{t("screenFlow.coaching.source")}</p>
+        <p className="s-label">{t("screenFlow.coaching.source")}</p>
       )}
       <ol className="grid gap-2">
         {(coaching.observations ?? []).map((item, index) => (
@@ -474,7 +475,7 @@ function Kpi({ label, value }: { label: string; value: string }) {
 function FlagLine({ segment }: { segment: ScreenSegment }) {
   const flags = segment.flags ?? [];
   if (flags.length === 0) return null;
-  return <span className="mt-1 block font-mono text-xs uppercase">{flags.join(" · ")}</span>;
+  return <span className="s-label mt-1 block">{flags.join(" · ")}</span>;
 }
 
 function typeLabel(t: (key: string) => string, type: string | undefined): string {

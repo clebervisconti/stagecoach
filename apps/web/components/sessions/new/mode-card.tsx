@@ -67,7 +67,7 @@ export function ModeCard({
           className={`col-start-3 row-start-1 mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border md:col-auto ${
             selected
               ? "border-[color:var(--text-strong)] bg-[color:var(--text-strong)]"
-              : "border-[color:var(--line-strong)]"
+              : "border-[color:var(--sc-control-edge)]"
           }`}
         >
           {selected ? <span className="h-2 w-2 rounded-full bg-[color:var(--bg)]" /> : null}
@@ -76,16 +76,14 @@ export function ModeCard({
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <Icon className="h-4 w-4 shrink-0 md:h-5 md:w-5" aria-hidden="true" />
-          <p className="font-display text-base font-bold uppercase tracking-[0.06em] text-[color:var(--text-strong)] md:text-lg md:leading-6">
-            {title}
-          </p>
+          <p className="s-title-16">{title}</p>
         </div>
         <p id={describedBy} className="mt-2 text-sm text-[color:var(--text-secondary)]">
           {description}
         </p>
         <div className="mt-auto hidden md:block">
           <div className="mt-6 border-t border-[color:var(--line-subtle)] pt-3">
-            <p className="text-xs uppercase tracking-[0.12em] text-[color:var(--text-tertiary)]">{t("weCoach")}</p>
+            <p className="s-label">{t("weCoach")}</p>
             <p className="mt-1 text-sm text-[color:var(--text-secondary)]">{coach}</p>
           </div>
         </div>

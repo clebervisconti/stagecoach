@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, X } from "lucide-react";
-import { elapsedClock, formatClock, parseServerInstant } from "@/lib/online";
+import { elapsedClock, formatClock, parseServerInstant, startedAgo } from "@/lib/online";
 import type { StepSnapshot } from "@/lib/progress";
 
 export function PreparingPanel({
@@ -47,8 +47,10 @@ export function PreparingPanel({
   const layoutRunning = layout?.status === "running" || (ingest?.status === "succeeded" && !layout);
   const scan = layoutRunning;
 
+  const signal = useTranslations("signal");
   const startedMs = parseServerInstant(startedAt);
   const elapsed = startedAt ? elapsedClock(startedAt, now) : "0:00";
+  const ago = startedAgo(startedAt, now, locale);
   const slow = Boolean(startedMs != null && now - startedMs > 60_000);
 
   const rows = [
@@ -120,8 +122,8 @@ export function PreparingPanel({
           </div>
           {!failed && (
             <div className="text-right">
-              <p data-testid="elapsed" className="font-mono text-sm tabular-nums">
-                {elapsed}
+              <p data-testid="elapsed" className={ago ? "text-sm" : "font-mono text-sm tabular-nums"}>
+                {ago ? signal("startedAgo", { when: ago }) : elapsed}
               </p>
               {etaMinutes != null && (
                 <p data-testid="prep-eta" className="mt-1 text-xs text-[color:var(--text-secondary)]">

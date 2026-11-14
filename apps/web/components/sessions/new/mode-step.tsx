@@ -89,7 +89,7 @@ export function ModeStep({
         >
           <TriangleAlert className="h-4 w-4" aria-hidden="true" />
           <span>
-            <span className="font-medium uppercase tracking-[0.08em]">{t("chooseWord")}</span> {t("chooseWhere")}
+            <span className="font-medium">{t("chooseWord")}</span> {t("chooseWhere")}
           </span>
         </p>
       )}
@@ -104,7 +104,7 @@ export function ModeStep({
           type="button"
           data-testid="cancel-mode"
           onClick={onCancel}
-          className="inline-flex h-11 items-center rounded-[var(--radius-sm)] border border-[color:var(--line-strong)] px-5 text-xs uppercase tracking-[0.08em]"
+          className="cs-button cs-button-ghost"
         >
           {t("cancel")}
         </button>
@@ -112,7 +112,7 @@ export function ModeStep({
           type="button"
           data-testid="continue-mode"
           onClick={onContinue}
-          className="inline-flex h-11 items-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-5 text-xs uppercase tracking-[0.08em] text-[color:var(--text-inverse)]"
+          className="cs-button cs-button-primary"
         >
           {t("continue")}
         </button>

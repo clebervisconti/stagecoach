@@ -27,7 +27,7 @@ export function SummaryCard({ report }: SummaryCardProps) {
           <p id="report-summary-heading" className="cs-stat mt-1 text-4xl md:text-6xl">
             {line}
           </p>
-          <div className="mt-4 flex flex-wrap gap-4 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">
+          <div className="s-label mt-4 flex flex-wrap gap-4">
             <span>
               {t("coreDelivery")} {coreReady ? core : "—"}
               {!coreReady ? ` · ${t("coreDeliveryNeed")}` : ""}
@@ -70,7 +70,7 @@ export function SummaryCard({ report }: SummaryCardProps) {
         <p key={warning} className="mt-3 flex items-start gap-2 text-sm">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-warning)]" aria-hidden="true" />
           <span>
-            <span className="font-display text-xs font-bold uppercase tracking-[0.08em] text-[color:var(--status-warning)]">
+            <span className="text-[13px] font-semibold text-[color:var(--status-warning)]">
               {t("lowConfidenceWord")}
             </span>
             <span className="text-[color:var(--text)]"> · {warning}</span>
