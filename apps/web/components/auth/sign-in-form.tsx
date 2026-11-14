@@ -249,7 +249,7 @@ export function SignInForm() {
           </Button>
         </form>
       ) : null}
-      {appleEnabled && mode === "login" ? (
+      {appleEnabled && (mode === "login" || (mode === "register" && Boolean(invite))) ? (
         <Button type="button" variant="ghost" data-testid="apple-signin" className="mt-3 w-full" onClick={() => void startApple()}>
           {t.apple}
         </Button>

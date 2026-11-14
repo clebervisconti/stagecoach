@@ -26,6 +26,17 @@ JwksFetcher = Callable[[], dict[str, Any]]
 TokenExchanger = Callable[[dict[str, str]], dict[str, Any]]
 
 
+def refuse_static_jwks_in_production() -> None:
+    """A baked JWKS document skips Apple's key rotation. Production must not boot with one."""
+    document = os.getenv("APPLE_JWKS_JSON", "").strip()
+    env = (os.getenv("ENV") or os.getenv("ENVIRONMENT") or "").strip().lower()
+    if document and env == "production":
+        raise RuntimeError(
+            "APPLE_JWKS_JSON is set while ENV is production. "
+            "Production must fetch Apple's keys from appleid.apple.com."
+        )
+
+
 def apple_configured() -> bool:
     return all(
         [
