@@ -224,7 +224,7 @@
     text-transform: none;
     color: var(--text-strong);
   }
-  button:not(.cs-region):not(.cs-tab):not(.cs-switch),
+  button:not(.cs-region):not(.cs-tab):not(.cs-switch):not(.apple-signin),
   [type="submit"] {
     font-family: var(--font-sans);
     font-weight: 500;
@@ -659,7 +659,7 @@ button.cs-text-link {
 }
 @media (pointer: coarse) {
   .cs-button,
-  button:not(.cs-region),
+  button:not(.cs-region):not(.apple-signin),
   [type="submit"] {
     min-height: 44px;
   }

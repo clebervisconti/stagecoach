@@ -45,7 +45,7 @@ export function KeyMetrics({ report }: KeyMetricsProps) {
                 <p className="mt-2 text-2xl font-semibold text-muted-foreground">{t("unavailable")}</p>
               )}
               {row.light && (
-                <p className="mt-3 inline-flex items-center gap-1 rounded-full border border-[color:var(--line)] bg-[color:var(--bg-subtle)] px-2 py-0.5 text-xs uppercase tracking-[0.08em]">
+                <p className="s-label mt-3 inline-flex items-center gap-1 rounded-full border border-[color:var(--sc-control-edge)] bg-[color:var(--bg-subtle)] px-2 py-0.5">
                   {t("slotVsActual")}
                 </p>
               )}

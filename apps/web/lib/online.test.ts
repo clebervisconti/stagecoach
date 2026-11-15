@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   confidenceTone,
   elapsedClock,
+  startedAgo,
   formatBytes,
   formatClock,
   layoutComposition,
@@ -21,6 +22,13 @@ test("a timezone-less server timestamp is UTC, so elapsed time is not stuck at 0
   assert.equal(parseServerInstant("2026-10-24T14:58:30"), Date.parse("2026-10-24T14:58:30Z"));
   assert.equal(elapsedClock("2026-10-24T14:58:30", now), "1:30");
   assert.equal(elapsedClock("2026-10-24T14:58:30Z", now), "1:30");
+});
+
+test("a run older than an hour is a start time, not a clock", () => {
+  const now = Date.parse("2026-11-14T12:00:00Z");
+  assert.equal(startedAgo("2026-11-12T12:00:00Z", now, "en"), "2 days ago");
+  assert.equal(startedAgo("2026-11-14T10:00:00Z", now, "en"), "2 hours ago");
+  assert.equal(startedAgo("2026-11-14T11:30:00Z", now, "en"), null);
 });
 
 test("formatBytes and formatClock match the design examples", () => {

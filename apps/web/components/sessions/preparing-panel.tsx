@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, X } from "lucide-react";
-import { elapsedClock, formatClock, parseServerInstant } from "@/lib/online";
+import { elapsedClock, formatClock, parseServerInstant, startedAgo } from "@/lib/online";
 import type { StepSnapshot } from "@/lib/progress";
 
 export function PreparingPanel({
@@ -47,8 +47,10 @@ export function PreparingPanel({
   const layoutRunning = layout?.status === "running" || (ingest?.status === "succeeded" && !layout);
   const scan = layoutRunning;
 
+  const signal = useTranslations("signal");
   const startedMs = parseServerInstant(startedAt);
   const elapsed = startedAt ? elapsedClock(startedAt, now) : "0:00";
+  const ago = startedAgo(startedAt, now, locale);
   const slow = Boolean(startedMs != null && now - startedMs > 60_000);
 
   const rows = [
@@ -107,7 +109,7 @@ export function PreparingPanel({
             <span className="cs-scan-line pointer-events-none absolute inset-x-0 top-0 h-px bg-[color:var(--line-strong)]" />
           )}
         </div>
-        <figcaption className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
+        <figcaption className="mt-2 s-sentence text-[color:var(--text-tertiary)]">
           {previewT != null ? t("frameAt", { time: formatClock(previewT) }) : t("previewOnly")}
         </figcaption>
       </figure>
@@ -120,8 +122,8 @@ export function PreparingPanel({
           </div>
           {!failed && (
             <div className="text-right">
-              <p data-testid="elapsed" className="font-mono text-sm tabular-nums">
-                {elapsed}
+              <p data-testid="elapsed" className={ago ? "text-sm" : "font-mono text-sm tabular-nums"}>
+                {ago ? signal("startedAgo", { when: ago }) : elapsed}
               </p>
               {etaMinutes != null && (
                 <p data-testid="prep-eta" className="mt-1 text-xs text-[color:var(--text-secondary)]">
@@ -141,7 +143,7 @@ export function PreparingPanel({
             <p className="flex items-start gap-2 text-sm">
               <X className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-critical)]" aria-hidden="true" />
               <span>
-                <span className="font-display text-xs font-bold uppercase tracking-[0.08em] text-[color:var(--status-critical)]">
+                <span className="s-sentence text-[color:var(--status-critical)]">
                   {t("couldntRead")}
                 </span>
                 <span className="text-[color:var(--text)]"> · {t("couldntReadHelp")}</span>
@@ -150,7 +152,7 @@ export function PreparingPanel({
             <a
               href={newHref}
               data-testid="upload-another"
-              className="mt-4 inline-flex h-11 items-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-5 text-xs uppercase tracking-[0.08em] text-[color:var(--text-inverse)]"
+              className="mt-4 inline-flex h-11 items-center rounded-[var(--radius-sm)] bg-[color:var(--action-primary)] px-5 s-sentence text-[color:var(--text-inverse)]"
             >
               {t("uploadAnother")}
             </a>

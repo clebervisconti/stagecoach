@@ -67,10 +67,10 @@ export function SegmentEditor({
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <p className="cs-eyebrow">{t("layoutOverTime")}</p>
         <div className="flex flex-wrap items-center gap-2">
-          <p className="font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
+          <p className="s-sentence text-[color:var(--text-tertiary)]">
             {t("segmentCount", { n: draft.segments.length })}
           </p>
-          <button type="button" data-testid="split-segment" disabled={!splitOk} onClick={onSplit} className="h-9 border border-[color:var(--line-strong)] px-3 text-xs uppercase tracking-[0.08em] disabled:opacity-40">
+          <button type="button" data-testid="split-segment" disabled={!splitOk} onClick={onSplit} className="h-9 border border-[color:var(--line-strong)] px-3 s-sentence disabled:opacity-40">
             {t("layout.cta.split")}
           </button>
           <button
@@ -78,11 +78,11 @@ export function SegmentEditor({
             data-testid="merge-segment"
             disabled={selected <= 0}
             onClick={onMerge}
-            className="h-9 border border-[color:var(--line-strong)] px-3 text-xs uppercase tracking-[0.08em] disabled:opacity-40"
+            className="h-9 border border-[color:var(--line-strong)] px-3 s-sentence disabled:opacity-40"
           >
             {t("layout.cta.merge")}
           </button>
-          <button type="button" data-testid="add-segment" disabled={!splitOk} onClick={onAdd} className="h-9 border border-[color:var(--line-strong)] px-3 text-xs uppercase tracking-[0.08em] disabled:opacity-40">
+          <button type="button" data-testid="add-segment" disabled={!splitOk} onClick={onAdd} className="h-9 border border-[color:var(--line-strong)] px-3 s-sentence disabled:opacity-40">
             {t("layout.cta.add")}
           </button>
         </div>
@@ -117,7 +117,7 @@ export function SegmentEditor({
                 onSelect(segment.index);
                 onPlayhead((segment.t_start + segment.t_end) / 2);
               }}
-              className={`shrink-0 snap-start rounded-full px-3 py-1 font-mono text-xs uppercase tracking-[0.08em] ${
+              className={`shrink-0 snap-start rounded-full px-3 py-1 s-sentence ${
                 on ? "bg-[color:var(--bg-inverse)] text-[color:var(--text-inverse)]" : "border border-[color:var(--line-strong)]"
               }`}
             >
@@ -130,7 +130,7 @@ export function SegmentEditor({
         <div className="mt-4" data-testid="analysis-window">
           <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-3">
             <p className="cs-eyebrow">{t("layout.trim.label")}</p>
-            <p className="font-mono text-xs uppercase tracking-[0.08em]">
+            <p className="s-sentence">
               {formatClock(windowSpan.start_s)} – {formatClock(windowSpan.end_s)} · {formatClock(duration)}
             </p>
           </div>

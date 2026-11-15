@@ -320,7 +320,7 @@ export default function SessionPage() {
 
   if (error && !session) {
     return (
-      <section className="cs-alert cs-alert-critical" role="alert" data-testid="report-load-error">
+      <section className="cs-alert cs-alert-critical k-clear-ask" role="alert" data-testid="report-load-error">
         <div className="cs-alert-body">
           <h1 className="cs-alert-title">{signal("loadReportTitle")}</h1>
           <p>{error || signal("loadReportBody")}</p>
@@ -354,7 +354,7 @@ export default function SessionPage() {
           }}
         />
       )}
-      <div className="flex items-start justify-between gap-4">
+      <div className="k-page-head flex items-start justify-between gap-4">
         <div className="min-w-0">
           <button
             type="button"
@@ -375,7 +375,7 @@ export default function SessionPage() {
                 consentOff={consentOff}
               />
             )}
-            <p className="font-mono text-xs uppercase tracking-[0.08em]">
+            <p className="s-label">
               {sessionMeta(session?.created_at, locale, durationS, session?.language)}
               {slotLabel ? ` · ${t("slotVsActual")}: ${slotLabel}` : ""}
               {report?.overall.partial ? ` · ${t("partial")}` : ""}
@@ -727,7 +727,7 @@ function ModeBadge({
   const label = t(`modes.${mode}.title`);
   return (
     <span
-      className="inline-flex items-center gap-2 rounded-full border border-[color:var(--line-strong)] px-3 py-1 text-xs uppercase tracking-[0.08em] text-[color:var(--text-strong)]"
+      className="inline-flex items-center gap-2 rounded-full border border-[color:var(--sc-control-edge)] px-3 py-1 text-[13px] font-medium text-[color:var(--text-strong)]"
       aria-label={compact ? `Mode: ${label.toLowerCase()}` : `Mode: ${label.toLowerCase()}, ${half.toLowerCase()}`}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />

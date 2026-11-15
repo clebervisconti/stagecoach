@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import type { AnalysisReport, ReportInsight } from "@/lib/report-types";
+import { drillTitle } from "@/lib/overview";
 import { formatTimestamp } from "@/lib/player";
 import { evidenceById, isSessionWideEvidence } from "@/lib/report-view";
 import { CATEGORY_IDS } from "@/lib/report-types";
@@ -56,8 +57,8 @@ function InsightList({
             </p>
           )}
           {item.drill_ids.length > 0 && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t("drill")}: {item.drill_ids.join(", ")}
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("drill")}: {item.drill_ids.map((id) => drillTitle(id)).join(", ")}
             </p>
           )}
           {item.evidence_ids.length > 0 && (
@@ -103,8 +104,8 @@ export function InsightsPanel({ report, onSeek }: InsightsPanelProps) {
   const signal = useTranslations("signal");
   return (
     <div className="space-y-6">
-      <section className="cs-ai" aria-labelledby="opportunities-heading">
-        <p className="cs-ai-label">{signal("coachingLabel")}</p>
+      <section className="cs-panel" aria-labelledby="opportunities-heading">
+        <p className="s-label">{signal("coachingLabel")}</p>
         <h2 id="opportunities-heading" className="cs-panel-title">
           {t("opportunities")}
         </h2>

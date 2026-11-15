@@ -46,7 +46,7 @@ export function NudgePad({
         </button>
         <span />
       </div>
-      <p className="mt-2 font-mono text-xs uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">{t("layout.nudge.hint")}</p>
+      <p className="mt-2 s-sentence text-[color:var(--text-tertiary)]">{t("layout.nudge.hint")}</p>
     </div>
   );
 }
